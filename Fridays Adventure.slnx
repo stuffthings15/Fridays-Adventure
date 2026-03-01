@@ -1,0 +1,46 @@
+<Solution>
+  <Folder Name="/Assets/" />
+  <Folder Name="/Assets/ART/">
+    <File Path="../Art/2026-02-28_11-13-30-dreamshaperXL_lightningDPMSDE-1801772057.png" />
+    <File Path="../Art/2026-02-28_11-14-28-dreamshaperXL_lightningDPMSDE-1801772057.png" />
+    <File Path="../Art/2026-02-28_11-15-05-dreamshaperXL_lightningDPMSDE-1801772057.png" />
+    <File Path="../Art/2026-02-28_11-17-48-dreamshaperXL_lightningDPMSDE-1801772057.png" />
+    <File Path="../Art/2026-02-28_11-18-40-dreamshaperXL_lightningDPMSDE-1801772057.png" />
+    <File Path="../Art/2026-02-28_11-19-00-dreamshaperXL_lightningDPMSDE-1801772057.png" />
+    <File Path="../Art/2026-02-28_11-19-28-dreamshaperXL_lightningDPMSDE-1801772057.png" />
+    <File Path="../Art/2026-02-28_11-19-53-dreamshaperXL_lightningDPMSDE-1801772057.png" />
+    <File Path="../Art/2026-02-28_11-20-33-dreamshaperXL_lightningDPMSDE-1801772057.png" />
+    <File Path="../Art/garp.png" />
+    <File Path="../Art/level_1.png" />
+    <File Path="../Art/Miss Friday Promt.txt" />
+    <File Path="../Art/miss Friday.png" />
+    <File Path="Assets/Sprites/clouds.png" />
+  </Folder>
+  <Folder Name="/Assets/Development Document and Skeleton Files/">
+    <File Path="../Miss Friday Adventure Code Skeleton Phase 0.docx" />
+    <File Path="../Miss Friday Adventure Code Skeleton Phase 1.docx" />
+    <File Path="../Miss Friday Adventure Code Skeleton Phase 2.docx" />
+    <File Path="../Miss Friday Adventure Code Skeleton Phase 3.docx" />
+    <File Path="../Miss Friday Adventure Code Skeleton Phase 4.docx" />
+    <File Path="../Miss Friday Adventure Code Skeleton Phase 5.docx" />
+    <File Path="../Miss Friday Adventure Code Skeleton Phase 6.docx" />
+    <File Path="../Miss Friday Adventure Code Skeleton Phase 7.docx" />
+    <File Path="../Miss Friday Adventure Code Skeleton Phase 8.docx" />
+    <File Path="../Miss Friday's Adventure App Development Document.docx" />
+    <File Path="../Story Rev 1.3.docx" />
+  </Folder>
+  <Folder Name="/Assets/MUSIC/" />
+  <Folder Name="/Assets/MUSIC/Instrumental/">
+    <File Path="../Music/Instrumental/Grand Line Trial 1.mp3" />
+    <File Path="../Music/Instrumental/Grand Line Trial 2.mp3" />
+    <File Path="../Music/Instrumental/Sea Serpent’s Spine 1.mp3" />
+    <File Path="../Music/Instrumental/Sea Serpent’s Spine 2.mp3" />
+  </Folder>
+  <Folder Name="/Assets/MUSIC/Lyrics/">
+    <File Path="../Music/Lyrics/Grand Line Fog 1.mp3" />
+    <File Path="../Music/Lyrics/Grand Line Fog 2.mp3" />
+    <File Path="../Music/Lyrics/Ice and Iron Tide 1.mp3" />
+    <File Path="../Music/Lyrics/Ice and Iron Tide 2.mp3" />
+  </Folder>
+  <Project Path="Fridays Adventure.csproj" Id="af85466c-d4c8-4753-be1d-7ace7910eacd" />
+</Solution>
