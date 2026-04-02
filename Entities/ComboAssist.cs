@@ -37,12 +37,28 @@ namespace Fridays_Adventure.Entities
 
         private float _ameliaBoostTimer;
         private float _ameliaCooldown;
-        private const float AmeliaInterval = 20f;   // bonds >= 8: boosts every 20s
+        private float _preBoostMoveSpeed;
+        private int   _preBoostAttackDamage;
+        private const float AmeliaInterval     = 20f;   // bonds >= 8: boosts every 20s
         private const float AmeliaBoostDuration = 3f;
 
+        private float _orcaCooldown;
+        private float _orcaFlashTimer;
+        private const float OrcaInterval = 12f;   // bonds >= 6: area slam every 12s
+        private const float OrcaDamage   = 28f;
+        private const float OrcaRadius   = 120f;
+
+        private float _swanCooldown;
+        private float _swanBoostTimer;
+        private float _preSwanMoveSpeed;
+        private const float SwanInterval      = 18f;  // bonds >= 9: speed burst every 18s
+        private const float SwanBoostDuration =  2.5f;
+
         private float _zaraFlashTimer;
-        public bool   ZaraFlashing => _zaraFlashTimer > 0;
+        public bool   ZaraFlashing      => _zaraFlashTimer > 0;
         public bool   AmeliaBoostActive => _ameliaBoostTimer > 0;
+        public bool   OrcaFlashing      => _orcaFlashTimer > 0;
+        public bool   SwanBoostActive   => _swanBoostTimer > 0;
 
         public List<AssistProjectile> Projectiles { get; } = new List<AssistProjectile>();
 
@@ -67,10 +83,12 @@ namespace Fridays_Adventure.Entities
                 _ameliaCooldown -= dt;
                 if (_ameliaCooldown <= 0)
                 {
-                    _ameliaBoostTimer = AmeliaBoostDuration;
-                    _ameliaCooldown   = AmeliaInterval;
-                    player.MoveSpeed  *= 1.4f;
-                    player.AttackDamage = (int)(player.AttackDamage * 1.5f);
+                    _preBoostMoveSpeed   = player.MoveSpeed;
+                    _preBoostAttackDamage = player.AttackDamage;
+                    _ameliaBoostTimer    = AmeliaBoostDuration;
+                    _ameliaCooldown      = AmeliaInterval;
+                    player.MoveSpeed     *= 1.4f;
+                    player.AttackDamage  = (int)(player.AttackDamage * 1.5f);
                 }
             }
 
@@ -79,12 +97,41 @@ namespace Fridays_Adventure.Entities
                 _ameliaBoostTimer -= dt;
                 if (_ameliaBoostTimer <= 0)
                 {
-                    player.MoveSpeed    = 195f;
-                    player.AttackDamage = 14;
+                    player.MoveSpeed    = _preBoostMoveSpeed;
+                    player.AttackDamage = _preBoostAttackDamage;
                 }
             }
 
             if (_zaraFlashTimer > 0) _zaraFlashTimer -= dt;
+
+            // ── Orca area slam ──────────────────────────────────────────
+            if (bonds >= 6)
+            {
+                _orcaCooldown -= dt;
+                if (_orcaCooldown <= 0)
+                {
+                    FireOrca(player, enemies);
+                    _orcaCooldown = OrcaInterval;
+                }
+            }
+            if (_orcaFlashTimer > 0) _orcaFlashTimer -= dt;
+
+            // ── Swan speed burst ─────────────────────────────────────────
+            if (bonds >= 9)
+            {
+                _swanCooldown -= dt;
+                if (_swanCooldown <= 0)
+                {
+                    TriggerSwan(player);
+                    _swanCooldown = SwanInterval;
+                }
+            }
+            if (_swanBoostTimer > 0)
+            {
+                _swanBoostTimer -= dt;
+                if (_swanBoostTimer <= 0)
+                    player.MoveSpeed = _preSwanMoveSpeed;
+            }
 
             // Update projectiles
             for (int i = Projectiles.Count - 1; i >= 0; i--)
@@ -95,14 +142,20 @@ namespace Fridays_Adventure.Entities
 
             // Check projectile hits
             foreach (var proj in Projectiles)
+            {
+                if (!proj.IsAlive) continue;
                 foreach (var e in enemies)
-                    if (e.IsAlive && Math.Abs(proj.X - e.CenterX) < 20 &&
+                {
+                    if (!e.IsAlive || !proj.IsAlive) continue;
+                    if (Math.Abs(proj.X - e.CenterX) < 20 &&
                         Math.Abs(proj.Y - e.CenterY) < 30)
                     {
                         e.TakeDamage((int)ZaraDamage);
                         e.ApplyEffect(StatusEffect.Stunned, 0.6f);
                         proj.Life = 0;
                     }
+                }
+            }
         }
 
         private void FireZara(Player player, List<Enemy> enemies)
@@ -122,6 +175,34 @@ namespace Fridays_Adventure.Entities
             Projectiles.Add(new AssistProjectile(player.CenterX, player.CenterY - 10, vx));
             _zaraFlashTimer = 0.25f;
             Game.Instance.Audio.BeepAttack();
+        }
+
+        private void FireOrca(Player player, List<Enemy> enemies)
+        {
+            bool hit = false;
+            foreach (var e in enemies)
+            {
+                if (!e.IsAlive) continue;
+                if (player.DistanceTo(e) <= OrcaRadius)
+                {
+                    e.TakeDamage((int)OrcaDamage);
+                    e.ApplyEffect(StatusEffect.Stunned, 0.8f);
+                    hit = true;
+                }
+            }
+            if (hit)
+            {
+                _orcaFlashTimer = 0.3f;
+                Game.Instance.Audio.BeepStomp();
+            }
+        }
+
+        private void TriggerSwan(Player player)
+        {
+            _preSwanMoveSpeed = player.MoveSpeed;
+            _swanBoostTimer   = SwanBoostDuration;
+            player.MoveSpeed  = _preSwanMoveSpeed * 1.35f;
+            Game.Instance.Audio.BeepJump();
         }
 
         public void Draw(Graphics g)
@@ -149,6 +230,18 @@ namespace Fridays_Adventure.Entities
                 }
                 if (AmeliaBoostActive)
                     g.DrawString("AMELIA BOOST!", f, Brushes.Gold, x + 80, y + 14);
+                if (bonds >= 6)
+                {
+                    float orcaPct = 1f - (_orcaCooldown / OrcaInterval);
+                    string oLabel = $"Orca({(int)Math.Min(100, orcaPct * 100)}%)";
+                    g.DrawString(oLabel, f, OrcaFlashing ? Brushes.DeepSkyBlue : Brushes.LightGray, x, y + 28);
+                }
+                if (bonds >= 9)
+                {
+                    float swanPct = 1f - (_swanCooldown / SwanInterval);
+                    string sLabel = $"Swan({(int)Math.Min(100, swanPct * 100)}%)";
+                    g.DrawString(sLabel, f, SwanBoostActive ? Brushes.Gold : Brushes.LightGray, x + 80, y + 28);
+                }
             }
         }
     }

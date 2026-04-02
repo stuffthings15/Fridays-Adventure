@@ -1,14 +1,26 @@
 using System.Drawing;
+using Fridays_Adventure.Data;
 using Fridays_Adventure.Engine;
+using Fridays_Adventure.Systems;
 
 namespace Fridays_Adventure.Scenes
 {
     public sealed class PauseScene : Scene
     {
         private int _selected;
-        private readonly string[] _options = { "Resume", "Options", "How to Play", "Save & Quit to Map", "Quit to Title" };
+        private readonly string[] _options =
+        {
+            "Resume",
+            "Options",
+            "How to Play",
+            "Inventory",              // opens the collected items screen
+            "Save Game (JSON)",
+            "Load Game (JSON)",
+            "Save & Quit to Map",
+            "Quit to Title"
+        };
 
-        public override void OnEnter() { Game.Instance.Audio.StopMusic(); }
+        public override void OnEnter() { }
         public override void OnExit()  { }
 
         public override void Update(float dt)
@@ -22,6 +34,7 @@ namespace Fridays_Adventure.Scenes
 
         public override void HandleClick(Point p)
         {
+            if (HandleDevMenuClick(p)) return;
             int H = Game.Instance.CanvasHeight;
             for (int i = 0; i < _options.Length; i++)
             {
@@ -42,12 +55,27 @@ namespace Fridays_Adventure.Scenes
                 case 0: Game.Instance.Scenes.Pop(); break;
                 case 1: Game.Instance.Scenes.Push(new OptionsScene()); break;
                 case 2: Game.Instance.Scenes.Push(new HowToPlayScene()); break;
-                case 3:
-                    Game.Instance.Save.Save();
-                    while (!(Game.Instance.Scenes.Current is OverworldScene))
-                        Game.Instance.Scenes.Pop();
+                case 3: Game.Instance.Scenes.Push(new InventoryScene()); break; // Inventory
+                case 4:
+                    Game.Instance.SyncRuntimeToSaveData();
+                    Game.Instance.Save.SaveJson();
+                    SMB3Hud.ShowToast($"Saved JSON: {SaveData.JsonSavePath}");
                     break;
-                case 4: Game.Instance.Scenes.Replace(new TitleScene()); break;
+                case 5:
+                    Game.Instance.ApplySaveData(SaveData.LoadJson());
+                    SMB3Hud.ShowToast($"Loaded JSON: {SaveData.JsonSavePath}");
+                    Game.Instance.Scenes.Replace(new OverworldScene());
+                    break;
+                case 6:
+                    Game.Instance.SyncRuntimeToSaveData();
+                    Game.Instance.Save.Save();
+                    while (Game.Instance.Scenes.Current != null &&
+                           !(Game.Instance.Scenes.Current is OverworldScene))
+                        Game.Instance.Scenes.Pop();
+                    if (Game.Instance.Scenes.Current == null)
+                        Game.Instance.Scenes.Replace(new TitleScene());
+                    break;
+                case 7: Game.Instance.Scenes.Replace(new TitleScene()); break;
             }
         }
 
@@ -78,6 +106,7 @@ namespace Fridays_Adventure.Scenes
             using (var f = new Font("Courier New", 11, FontStyle.Bold))
                 g.DrawString("Up/Down Navigate   Enter Select   Esc Resume",
                              f, Brushes.DimGray, 12, H - 28);
+            DrawDevMenuButton(g);
         }
     }
 }

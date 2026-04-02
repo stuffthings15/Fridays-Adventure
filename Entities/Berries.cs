@@ -3,13 +3,15 @@ using System.Drawing;
 
 namespace Fridays_Adventure.Entities
 {
-    public sealed class Berries : Entity
+    /// <summary>
+    /// Gold berry collectible — increases the player's score (bounty) on pickup.
+    /// Inherits from Item for shared collectible logic.
+    /// </summary>
+    public sealed class Berries : Item
     {
-        public bool Collected { get; set; }
-        public int  Value     { get; } = 10;
         private float _bob;
 
-        public Berries(float x, float y) : base(x, y, 16, 16) { }
+        public Berries(float x, float y) : base(x, y, 16, 16, 10) { }
 
         public override void Update(float dt) { _bob += dt; }
 
@@ -17,12 +19,24 @@ namespace Fridays_Adventure.Entities
         {
             if (Collected) return;
             float yOff = (float)Math.Sin(_bob * 4) * 3;
-            using (var br = new SolidBrush(Color.Gold))
-                g.FillEllipse(br, X + 1, Y + yOff + 1, 14, 14);
-            using (var pen = new Pen(Color.DarkGoldenrod, 1))
-                g.DrawEllipse(pen, X + 1, Y + yOff + 1, 14, 14);
-            using (var br = new SolidBrush(Color.FromArgb(120, 255, 255, 200)))
-                g.FillEllipse(br, X + 4, Y + yOff + 3, 6, 6);
+            float cx   = X, cy = Y + yOff;
+
+            // ── SMB3-style gold coin ─────────────────────────────────────────
+            // Outer bright gold body
+            using (var br = new SolidBrush(Color.FromArgb(255, 220, 0)))
+                g.FillEllipse(br, cx, cy, 16, 16);
+            // Inner darker ring — gives the coin a 3-D edge
+            using (var br = new SolidBrush(Color.FromArgb(200, 150, 0)))
+                g.FillEllipse(br, cx + 3, cy + 3, 10, 10);
+            // Bright coin-face center
+            using (var br = new SolidBrush(Color.FromArgb(255, 235, 80)))
+                g.FillEllipse(br, cx + 4, cy + 4, 8, 8);
+            // Crisp dark outline (SMB3 coins have a defined border)
+            using (var pen = new Pen(Color.FromArgb(160, 100, 0), 1.5f))
+                g.DrawEllipse(pen, cx, cy, 16, 16);
+            // Shimmer highlight (top-left catch-light)
+            using (var br = new SolidBrush(Color.FromArgb(210, 255, 255, 200)))
+                g.FillEllipse(br, cx + 2, cy + 2, 5, 4);
         }
     }
 }

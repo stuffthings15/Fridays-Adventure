@@ -61,5 +61,11 @@ namespace Fridays_Adventure.Data
             foreach (var b in _cache.Values) b?.Dispose();
             _cache.Clear();
         }
+
+        /// <summary>
+        /// Warms the bitmap cache for the given file name.
+        /// Safe to call from a background thread — simply calls Get which is idempotent.
+        /// </summary>
+        public static void Preload(string fileName) => Get(fileName);
     }
 }

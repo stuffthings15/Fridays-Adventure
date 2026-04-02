@@ -3,11 +3,31 @@ using System.Collections.Generic;
 
 namespace Fridays_Adventure.Data
 {
+    /// <summary>
+    /// A single line of dialogue spoken by a character.
+    /// Optionally includes a portrait image filename.
+    /// </summary>
     public sealed class DialogueLine
     {
-        public string Speaker { get; }
-        public string Text    { get; }
-        public DialogueLine(string speaker, string text) { Speaker = speaker; Text = text; }
+        /// <summary>Name of the speaker shown above the text box.</summary>
+        public string Speaker  { get; }
+
+        /// <summary>Dialogue text displayed with a typing effect.</summary>
+        public string Text     { get; }
+
+        /// <summary>
+        /// Optional filename of a portrait image (e.g. "portrait_friday.png").
+        /// When null, no portrait is rendered for this line.
+        /// </summary>
+        public string Portrait { get; }
+
+        /// <summary>Creates a dialogue line with an optional portrait.</summary>
+        public DialogueLine(string speaker, string text, string portrait = null)
+        {
+            Speaker  = speaker;
+            Text     = text;
+            Portrait = portrait;
+        }
     }
 
     public sealed class DialogueChoice
@@ -101,6 +121,68 @@ namespace Fridays_Adventure.Data
             Choices = {
                 new DialogueChoice("\"Thank you, Zara.\"",                   bondChange: 3, flagToSet: "zara_bond"),
                 new DialogueChoice("[Say nothing, but remember it]",         bondChange: 1, flagToSet: "zara_quiet")
+            }
+        };
+
+        // ── Sequel sequences ─────────────────────────────────────────────────
+
+        public static DialogueSequence MeetOrca() => new DialogueSequence
+        {
+            Lines = {
+                new DialogueLine("ORCA",        "You're the one they call Miss Friday? You're smaller than I expected."),
+                new DialogueLine("MISS FRIDAY",  "..."),
+                new DialogueLine("ORCA",        "Relax. I meant it as a compliment. Small fighters are hard to hit."),
+                new DialogueLine("MISS FRIDAY",  "Why are you following us?"),
+                new DialogueLine("ORCA",        "Same reason as you, I'd guess. Nowhere else worth going.")
+            },
+            Choices = {
+                new DialogueChoice("\"You can keep up if you want.\"",       bondChange: 2, flagToSet: NarrativeFlags.MetOrcaWarm),
+                new DialogueChoice("\"We don't need the extra weight.\"",    bondChange: 0, flagToSet: NarrativeFlags.MetOrca)
+            }
+        };
+
+        public static DialogueSequence OrcaJoinsCrew() => new DialogueSequence
+        {
+            Lines = {
+                new DialogueLine("CAPTAIN AMELIA", "Orca. You've proven yourself out there. The offer stands."),
+                new DialogueLine("ORCA",           "I don't do crews. Never have."),
+                new DialogueLine("MISS FRIDAY",    "Neither did I."),
+                new DialogueLine("ORCA",           "...Fair point."),
+                new DialogueLine("FINN",           "Welcome aboard. Try not to sink the ship.")
+            },
+            Choices = {
+                new DialogueChoice("\"Glad you stayed.\"",                   bondChange: 3, flagToSet: NarrativeFlags.OrcaJoinedCrew),
+                new DialogueChoice("[Nod once and walk away]",               bondChange: 1, flagToSet: NarrativeFlags.OrcaJoinedCrew)
+            }
+        };
+
+        public static DialogueSequence MeetSwan() => new DialogueSequence
+        {
+            Lines = {
+                new DialogueLine("SWAN",        "You have an Ice Devil Fruit. I've never seen one in person."),
+                new DialogueLine("MISS FRIDAY",  "It's not as impressive as it sounds."),
+                new DialogueLine("SWAN",        "You froze three Marines in under a second. It's exactly as impressive as it sounds."),
+                new DialogueLine("MISS FRIDAY",  "...What do you want?"),
+                new DialogueLine("SWAN",        "To travel with someone who knows what they're doing, for once.")
+            },
+            Choices = {
+                new DialogueChoice("\"You can handle yourself. You're in.\"", bondChange: 3, flagToSet: NarrativeFlags.MetSwanWarm),
+                new DialogueChoice("\"Prove it first.\"",                     bondChange: 1, flagToSet: NarrativeFlags.MetSwan)
+            }
+        };
+
+        public static DialogueSequence SwanJoinsCrew() => new DialogueSequence
+        {
+            Lines = {
+                new DialogueLine("SWAN",           "I've been thinking about what you said. About trust."),
+                new DialogueLine("MISS FRIDAY",    "I said a lot of things."),
+                new DialogueLine("SWAN",           "You said it doesn't come free. That you have to earn it every day."),
+                new DialogueLine("MISS FRIDAY",    "I remember."),
+                new DialogueLine("SWAN",           "Then I want to keep earning it. With your crew.")
+            },
+            Choices = {
+                new DialogueChoice("\"Then you're one of us.\"",              bondChange: 4, flagToSet: NarrativeFlags.SwanJoinedCrew),
+                new DialogueChoice("[Place a hand on her shoulder]",          bondChange: 3, flagToSet: NarrativeFlags.SwanJoinedCrew)
             }
         };
     }

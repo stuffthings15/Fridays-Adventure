@@ -1,15 +1,18 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Windows.Forms;
 using Fridays_Adventure.Engine;
+using Fridays_Adventure.Systems;
 
 namespace Fridays_Adventure.Scenes
 {
     public sealed class OptionsScene : Scene
     {
-        private enum RowType { Header, MusicVol, SfxVol, MoodHeader, TrackItem, BackBtn }
+        // Row model for Options menu items and documentation shortcuts.
+        private enum RowType { Header, MusicVol, SfxVol, HowToPlayBtn, MoodHeader, TrackItem, ToolAction, BackBtn }
 
         private struct Row
         {
@@ -17,6 +20,9 @@ namespace Fridays_Adventure.Scenes
             public string  Label;
             public string  Mood;
             public string  TrackFile;
+
+            // Optional action used by debug/tool rows.
+            public Action ToolAction;
         }
 
         private readonly List<Row> _rows = new List<Row>();
@@ -57,6 +63,11 @@ namespace Fridays_Adventure.Scenes
             _rows.Add(new Row { Type = RowType.Header,   Label = "AUDIO" });
             _rows.Add(new Row { Type = RowType.MusicVol, Label = "Music Volume" });
             _rows.Add(new Row { Type = RowType.SfxVol,   Label = "SFX Volume"   });
+            _rows.Add(new Row { Type = RowType.HowToPlayBtn, Label = "How To Play / Controls" });
+            
+            // PHASE 2 - Team 9: UI Programmer — Settings Menu Integration
+            _rows.Add(new Row { Type = RowType.ToolAction, Label = "Game Settings", ToolAction = OpenSettings });
+            
             _rows.Add(new Row { Type = RowType.Header,   Label = "PLAYLISTS" });
             foreach (string mood in new[] { "overworld", "combat", "island", "boss" })
             {
@@ -65,6 +76,15 @@ namespace Fridays_Adventure.Scenes
                     foreach (string t in ScanTracks(mood))
                         _rows.Add(new Row { Type = RowType.TrackItem, Mood = mood, TrackFile = t, Label = t });
             }
+
+            // Debug/QA actions (only visible when dev mode is unlocked).
+            if (Game.Instance.GodMode)
+            {
+                _rows.Add(new Row { Type = RowType.Header, Label = "DEBUG TOOLS" });
+                _rows.Add(new Row { Type = RowType.ToolAction, Label = "Open Logs Folder", ToolAction = OpenLogsFolder });
+                _rows.Add(new Row { Type = RowType.ToolAction, Label = "Capture Test Error", ToolAction = CaptureTestError });
+            }
+
             _rows.Add(new Row { Type = RowType.BackBtn, Label = "Back" });
             _sel = Math.Max(0, Math.Min(_sel, _rows.Count - 1));
         }
@@ -138,12 +158,19 @@ namespace Fridays_Adventure.Scenes
                     Rebuild();
                     break;
                 case RowType.TrackItem:
-                    if (Game.Instance.Audio.IsTrackInPlaylist(row.Mood, row.TrackFile))
-                        Game.Instance.Audio.RemoveTrack(row.Mood, row.TrackFile);
-                    else
-                        Game.Instance.Audio.AddTrack(row.Mood, row.TrackFile);
+                    // Play the selected track immediately
+                    Game.Instance.Audio.PlaySpecificTrack(row.Mood, row.TrackFile);
                     _dirty = true;
+                    // Also ensure it's in the playlist
+                    if (!Game.Instance.Audio.IsTrackInPlaylist(row.Mood, row.TrackFile))
+                        Game.Instance.Audio.AddTrack(row.Mood, row.TrackFile);
                     Rebuild();
+                    break;
+                case RowType.HowToPlayBtn:
+                    Game.Instance.Scenes.Push(new HowToPlayScene());
+                    break;
+                case RowType.ToolAction:
+                    row.ToolAction?.Invoke();
                     break;
                 case RowType.BackBtn:
                     Game.Instance.Scenes.Pop();
@@ -157,8 +184,10 @@ namespace Fridays_Adventure.Scenes
             {
                 case RowType.MusicVol:
                 case RowType.SfxVol:    return 36f;
+                case RowType.HowToPlayBtn: return 34f;
                 case RowType.MoodHeader: return 34f;
                 case RowType.TrackItem:  return 26f;
+                case RowType.ToolAction: return 30f;
                 case RowType.BackBtn:    return 42f;
                 default:                 return 24f;
             }
@@ -166,6 +195,7 @@ namespace Fridays_Adventure.Scenes
 
         public override void HandleClick(Point p)
         {
+            if (HandleDevMenuClick(p)) return;
             float y = 80f;
             for (int i = 0; i < _rows.Count; i++)
             {
@@ -189,11 +219,23 @@ namespace Fridays_Adventure.Scenes
                 g.FillRectangle(br, 0, 0, W, H);
             SizeF tsz = g.MeasureString("OPTIONS", TitleFont);
             g.DrawString("OPTIONS", TitleFont, Brushes.Cyan, (W - tsz.Width) / 2f, 14f);
+
+            // Now Playing indicator
+            string cur = Game.Instance.Audio.CurrentTrack;
+            if (!string.IsNullOrEmpty(cur))
+            {
+                string np = "\u266B Now Playing: " + FormatTrackName(cur);
+                g.DrawString(np, SmFont, Brushes.Cyan, 14, 54);
+            }
+
             float y = 80f;
             for (int i = 0; i < _rows.Count; i++)
                 DrawRow(g, _rows[i], i == _sel, W, ref y);
-            g.DrawString("Up/Down Navigate   Left/Right Adjust   Enter Select   Esc Back",
+            g.DrawString("Up/Down Navigate   Left/Right Volume   Enter Select   Esc Back",
+                         SmFont, Brushes.DimGray, 12, H - 36);
+            g.DrawString("SMB3-style tips: tap jump for short hops, stomp enemies from above, and use momentum.",
                          SmFont, Brushes.DimGray, 12, H - 18);
+            DrawDevMenuButton(g);
         }
 
         private void DrawRow(Graphics g, Row row, bool sel, int W, ref float y)
@@ -218,6 +260,18 @@ namespace Fridays_Adventure.Scenes
                     break;
                 }
 
+                case RowType.HowToPlayBtn:
+                {
+                    if (sel) Highlight(g, W, y, 34);
+                    using (var f = new Font("Courier New", 11, sel ? FontStyle.Bold : FontStyle.Regular))
+                    {
+                        Brush br = sel ? Brushes.Yellow : Brushes.LightCyan;
+                        g.DrawString("▶ " + row.Label, f, br, lx, y + 7);
+                    }
+                    y += 34;
+                    break;
+                }
+
                 case RowType.MoodHeader:
                 {
                     if (sel) Highlight(g, W, y, 34);
@@ -236,11 +290,30 @@ namespace Fridays_Adventure.Scenes
                 case RowType.TrackItem:
                 {
                     if (sel) Highlight(g, W, y, 26);
-                    bool on = Game.Instance.Audio.IsTrackInPlaylist(row.Mood, row.TrackFile);
-                    string check = on ? "[v]" : "[ ]";
-                    Brush br = sel ? Brushes.Yellow : (on ? Brushes.LimeGreen : (Brush)Brushes.Gray);
-                    g.DrawString("     " + check + "  " + row.TrackFile, SmFont, br, lx, y + 6);
+                    bool on      = Game.Instance.Audio.IsTrackInPlaylist(row.Mood, row.TrackFile);
+                    bool playing = row.TrackFile == Game.Instance.Audio.CurrentTrack;
+                    string icon  = playing ? "\u266B" : (on ? "\u2713" : " ");
+                    Brush br     = sel     ? Brushes.Yellow
+                                 : playing ? Brushes.Cyan
+                                 : on      ? Brushes.LimeGreen
+                                 :           (Brush)Brushes.Gray;
+                    string display = FormatTrackName(row.TrackFile);
+                    g.DrawString("     " + icon + "  " + display, SmFont, br, lx, y + 6);
+                    if (playing)
+                        g.DrawString("\u25B6", SmFont, Brushes.Cyan, lx + 12, y + 6);
                     y += 26;
+                    break;
+                }
+
+                case RowType.ToolAction:
+                {
+                    if (sel) Highlight(g, W, y, 30);
+                    using (var f = new Font("Courier New", 10, sel ? FontStyle.Bold : FontStyle.Regular))
+                    {
+                        Brush br = sel ? Brushes.Yellow : Brushes.LightCyan;
+                        g.DrawString("[TOOL] " + row.Label, f, br, lx, y + 7);
+                    }
+                    y += 30;
                     break;
                 }
 
@@ -281,6 +354,66 @@ namespace Fridays_Adventure.Scenes
             using (var pen = new Pen(sel ? Color.Cyan : Color.DimGray))
                 g.DrawRectangle(pen, sx, sy, sw, sh);
             g.DrawString(value + "%", SmFont, lb, sx + sw + 8, y + 8);
+        }
+
+        /// <summary>
+        /// Opens the runtime log folder used by the error/visual debugger.
+        /// </summary>
+        private static void OpenLogsFolder()
+        {
+            string logDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Logs");
+            Directory.CreateDirectory(logDir);
+            try
+            {
+                Process.Start("explorer.exe", logDir);
+            }
+            catch (Exception ex)
+            {
+                DebugLogger.LogError("Options.OpenLogsFolder", ex);
+            }
+        }
+
+        /// <summary>
+        /// Emits a controlled test error for QA verification of debugger capture.
+        /// </summary>
+        private static void CaptureTestError()
+        {
+            try
+            {
+                throw new InvalidOperationException("OptionsScene test error (intentional). Verify log and screenshot output.");
+            }
+            catch (Exception ex)
+            {
+                DebugLogger.LogError("Options.CaptureTestError", ex);
+            }
+        }
+
+        private static string FormatTrackName(string fileName)
+        {
+            if (string.IsNullOrEmpty(fileName)) return fileName;
+            string name = fileName.Replace("music_", "").Replace(".mp3", "");
+            // Capitalize and insert spaces before digits for readability
+            if (name.Length > 0)
+                name = char.ToUpper(name[0]) + name.Substring(1);
+            // e.g. "island1" → "Island 1", "grandlinefog1" → "Grandlinefog 1"
+            for (int i = 1; i < name.Length; i++)
+            {
+                if (char.IsDigit(name[i]) && !char.IsDigit(name[i - 1]))
+                {
+                    name = name.Substring(0, i) + " " + name.Substring(i);
+                    break;
+                }
+            }
+            return name;
+        }
+
+        /// <summary>
+        /// PHASE 2 - Team 9: UI Programmer
+        /// Opens the Game Settings menu scene
+        /// </summary>
+        private void OpenSettings()
+        {
+            Game.Instance.Scenes.Push(new SettingsScene());
         }
     }
 }

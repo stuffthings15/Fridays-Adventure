@@ -1,53 +1,59 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading;
 using NAudio.Wave;
 
 namespace Fridays_Adventure.Audio
 {
     /// <summary>
-    /// Music and SFX manager backed by NAudio (WaveOutEvent + AudioFileReader).
-    /// NAudio streams MP3 through a properly-sized ring buffer on a dedicated audio
-    /// thread, eliminating the stutter and inter-track gaps that mciSendString caused.
+    /// Music manager backed by NAudio WaveOutEvent for smooth, low-latency MP3
+    /// playback. Playlist advancement is event-driven (PlaybackStopped) rather
+    /// than polled so Tick() is a no-op kept only for API compatibility.
     /// </summary>
     public sealed class AudioManager
     {
-        // ── Playlists (mood → ordered list of filenames) ─────────────────────
+        private WaveOutEvent   _musicOut;
+        private AudioFileReader _musicReader;
+        private readonly SynchronizationContext _syncCtx;
+
         private readonly Dictionary<string, List<string>> _playlists =
             new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase)
             {
-                { "overworld", new List<string> { "music_overworld1.mp3", "music_grandlinefog1.mp3" } },
-                { "combat",    new List<string> { "music_combat2.mp3",    "music_combat1.mp3"    } },
-                { "island",    new List<string> { "music_island2.mp3",    "music_island1.mp3"    } },
-                { "boss",      new List<string> { "music_boss2.mp3",      "music_boss1.mp3"      } },
+                { "overworld",   new List<string> { "music_overworld1.mp3"                                    } },
+                { "combat",      new List<string> { "music_combat1.mp3",      "music_combat2.mp3"             } },
+                { "island",      new List<string> { "music_island1.mp3",      "music_island2.mp3"             } },
+                { "boss",        new List<string> { "music_boss1.mp3",        "music_boss2.mp3"               } },
+                // ── Sequel moods ────────────────────────────────────────────────
+                { "hub",         new List<string> { "music_hub1.mp3",         "music_hub2.mp3"                } },
+                { "exploration", new List<string> { "music_exploration1.mp3", "music_exploration2.mp3"        } },
+                { "event",       new List<string> { "music_event1.mp3",       "music_event2.mp3"              } },
+                { "theme",       new List<string> { "music_theme1.mp3",       "music_theme2.mp3"              } },
+                { "finale",      new List<string> { "music_finale1.mp3",      "music_finale2.mp3"             } },
             };
 
         private static readonly Dictionary<string, string> _firstTracks =
             new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
             {
-                { "overworld", "music_overworld1.mp3" },
-                { "combat",    "music_combat2.mp3"    },
-                { "island",    "music_island2.mp3"    },
-                { "boss",      "music_boss2.mp3"      },
+                { "overworld",   "music_overworld1.mp3"   },
+                { "combat",      "music_combat1.mp3"      },
+                { "island",      "music_island1.mp3"      },
+                { "boss",        "music_boss1.mp3"        },
+                // ── Sequel moods ────────────────────────────────────────────────
+                { "hub",         "music_hub1.mp3"         },
+                { "exploration", "music_exploration1.mp3"  },
+                { "event",       "music_event1.mp3"       },
+                { "theme",       "music_theme1.mp3"       },
+                { "finale",      "music_finale1.mp3"      },
             };
 
-        private readonly Random _rng       = new Random();
-        private string          _currentMood;
-        private string          _lastPlayed;
-        private string          _currentTrack;   // filename, kept for API compat
-
-        // ── NAudio objects (main-thread owned; disposed before reassignment) ──
-        private WaveOutEvent    _waveOut;
-        private AudioFileReader _musicReader;
-
-        // ── Thread-safe end-of-track signal ──────────────────────────────────
-        // NAudio fires PlaybackStopped on its audio thread; we set this flag and
-        // consume it on the game-loop thread inside Tick() — no locks needed
-        // because reads/writes of bool are atomic on x86/x64.
-        private volatile bool _trackEndedSignal;
-
-        // ── Volume ───────────────────────────────────────────────────────────
-        private int  _musicVolume  = 80;   // 0–100
+        private readonly Random _rng = new Random((int)DateTime.Now.Ticks);
+        private string _currentMood;
+        private string _lastMood;
+        private string _lastPlayed;
+        private string _currentTrack;
+        private bool   _isPlaying;
+        private int  _musicVolume  = 80;
         private int  _sfxVolume    = 80;
         private bool _musicEnabled = true;
         private bool _sfxEnabled   = true;
@@ -55,13 +61,26 @@ namespace Fridays_Adventure.Audio
         private static string AudioPath =>
             Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "Audio");
 
-        // ── Public accessors (unchanged surface API) ──────────────────────────
-        public int    MusicVolume     => _musicVolume;
-        public int    SfxVolume       => _sfxVolume;
-        public bool   MusicEnabled    => _musicEnabled;
-        public bool   SfxEnabled      => _sfxEnabled;
-        public string CurrentMood     => _currentMood;
-        public bool   AudioSystemReady => true;   // NAudio needs no pre-warm
+        /// <summary>
+        /// Root folder for lyrical MP3 tracks used at startup and during the
+        /// every-2-level rotation. Separate from Assets\Audio so the two
+        /// libraries stay clearly partitioned.
+        /// </summary>
+        private static string LyricalPath =>
+            Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "Music", "Lyrical");
+
+        public int    MusicVolume      => _musicVolume;
+        public int    SfxVolume        => _sfxVolume;
+        public bool   MusicEnabled     => _musicEnabled;
+        public bool   SfxEnabled       => _sfxEnabled;
+        public string CurrentMood      => _currentMood;
+        public string CurrentTrack     => _currentTrack;
+        public bool   AudioSystemReady => true;  // NAudio WaveOutEvent is always available
+
+        public AudioManager()
+        {
+            _syncCtx = SynchronizationContext.Current ?? new SynchronizationContext();
+        }
 
         public IReadOnlyList<string> GetPlaylist(string mood)
         {
@@ -97,13 +116,29 @@ namespace Fridays_Adventure.Audio
             foreach (var kv in saved)
             {
                 if (string.IsNullOrEmpty(kv.Value)) continue;
-                var tracks = kv.Value.Split(',');
-                if (tracks.Length == 0) continue;
                 if (!_playlists.ContainsKey(kv.Key))
                     _playlists[kv.Key] = new List<string>();
+
+                // Keep a fallback snapshot of built-in/default playlist for this mood.
+                var fallback = new List<string>(_playlists[kv.Key]);
+
+                var tracks = kv.Value.Split(',');
                 _playlists[kv.Key].Clear();
-                foreach (string t in tracks)
-                    if (!string.IsNullOrEmpty(t)) _playlists[kv.Key].Add(t);
+                foreach (string raw in tracks)
+                {
+                    string t = (raw ?? string.Empty).Trim();
+                    if (string.IsNullOrEmpty(t)) continue;
+
+                    // Only keep tracks that still exist on disk.
+                    string path = Path.Combine(AudioPath, t);
+                    if (File.Exists(path))
+                        _playlists[kv.Key].Add(t);
+                }
+
+                // If save data was stale/corrupted, restore defaults so music still plays.
+                if (_playlists[kv.Key].Count == 0)
+                    _playlists[kv.Key].AddRange(fallback);
+
                 EnsureLyricalFirst(kv.Key);
             }
         }
@@ -118,32 +153,31 @@ namespace Fridays_Adventure.Audio
             { list.Remove(first); list.Insert(0, first); }
         }
 
-        // No-ops kept so callers don't need changes
-        public void LoadAll() { }
+        public void LoadAll() { ProceduralSfx.Preload(); }
         public void Prewarm() { }
 
-        // ── Game-loop tick ────────────────────────────────────────────────────
-        /// <summary>Called each frame. Advances to the next track when one ends.</summary>
-        public void Tick(float dt)
+        private void AdvancePlaylist()
         {
-            if (!_trackEndedSignal) return;
-            _trackEndedSignal = false;
-            if (_musicEnabled && _currentMood != null)
-                PlayMood(_currentMood);
+            _isPlaying    = false;
+            _currentTrack = null;
+            string mood   = _lastMood;
+            _currentMood  = null;
+            if (mood != null && _musicEnabled)
+                PlayMood(mood);
         }
 
-        // ── Music playback ────────────────────────────────────────────────────
+        // Playlist advancement is now driven by PlaybackStopped — Tick kept for API compatibility.
+        public void Tick(float dt) { }
+
         public void PlayMood(string mood)
         {
             if (!_musicEnabled) return;
-            if (_currentMood == mood && IsPlaying()) return;
+            if (_currentMood == mood && _isPlaying) return;
             _currentMood = mood;
+            _lastMood    = mood;
             string track = PickTrack(mood);
             if (track != null) PlayFile(track);
         }
-
-        private bool IsPlaying() =>
-            _waveOut != null && _waveOut.PlaybackState == PlaybackState.Playing;
 
         public void PlayMusic(string fileName, bool loop = false)
         {
@@ -155,7 +189,6 @@ namespace Fridays_Adventure.Audio
         {
             if (!_playlists.TryGetValue(mood, out var list) || list.Count == 0) return null;
             if (list.Count == 1) return list[0];
-            if (_lastPlayed == null) return list[0];
             string pick;
             int attempts = 0;
             do { pick = list[_rng.Next(list.Count)]; attempts++; }
@@ -165,67 +198,73 @@ namespace Fridays_Adventure.Audio
 
         private void PlayFile(string fileName)
         {
-            DisposePlayer();                 // stop & release current track first
+            // Dispose previous track before starting a new one
+            StopMusic();
 
             string path = Path.Combine(AudioPath, fileName);
             if (!File.Exists(path)) return;
 
-            _lastPlayed   = fileName;
-            _currentTrack = fileName;
-
             try
             {
-                _musicReader = new AudioFileReader(path)
-                {
-                    Volume = _musicEnabled ? _musicVolume / 100f : 0f
-                };
+                _musicReader      = new AudioFileReader(path);
+                _musicReader.Volume = _musicEnabled ? _musicVolume / 100f : 0f;
+                _musicOut         = new WaveOutEvent { DesiredLatency = 200 };
+                _musicOut.PlaybackStopped += OnPlaybackStopped;
+                _musicOut.Init(_musicReader);
+                _musicOut.Play();
 
-                // DesiredLatency 200 ms: buffer large enough to survive GC pauses
-                // without audible stutter, small enough for responsive Stop().
-                _waveOut = new WaveOutEvent { DesiredLatency = 200 };
-                _waveOut.PlaybackStopped += OnPlaybackStopped;
-                _waveOut.Init(_musicReader);
-                _waveOut.Play();
+                _lastPlayed   = fileName;
+                _currentTrack = fileName;
+                _isPlaying    = true;
             }
-            catch
+            catch (Exception ex)
             {
-                DisposePlayer();
+                // Log the failure so audio issues are visible in the debugger log.
+                Systems.DebugLogger.LogError($"AudioManager.PlayFile({fileName})", ex);
+                _musicOut?.Dispose();   _musicOut   = null;
+                _musicReader?.Dispose(); _musicReader = null;
             }
         }
 
-        /// <summary>
-        /// Called on NAudio's internal audio thread when a track finishes.
-        /// Only sets a volatile flag — no heap allocation, no lock.
-        /// </summary>
         private void OnPlaybackStopped(object sender, StoppedEventArgs e)
         {
-            _trackEndedSignal = true;
+            // Only auto-advance on natural end (not when we called StopMusic)
+            if (!_isPlaying || e.Exception != null) return;
+            // Marshal to the UI thread so AdvancePlaylist creates objects safely
+            _syncCtx.Post(_ => AdvancePlaylist(), null);
         }
 
         public void StopMusic()
         {
-            DisposePlayer();
-            _trackEndedSignal = false;
-            _currentTrack     = null;
+            _isPlaying    = false;   // cleared before Stop() to suppress OnPlaybackStopped
+            _currentTrack = null;
+
+            var prevOut    = _musicOut;
+            var prevReader = _musicReader;
+            _musicOut    = null;
+            _musicReader = null;
+
+            if (prevOut != null)
+            {
+                // Unsubscribe before Stop() so the callback cannot re-enter
+                // during the synchronous waveOutReset triggered by Stop().
+                prevOut.PlaybackStopped -= OnPlaybackStopped;
+                prevOut.Stop();
+            }
+
+            // Defer COM-backed disposal to a later message-pump cycle so the
+            // NAudio callback thread that fired PlaybackStopped can finish
+            // unwinding before the underlying RCW is released.
+            if (prevOut != null || prevReader != null)
+            {
+                _syncCtx.Post(_ =>
+                {
+                    prevOut?.Dispose();
+                    prevReader?.Dispose();
+                }, null);
+            }
         }
 
-        private void DisposePlayer()
-        {
-            if (_waveOut != null)
-            {
-                _waveOut.PlaybackStopped -= OnPlaybackStopped; // unsubscribe before Stop
-                _waveOut.Stop();
-                _waveOut.Dispose();
-                _waveOut = null;
-            }
-            if (_musicReader != null)
-            {
-                _musicReader.Dispose();
-                _musicReader = null;
-            }
-        }
-
-        // ── Volume ────────────────────────────────────────────────────────────
         public void SetMusicVolume(int pct)
         {
             _musicVolume = Math.Max(0, Math.Min(100, pct));
@@ -247,46 +286,66 @@ namespace Fridays_Adventure.Audio
         {
             _musicEnabled = on;
             if (!on) StopMusic();
-            else     ApplyMusicVolume();
+            else ApplyMusicVolume();
         }
 
         public void SetSfxEnabled(bool on) => _sfxEnabled = on;
 
-        // ── Named-mood shortcuts ──────────────────────────────────────────────
-        public void PlayOverworld() => PlayMood("overworld");
-        public void PlayCombat()    => PlayMood("combat");
-        public void PlayIsland()    => PlayMood("island");
-        public void PlayBoss()      => PlayMood("boss");
+        public void PlayOverworld()   => PlayMood("overworld");
+        public void PlayCombat()      => PlayMood("combat");
+        public void PlayIsland()      => PlayMood("island");
+        public void PlayBoss()        => PlayMood("boss");
+        // ── Sequel convenience methods ───────────────────────────────────────
+        public void PlayHub()         => PlayMood("hub");
+        public void PlayExploration() => PlayMood("exploration");
+        public void PlayEvent()       => PlayMood("event");
+        public void PlayTheme()       => PlayMood("theme");
+        public void PlayFinale()      => PlayMood("finale");
 
-        // ── SFX file playback (unchanged) ────────────────────────────────────
-        public void PlaySfx(string fileName)
+        public void ContinueOrPlay(string mood)
         {
-            if (!_sfxEnabled) return;
-            string path = Path.Combine(AudioPath, fileName);
-            if (!File.Exists(path)) return;
-            System.Threading.Tasks.Task.Run(() =>
-            {
-                try
-                {
-                    using (var sp = new System.Media.SoundPlayer(path))
-                        sp.PlaySync();
-                }
-                catch { }
-            });
+            if (!_musicEnabled) return;
+            if (_isPlaying) return;
+            PlayMood(mood);
         }
 
-        // ── Procedural SFX ────────────────────────────────────────────────────
-        public void BeepJump()     => ProceduralSfx.Play(ProceduralSfx.Jump,      _sfxVolume / 100f);
-        public void BeepAttack()   => ProceduralSfx.Play(ProceduralSfx.Attack,    _sfxVolume / 100f);
-        public void BeepIce()      => ProceduralSfx.Play(ProceduralSfx.Ice,       _sfxVolume / 100f);
-        public void BeepHurt()     => ProceduralSfx.Play(ProceduralSfx.Hurt,      _sfxVolume / 100f);
-        public void BeepFreeze()   => ProceduralSfx.Play(ProceduralSfx.Freeze,    _sfxVolume / 100f);
-        public void BeepSink()     => ProceduralSfx.Play(ProceduralSfx.Sink,      _sfxVolume / 100f);
-        public void BeepBreak()    => ProceduralSfx.Play(ProceduralSfx.BreakWall, _sfxVolume / 100f);
-        public void BeepStomp()    => ProceduralSfx.Play(ProceduralSfx.Stomp,     _sfxVolume / 100f);
-        public void BeepCoin()     => ProceduralSfx.Play(ProceduralSfx.Coin,      _sfxVolume / 100f);
-        public void BeepBerry()    => ProceduralSfx.Play(ProceduralSfx.Berry,     _sfxVolume / 100f);
-        public void BeepHeal()     => ProceduralSfx.Play(ProceduralSfx.Heal,      _sfxVolume / 100f);
-        public void BeepSeaStone() => ProceduralSfx.Play(ProceduralSfx.SeaStone,  _sfxVolume / 100f);
+        public void PlaySpecificTrack(string mood, string fileName)
+        {
+            if (!_musicEnabled) return;
+            _currentMood = mood;
+            PlayFile(fileName);
+        }
+
+        private void Beep(string sound) { if (_sfxEnabled) ProceduralSfx.Play(sound, _sfxVolume / 100f); }
+
+        public void BeepJump()           => Beep(ProceduralSfx.Jump);
+        public void BeepAttack()         => Beep(ProceduralSfx.Attack);
+        public void BeepIce()            => Beep(ProceduralSfx.Ice);
+        public void BeepHurt()           => Beep(ProceduralSfx.Hurt);
+        public void BeepFreeze()         => Beep(ProceduralSfx.Freeze);
+        public void BeepSink()           => Beep(ProceduralSfx.Sink);
+        public void BeepBreak()          => Beep(ProceduralSfx.BreakWall);
+        public void BeepStomp()          => Beep(ProceduralSfx.Stomp);
+        public void BeepCoin()           => Beep(ProceduralSfx.Coin);
+        public void BeepBerry()          => Beep(ProceduralSfx.Berry);
+        public void BeepHeal()           => Beep(ProceduralSfx.Heal);
+        public void BeepSeaStone()       => Beep(ProceduralSfx.SeaStone);
+        public void PlayVictoryFanfare() => Beep(ProceduralSfx.VictoryFanfare);
+        public void PlayIntroAmbient()   => Beep(ProceduralSfx.IntroAmbient);
+
+        // ── SMB3 / Mega Man style SFX helpers ────────────────────────────────
+        /// <summary>Plays the Mega Man-style boss intro sting.</summary>
+        public void BeepBossIntro()  => Beep(ProceduralSfx.BossIntro);
+        /// <summary>Plays the boss defeat fanfare.</summary>
+        public void BeepBossDefeat() => Beep(ProceduralSfx.BossDefeat);
+        /// <summary>Plays the SMB3-style level clear chime.</summary>
+        public void BeepLevelClear() => Beep(ProceduralSfx.LevelClear);
+        /// <summary>Plays the SMB3-style power-up pickup sound.</summary>
+        public void BeepPowerup()    => Beep(ProceduralSfx.Powerup);
+        /// <summary>
+        /// Plays the SMB3-style world-entry jingle when the level intro card appears.
+        /// Team 1 (Game Director) — Idea 1: level intro card with audio sting.
+        /// </summary>
+        public void BeepLevelIntro() => Beep(ProceduralSfx.LevelIntro);
     }
 }

@@ -79,6 +79,14 @@ namespace Fridays_Adventure.Entities
             InvincibilityTimer = 0.5f;
         }
 
+        /// <summary>
+        /// Grants invincibility for the specified duration (used by power-ups and checkpoints).
+        /// </summary>
+        public void GrantInvincibility(float duration)
+        {
+            InvincibilityTimer = Math.Max(InvincibilityTimer, duration);
+        }
+
         public bool TryAttack()
         {
             if (AttackCooldown > 0 || IsAttacking) return false;

@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <PropertyGroup>
@@ -8,6 +8,7 @@
     <OutputType>WinExe</OutputType>
     <RootNamespace>Fridays_Adventure</RootNamespace>
     <AssemblyName>Fridays Adventure</AssemblyName>
+    <ApplicationIcon>pirate_ship.ico</ApplicationIcon>
     <TargetFrameworkVersion>v4.7.2</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
@@ -32,6 +33,12 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
+  <PropertyGroup>
+    <StartupObject>Fridays_Adventure.Program</StartupObject>
+    <SignAssembly>true</SignAssembly>
+    <AssemblyOriginatorKeyFile>FridaysAdventure.snk</AssemblyOriginatorKeyFile>
+    <LangVersion>latest</LangVersion>
+  </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />
     <Reference Include="System.Core" />
@@ -45,16 +52,20 @@
     <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Xml" />
     <Reference Include="System.Runtime.Serialization" />
-    <Reference Include="NAudio, Version=2.2.1.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>lib\NAudio.dll</HintPath>
+    <Reference Include="NAudio">
+      <HintPath>packages\NAudio.2.2.1\lib\net472\NAudio.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="NAudio.Core">
-      <HintPath>lib\NAudio.Core.dll</HintPath>
+      <HintPath>packages\NAudio.Core.2.2.1\lib\netstandard2.0\NAudio.Core.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="NAudio.WinMM">
-      <HintPath>lib\NAudio.WinMM.dll</HintPath>
+      <HintPath>packages\NAudio.WinMM.2.2.1\lib\netstandard2.0\NAudio.WinMM.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="NAudio.Wasapi">
+      <HintPath>packages\NAudio.Wasapi.2.2.1\lib\netstandard2.0\NAudio.Wasapi.dll</HintPath>
       <Private>True</Private>
     </Reference>
   </ItemGroup>
@@ -62,11 +73,14 @@
     <Compile Include="Abilities\Ability.cs" />
     <Compile Include="Abilities\BreakWall.cs" />
     <Compile Include="Abilities\FlashFreeze.cs" />
-    <Compile Include="Abilities\BreakWall.cs" />
     <Compile Include="Abilities\IceWall.cs" />
+    <Compile Include="Abilities\TidalSlam.cs" />
+    <Compile Include="Abilities\WingDash.cs" />
     <Compile Include="AI\EnemyAI.cs" />
     <Compile Include="Audio\AudioManager.cs" />
+    <Compile Include="Audio\CachedSound.cs" />
     <Compile Include="Audio\ProceduralSfx.cs" />
+    <Compile Include="Data\CaptainsLog.cs" />
     <Compile Include="Data\ContentLoader.cs" />
     <Compile Include="Data\DialogueLine.cs" />
     <Compile Include="Data\IslandDefinition.cs" />
@@ -83,10 +97,17 @@
     <Compile Include="Engine\SceneManager.cs" />
     <Compile Include="Entities\Berries.cs" />
     <Compile Include="Entities\Character.cs" />
+    <Compile Include="Entities\Checkpoint.cs" />
     <Compile Include="Entities\ComboAssist.cs" />
     <Compile Include="Entities\Enemy.cs" />
     <Compile Include="Entities\Entity.cs" />
+    <Compile Include="Entities\Item.cs" />
+    <Compile Include="Entities\LevelEntities.cs" />
+    <Compile Include="Entities\MovingPlatform.cs" />
+    <Compile Include="Entities\OrcaCompanion.cs" />
     <Compile Include="Entities\Player.cs" />
+    <Compile Include="Entities\PowerUp.cs" />
+    <Compile Include="Entities\SwanCompanion.cs" />
     <Compile Include="Form1.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -108,22 +129,81 @@
     <Compile Include="Rules\DevilFruitRules.cs" />
     <Compile Include="Rules\IceSystem.cs" />
     <Compile Include="Rules\RescueSystem.cs" />
+    <Compile Include="Scenes\AchievementsScene.cs" />
+    <Compile Include="Scenes\AirshipLevelScene.cs" />
     <Compile Include="Scenes\BossScene.cs" />
+    <Compile Include="Scenes\CardMiniGameScene.cs" />
+    <Compile Include="Scenes\CardRouletteScene.cs" />
+    <Compile Include="Scenes\CharacterSelectScene.cs" />
+    <Compile Include="Scenes\CourseClearScene.cs" />
+    <Compile Include="Scenes\CreditsScene.cs" />
+    <Compile Include="Scenes\CrewScene.cs" />
     <Compile Include="Scenes\DevMenuScene.cs" />
     <Compile Include="Scenes\DialogueScene.cs" />
+    <Compile Include="Scenes\DifficultySelectScene.cs" />
+    <Compile Include="Scenes\FortressScene.cs" />
     <Compile Include="Scenes\GameOverScene.cs" />
+    <Compile Include="Scenes\HighScoreScene.cs" />
     <Compile Include="Scenes\HowToPlayScene.cs" />
+    <Compile Include="Scenes\InventoryScene.cs" />
     <Compile Include="Scenes\IslandScene.cs" />
+    <Compile Include="Scenes\LevelIntroScene.cs" />
     <Compile Include="Scenes\LoadingScene.cs" />
     <Compile Include="Scenes\OverworldScene.cs" />
     <Compile Include="Scenes\OptionsScene.cs" />
     <Compile Include="Scenes\PauseScene.cs" />
+    <Compile Include="Scenes\QAReportScene.cs" />
     <Compile Include="Scenes\Scene.cs" />
+    <Compile Include="Scenes\SettingsScene.cs" />
     <Compile Include="Scenes\SkyIslandScene.cs" />
     <Compile Include="Scenes\StormScene.cs" />
     <Compile Include="Scenes\TitleScene.cs" />
+    <Compile Include="Scenes\UnderwaterScene.cs" />
+    <Compile Include="Scenes\VictoryScene.cs" />
     <Compile Include="Scenes\WarlordBossScene.cs" />
+    <Compile Include="Systems\AchievementSystem.cs" />
+    <Compile Include="Systems\BuildEngineerExtensions.cs" />
+    <Compile Include="Systems\BuildInfo.cs" />
+    <Compile Include="Systems\ColorPalette.cs" />
+    <Compile Include="Systems\DebugConsole.cs" />
+    <Compile Include="Systems\DifficultyModifiers.cs" />
+    <Compile Include="Systems\EasingFunctions.cs" />
+    <Compile Include="Systems\EngineExtensions.cs" />
+    <Compile Include="Systems\EngineOptimiser.cs" />
+    <Compile Include="Systems\EnvironmentArtist.cs" />
+    <Compile Include="Systems\ErrorLogDebugger.cs" />
+    <Compile Include="Systems\EventBus.cs" />
+    <Compile Include="Systems\FloatingText.cs" />
+    <Compile Include="Systems\GameConfig.cs" />
+    <Compile Include="Systems\GameDirectorExtensions.cs" />
+    <Compile Include="Systems\HudHelper.cs" />
+    <Compile Include="Systems\LevelEventSystem.cs" />
+    <Compile Include="Systems\NarrativeExtensions.cs" />
+    <Compile Include="Systems\NarrativeManager.cs" />
+    <Compile Include="Systems\ObjectPool.cs" />
+    <Compile Include="Systems\ParallaxBackground.cs" />
+    <Compile Include="Systems\ParticleSystem.cs" />
+    <Compile Include="Systems\PerformanceProfiler.cs" />
+    <Compile Include="Systems\PowerUpInventory.cs" />
+    <Compile Include="Systems\PowerUpSystem.cs" />
+    <Compile Include="Systems\ProducerSystems.cs" />
+    <Compile Include="Systems\RenderDebugModes.cs" />
+    <Compile Include="Systems\SceneTransition.cs" />
+    <Compile Include="Systems\ScreenShake.cs" />
+    <Compile Include="Systems\SessionStats.cs" />
+    <Compile Include="Systems\SMB3Hud.cs" />
+    <Compile Include="Systems\SMB3PhysicsExtensions.cs" />
+    <Compile Include="Systems\SMB3SuitSystem.cs" />
+    <Compile Include="Systems\SpriteRegistry.cs" />
+    <Compile Include="Systems\StartupValidator.cs" />
+    <Compile Include="Systems\SystemsToolsExtensions.cs" />
+    <Compile Include="Systems\TeamFeatures_Wave2.cs" />
+    <Compile Include="Systems\TechLeadExtensions.cs" />
     <Compile Include="Systems\ThreatSystem.cs" />
+    <Compile Include="Systems\TileMapRenderer.cs" />
+    <Compile Include="Systems\UIStyleGuide.cs" />
+    <Compile Include="Systems\VisualDebugger.cs" />
+    <Compile Include="Systems\WeatherSystem.cs" />
     <EmbeddedResource Include="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
@@ -133,6 +213,49 @@
       <AutoGen>True</AutoGen>
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
+    <None Include=".github\copilot-instructions.md" />
+    <None Include="Assets\Notes\In Class Notes Digital.docx" />
+    <None Include="Assets\Notes\Project Outline.docx" />
+    <None Include="docs\00_START_HERE_MASTER_INDEX.md" />
+    <None Include="docs\ACCELERATED_COMPLETION_ROADMAP.md" />
+    <None Include="docs\AI_DOCS.md" />
+    <None Include="docs\COMPREHENSIVE_TEAM_FEATURE_AUDIT.md" />
+    <None Include="docs\DOCUMENTATION_INDEX.md" />
+    <None Include="docs\FEATURE_COMPLETION_AUDIT.md" />
+    <None Include="docs\FINAL_VERIFICATION_REPORT.md" />
+    <None Include="docs\FIXES_APPLIED.md" />
+    <None Include="docs\IMPLEMENTATION_START_HERE.md" />
+    <None Include="docs\INITIALIZATION_WIRING_VERIFICATION.md" />
+    <None Include="docs\IN_GAME_VERIFICATION_CHECKLIST.md" />
+    <None Include="docs\ISLAND_COMPLETION_CHANGES.md" />
+    <None Include="docs\MASTER_DOCUMENTATION_INDEX.md" />
+    <None Include="docs\MASTER_PROJECT_STATUS.md" />
+    <None Include="docs\OFFICIAL_COMPLETION_CERTIFICATE.md" />
+    <None Include="docs\PHASE_2_FEATURES_WAVE_1.md" />
+    <None Include="docs\PHASE_2_FEATURES_WAVE_2.md" />
+    <None Include="docs\PHASE_2_IMPLEMENTATION_ROADMAP.md" />
+    <None Include="docs\PHASE_2_LAUNCH_SUMMARY.md" />
+    <None Include="docs\PHASE_2_PROGRESS_TRACKER.md" />
+    <None Include="docs\PHASE_2_START_HERE.md" />
+    <None Include="docs\PHASE_3_FEATURES_MASTER.md" />
+    <None Include="docs\PHASE_3_IMPLEMENTATION_ROADMAP.md" />
+    <None Include="docs\PHASE_3_LAUNCH_SUMMARY.md" />
+    <None Include="docs\PHASE_3_MASTER_INDEX.md" />
+    <None Include="docs\PROJECT_COMPLETION_CERTIFICATE.md" />
+    <None Include="docs\PROJECT_COMPLETION_SUMMARY.md" />
+    <None Include="docs\PROJECT_STATUS_SESSION_2.md" />
+    <None Include="docs\QA_VERIFICATION_PROTOCOL.md" />
+    <None Include="docs\RUNTIME_WIRING_VERIFICATION.md" />
+    <None Include="docs\SESSION_2_SUMMARY.md" />
+    <None Include="docs\SESSION_3_COMPLETION_CERTIFICATE.md" />
+    <None Include="docs\SESSION_3_COMPREHENSIVE_SUMMARY.md" />
+    <None Include="docs\SESSION_3_FINAL_STATUS.md" />
+    <None Include="docs\SESSION_4_COMPREHENSIVE_LEGAL_AUDIT.md" />
+    <None Include="docs\SESSION_4_CRITICAL_FIXES_APPLIED.md" />
+    <None Include="docs\SESSION_4_EXACT_CHANGES.md" />
+    <None Include="docs\SESSION_4_FEATURE_VERIFICATION_REPORT.md" />
+    <None Include="docs\SESSION_4_LEGAL_VERIFICATION.md" />
+    <None Include="docs\WEEK_10_LOG_TEMPLATE.md" />
     <None Include="Properties\Settings.settings">
       <Generator>SettingsSingleFileGenerator</Generator>
       <LastGenOutput>Settings.Designer.cs</LastGenOutput>
@@ -142,12 +265,32 @@
       <DependentUpon>Settings.settings</DependentUpon>
       <DesignTimeSharedInput>True</DesignTimeSharedInput>
     </Compile>
+    <None Include="FridaysAdventure.snk" />
+    <None Include="README.md" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <ItemGroup>
+    <Content Include="Assets\Audio\Fast Talk at SBVC.mp3">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\Audio\Fast Talk at SBVC_B.mp3">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\Audio\Fast Talk Team.mp3">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\Audio\Fast Talk Team_B.mp3">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\Audio\Fast Talk_ SBVC Game Night.mp3">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\Audio\Fast Talk_ SBVC Game Night_B.mp3">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
     <Content Include="Assets\Audio\music_boss1.mp3">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
@@ -158,6 +301,30 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="Assets\Audio\music_combat2.mp3">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\Audio\music_event1.mp3">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\Audio\music_event2.mp3">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\Audio\music_exploration1.mp3">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\Audio\music_exploration2.mp3">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\Audio\music_finale1.mp3">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\Audio\music_finale2.mp3">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\Audio\music_hub1.mp3">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\Audio\music_hub2.mp3">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="Assets\Audio\music_island1.mp3">
@@ -172,55 +339,220 @@
     <Content Include="Assets\Audio\music_grandlinefog1.mp3">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="Assets\Sprites\bg_bladenation.png">
+    <Content Include="Assets\Audio\music_theme1.mp3">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="Assets\Sprites\bg_dinoIsland.png">
+    <Content Include="Assets\Audio\music_theme2.mp3">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="Assets\Sprites\bg_island.png">
+    <Content Include="Assets\Audio\Team Fast Talk.mp3">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\Audio\Valley Game Devs.mp3">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\Audio\Valley Game Engines.mp3">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\Audio\Valley Game Engines_B.mp3">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\Backrounds\Abyss.png" />
+    <Content Include="Assets\Backrounds\Ancient ruins island.png" />
+    <Content Include="Assets\Backrounds\Blade Nation.png" />
+    <Content Include="Assets\Backrounds\Centipede of the Deep.png" />
+    <Content Include="Assets\Backrounds\Coral Reef.png" />
+    <Content Include="Assets\Backrounds\Desert island kingdom.png" />
+    <Content Include="Assets\Backrounds\Dinosaur Island.png" />
+    <Content Include="Assets\Backrounds\Dive Gate.png" />
+    <Content Include="Assets\Backrounds\Giant tree island.png" />
+    <Content Include="Assets\Backrounds\Harbor Town.png" />
+    <Content Include="Assets\Backrounds\Kelp Maze.png" />
+    <Content Include="Assets\Backrounds\Marine Blockade.png" />
+    <Content Include="Assets\Backrounds\Sea Serpent.png" />
+    <Content Include="Assets\Backrounds\Storm Belt.png" />
+    <Content Include="Assets\Backrounds\Storm island.png" />
+    <Content Include="Assets\Backrounds\Sunken Gate.png" />
+    <Content Include="Assets\Backrounds\Tempest Strait.png" />
+    <Content Include="Assets\Backrounds\Tropical jungle island.png" />
+    <Content Include="Assets\Backrounds\Tundra Peak.png" />
+    <Content Include="Assets\Backrounds\Vent Ruins.png" />
+    <Content Include="Assets\Backrounds\Volcano island.png" />
+    <Content Include="Assets\Backrounds\Warlord Sudo.png" />
+    <Content Include="Assets\Backrounds\Warlord Vanta.png" />
+    <Content Include="Assets\Models\Enemies\Cloud_Lancer.png" />
+    <Content Include="Assets\Models\Enemies\Garp.png" />
+    <Content Include="Assets\Models\Enemies\Oni_Ashigaru.png" />
+    <Content Include="Assets\Models\Enemies\Raptor Marauder.png" />
+    <Content Include="Assets\Models\Enemies\Ronin_Enforcer.png" />
+    <Content Include="Assets\Models\Enemies\Thunder_Mask_Priest.png" />
+    <Content Include="Assets\Models\Enemies\Triceratops Brute.png" />
+    <Content Include="Assets\Models\Orca\Orca.png" />
+    <Content Include="Assets\Models\Swan\Swan.png" />
+    <Content Include="pirate_ship.ico">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\SfxCache\attack.wav">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\SfxCache\berry.wav">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\SfxCache\breakwall.wav">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\SfxCache\coin.wav">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\SfxCache\freeze.wav">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\SfxCache\heal.wav">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\SfxCache\hurt.wav">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\SfxCache\ice.wav">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\SfxCache\introambient.wav">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\SfxCache\jump.wav">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\SfxCache\seastone.wav">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\SfxCache\sink.wav">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\SfxCache\stomp.wav">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\SfxCache\victoryfanfare.wav">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\Sprites\bg_Abyss.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\Sprites\bg_Ancient_ruins_island.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\Sprites\bg_Blade_Nation.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\Sprites\bg_Blade.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\Sprites\bg_Centipede_of_the_Deep.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\Sprites\bg_Coral_Reef.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\Sprites\bg_deck.jpg">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\Sprites\bg_Desert_island_kingdom.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\Sprites\bg_Dinosaur_Island.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\Sprites\bg_Dive_Gate.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\Sprites\bg_Giant_tree_island.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\Sprites\bg_Harbor_Town.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\Sprites\bg_Kelp_Maze.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\Sprites\bg_Marine_Blockade.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="Assets\Sprites\bg_overworld.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="Assets\Sprites\bg_skyisland.png">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    <Content Include="Assets\Sprites\clouds.png">
+    <Content Include="Assets\Sprites\bg_Sea_Serpent.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+    <Content Include="Assets\Sprites\bg_Storm_Belt.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\Sprites\bg_Storm_island.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\Sprites\bg_Sunken_Gate.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\Sprites\bg_Tempest_Strait.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="Assets\Sprites\bg_title.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="Assets\Sprites\enemy_boss.png">
+    <Content Include="Assets\Sprites\bg_Tropical_jungle_island.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="Assets\Sprites\enemy_marine.png">
+    <Content Include="Assets\Sprites\bg_Tundra_Peak.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="Assets\Sprites\player_missfriday.png">
+    <Content Include="Assets\Sprites\bg_Vent_Ruins.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\Sprites\bg_Volcano_island.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\Sprites\bg_Warlord_Sudo.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\Sprites\bg_Warlord_Vanta.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\Sprites\boss_Garp.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\Sprites\enemy_Cloud_Lancer.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\Sprites\enemy_Garp.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\Sprites\enemy_Oni_Ashigaru.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\Sprites\enemy_Raptor_Marauder.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\Sprites\enemy_Ronin_Enforcer.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\Sprites\enemy_Thunder_Mask_Priest.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\Sprites\enemy_Triceratops_Brute.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\Sprites\Garp.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\Sprites\player_Orca.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\Sprites\player_Swan.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="Assets\Sprites\ui_panel.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="Assets\Sprites\GARP.png">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Assets\Sprites\level_1.png">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
   </ItemGroup>
   <ItemGroup>
-  </ItemGroup>
-  <ItemGroup>
-  </ItemGroup>
-  <ItemGroup>
-    <Compile Include="Systems\ThreatSystem.cs" />
-    <Compile Include="Entities\ComboAssist.cs" />
-    <Compile Include="Scenes\StormScene.cs" />
-    <Compile Include="Data\WarlordConfig.cs" />
-    <Compile Include="Scenes\WarlordBossScene.cs" />
+    <Folder Include="Tools\" />
   </ItemGroup>
 </Project>

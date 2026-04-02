@@ -2,6 +2,8 @@ using System;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using Fridays_Adventure.Engine;
+using Fridays_Adventure.Systems;
+using System.IO;
 
 namespace Fridays_Adventure.Scenes
 {
@@ -20,10 +22,34 @@ namespace Fridays_Adventure.Scenes
         private bool        _transitioned;
         private float       _dotTimer;
         private int         _dotCount;
+        private Bitmap      _bg;
+        private string      _tip;
 
-        public override void OnEnter()  { }
+        public override void OnEnter()
+        {
+            // Load a generic background — character art should not be used as scene backgrounds.
+            string spritesDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "Sprites");
+            string[] candidates = new[]
+            {
+                Path.Combine(spritesDir, "bg_title.png"),
+                Path.Combine(spritesDir, "deck.jpg"),
+            };
+            foreach (string c in candidates)
+                if (File.Exists(c)) { _bg = new Bitmap(c); break; }
 
-        public override void OnExit()   { }
+            // Team 2 (Producer) — Idea 10: rotating tip cycling on loading screen.
+            _tip = TipCycler.NextTip();
+
+            // Start lyrical theme music immediately so it plays throughout loading and title.
+            // PlayIntroAmbient() was removed here — it produced an unwanted low buzzing SFX.
+            Game.Instance.Audio.PlayTheme();
+        }
+
+        public override void OnExit()
+        {
+            _bg?.Dispose();
+            _bg = null;
+        }
 
         public override void Update(float dt)
         {
@@ -46,17 +72,29 @@ namespace Fridays_Adventure.Scenes
             int W = Game.Instance.CanvasWidth;
             int H = Game.Instance.CanvasHeight;
 
-            // Deep ocean gradient — matches title screen palette
-            using (var br = new LinearGradientBrush(new Rectangle(0, 0, W, H),
-                Color.FromArgb(5, 12, 40), Color.FromArgb(15, 35, 90), 90f))
-                g.FillRectangle(br, 0, 0, W, H);
+            // Miss Friday background if available, otherwise fallback gradient.
+            if (_bg != null)
+            {
+                g.DrawImage(_bg, 0, 0, W, H);
+                using (var dim = new SolidBrush(Color.FromArgb(120, 0, 0, 0)))
+                    g.FillRectangle(dim, 0, 0, W, H);
+            }
+            else
+            {
+                using (var br = new LinearGradientBrush(new Rectangle(0, 0, W, H),
+                    Color.FromArgb(5, 12, 40), Color.FromArgb(15, 35, 90), 90f))
+                    g.FillRectangle(br, 0, 0, W, H);
+            }
 
             // Title
-            using (var f = new Font("Courier New", 52, FontStyle.Bold))
+            float tagY;
+            using (var f = new Font("Courier New", 40, FontStyle.Bold))
             {
-                const string title = "Miss Friday's Adventure";
+                const string title = "Miss Friday's Adventure Part II";
                 SizeF sz = g.MeasureString(title, f);
-                g.DrawString(title, f, Brushes.White, (W - sz.Width) / 2f, H * 0.28f);
+                float titleY = H * 0.28f;
+                g.DrawString(title, f, Brushes.White, (W - sz.Width) / 2f, titleY);
+                tagY = titleY + sz.Height + 4f;
             }
 
             // Tagline
@@ -64,7 +102,7 @@ namespace Fridays_Adventure.Scenes
             {
                 const string tag = "Ice-Ice Fruit  \u2022  The Sea Serpent  \u2022  The Grand Line";
                 SizeF sz = g.MeasureString(tag, f);
-                g.DrawString(tag, f, Brushes.DarkSlateGray, (W - sz.Width) / 2f, H * 0.28f + 70f);
+                g.DrawString(tag, f, Brushes.DarkSlateGray, (W - sz.Width) / 2f, tagY);
             }
 
             // Progress bar
@@ -103,6 +141,17 @@ namespace Fridays_Adventure.Scenes
             {
                 SizeF sz = g.MeasureString(status, f);
                 g.DrawString(status, f, br, (W - sz.Width) / 2f, barY + 18);
+            }
+
+            // Producer tip line.
+            if (!string.IsNullOrEmpty(_tip))
+            {
+                using (var f = new Font("Courier New", 9, FontStyle.Bold))
+                using (var br = new SolidBrush(Color.FromArgb(200, 220, 220, 180)))
+                {
+                    SizeF sz = g.MeasureString(_tip, f);
+                    g.DrawString(_tip, f, br, (W - sz.Width) / 2f, H - 34);
+                }
             }
         }
     }

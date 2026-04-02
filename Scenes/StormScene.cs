@@ -32,7 +32,26 @@ namespace Fridays_Adventure.Scenes
         private float _stormAnim;
         private readonly Random _rng = new Random();
 
+        // SMB3-style feel helpers:
+        // - Coyote time lets jump work briefly after leaving platform.
+        // - Jump buffer stores early jump input shortly before landing.
+        private float _coyoteTimer;
+        private float _jumpBufferTimer;
+        private const float CoyoteWindow = 0.11f;
+        private const float JumpBufferWindow = 0.12f;
+
+        // Momentum tuning for less abrupt horizontal movement.
+        private const float GroundAccel = 14f;
+        private const float AirAccel = 8f;
+
         private static readonly Font _hudFont = new Font("Courier New", 11, FontStyle.Bold);
+
+        // Cached warning count for HUD readability (how many bolts are currently telegraphed).
+        private int _warningStrikeCount;
+
+        // Rain seed cache for draw-time performance (no per-frame Random allocation).
+        private float[] _rainSeedX = new float[80];
+        private float[] _rainSeedY = new float[80];
 
         // ── Inner classes ─────────────────────────────────────────────────────
 
@@ -191,15 +210,20 @@ namespace Fridays_Adventure.Scenes
             _deckBaseY = H - 100;
             _player    = new Player(W / 2f - 18, _deckBaseY - 56);
             _player.MoveSpeed *= 1.3f;
-            var spr    = Data.SpriteManager.GetScaled("player_missfriday.png",
-                                                      _player.Width, _player.Height);
-            if (spr != null) _player.Sprite = spr;
-            Game.Instance.Audio.PlayCombat();
+            _player.ApplySelectedSprite();
+            Game.Instance.Audio.ContinueOrPlay("combat");
             SpawnPickups();
+
+            // Initialize rain seeds once (optimization phase).
+            for (int i = 0; i < _rainSeedX.Length; i++)
+            {
+                _rainSeedX[i] = (float)_rng.NextDouble();
+                _rainSeedY[i] = (float)_rng.NextDouble();
+            }
         }
 
         public override void OnExit()  { }
-        public override void OnResume() => Game.Instance.Audio.PlayCombat();
+        public override void OnResume() => Game.Instance.Audio.ContinueOrPlay("combat");
 
         // ── Update ────────────────────────────────────────────────────────────
 
@@ -208,17 +232,23 @@ namespace Fridays_Adventure.Scenes
             ThreatSystem.Tick(dt);
             _stormAnim += dt;
 
-            if (_complete) { _completeTimer += dt; if (_completeTimer >= 3f) Game.Instance.Scenes.Pop(); return; }
-            if (_failed)   { Game.Instance.Scenes.Replace(new GameOverScene()); return; }
+            if (_complete) { _completeTimer += dt; if (_completeTimer >= 3f) { Game.Instance.LevelJustCompleted = true; Game.Instance.Scenes.Pop(); } return; }
+            if (_failed)   { Game.Instance.Scenes.Replace(new GameOverScene(() => new StormScene())); return; }
 
             UpdateDeck(dt);
             HandleInput(dt);
             _player.Update(dt);
             _player.X += _player.VelocityX * dt;   // was missing — caused cannot-move bug
             _player.Y += _player.VelocityY * dt;
-            ResolveDeck();
+            ResolveDeck(dt);
             UpdateStrikes(dt);
             UpdatePickups(dt);
+
+            // Cache telegraph count for HUD and readability.
+            _warningStrikeCount = 0;
+            for (int i = 0; i < _strikes.Count; i++)
+                if (!_strikes[i].IsStriking && !_strikes[i].IsDone) _warningStrikeCount++;
+
             _survivalTimer += dt;
             if (_survivalTimer >= SurvivalGoal) OnComplete();
             if (!_player.IsAlive) _failed = true;
@@ -238,20 +268,50 @@ namespace Fridays_Adventure.Scenes
             if (_player.HasEffect(StatusEffect.Sinking) ||
                 _player.HasEffect(StatusEffect.Stunned)) return;
 
-            if (input.LeftHeld)       { _player.VelocityX = -_player.MoveSpeed; _player.FacingRight = false; }
-            else if (input.RightHeld) { _player.VelocityX =  _player.MoveSpeed; _player.FacingRight = true; }
-            else _player.VelocityX = 0;
+            // Track jump buffer each frame (press slightly before landing still jumps).
+            if (input.JumpPressed)
+                _jumpBufferTimer = JumpBufferWindow;
+            else if (_jumpBufferTimer > 0f)
+                _jumpBufferTimer = Math.Max(0f, _jumpBufferTimer - dt);
 
-            if (input.JumpPressed && _player.IsGrounded)
-            { _player.VelocityY = _player.JumpForce; _player.IsGrounded = false; Game.Instance.Audio.BeepJump(); }
+            // Horizontal target speed from input.
+            float targetX = 0f;
+            if (input.LeftHeld)
+            {
+                targetX = -_player.MoveSpeed;
+                _player.FacingRight = false;
+            }
+            else if (input.RightHeld)
+            {
+                targetX = _player.MoveSpeed;
+                _player.FacingRight = true;
+            }
+
+            // SMB3-style momentum (accelerate instead of instantly snapping).
+            float accel = _player.IsGrounded ? GroundAccel : AirAccel;
+            _player.VelocityX += (targetX - _player.VelocityX) * Math.Min(1f, accel * dt);
+
+            // Buffered jump + coyote time jump + double jump.
+            bool canJump = _player.JumpsRemaining > 0 || _coyoteTimer > 0f;
+            if (_jumpBufferTimer > 0f && canJump)
+            {
+                _player.VelocityY = _player.JumpForce;
+                _player.IsGrounded = false;
+                if (_player.JumpsRemaining > 0) _player.JumpsRemaining--;
+                _coyoteTimer = 0f;
+                _jumpBufferTimer = 0f;
+                Game.Instance.Audio.BeepJump();
+            }
+
             // Variable jump height — release early for short hop (SMB3-style)
             if (!input.JumpHeld && _player.VelocityY < -120f)
                 _player.VelocityY = -120f;
+
             if (input.DodgePressed) _player.TryDodge();
             if (input.PausePressed) Game.Instance.Scenes.Push(new PauseScene());
         }
 
-        private void ResolveDeck()
+        private void ResolveDeck(float dt)
         {
             int W = Game.Instance.CanvasWidth;
             var deck = new System.Drawing.Rectangle(0, (int)CurrentDeckY, W, 100);
@@ -261,8 +321,16 @@ namespace Fridays_Adventure.Scenes
                 _player.Y = CurrentDeckY - _player.Height;
                 _player.VelocityY = 0;
                 _player.IsGrounded = true;
+
+                // Refresh coyote timer while standing on deck.
+                _coyoteTimer = CoyoteWindow;
             }
-            else _player.IsGrounded = false;
+            else
+            {
+                _player.IsGrounded = false;
+                if (_coyoteTimer > 0f)
+                    _coyoteTimer = Math.Max(0f, _coyoteTimer - dt);
+            }
 
             if (_player.Y > Game.Instance.CanvasHeight + 100) _player.TakeDamage(9999);
         }
@@ -297,7 +365,6 @@ namespace Fridays_Adventure.Scenes
             _complete = true;
             ThreatSystem.OnStealthRoute();
             Game.Instance.PlayerBounty += 300;
-            Game.Instance.Audio.StopMusic();
         }
 
         private void SpawnPickups()
@@ -337,28 +404,37 @@ namespace Fridays_Adventure.Scenes
             foreach (var p in _healthPickups) p.Draw(g);
             foreach (var s in _strikes) s.Draw(g, H);
             _player.Draw(g);
-            DrawHUD(g, W, H);
+            // ── SMB3 HUD: Ability cooldown indicators and all UI elements ──
+            SMB3Hud.DrawAll(g, _player, null, W, H);
             if (_lightningFlash > 0f)
                 using (var br = new SolidBrush(Color.FromArgb((int)(_lightningFlash * 180), Color.White)))
                     g.FillRectangle(br, 0, 0, W, H);
             if (_complete) DrawComplete(g, W, H);
+            DrawDevMenuButton(g);
+        }
+
+        public override void HandleClick(Point p)
+        {
+            // Allow the global dev-menu overlay button to work in this scene.
+            if (HandleDevMenuClick(p)) return;
         }
 
         private void DrawStormBackground(Graphics g, int W, int H)
         {
-            using (var br = new LinearGradientBrush(new System.Drawing.Rectangle(0, 0, W, H),
+            using (var br = new LinearGradientBrush(new Rectangle(0, 0, W, H),
                 Color.FromArgb(15, 15, 40), Color.FromArgb(40, 40, 80), 90f))
                 g.FillRectangle(br, 0, 0, W, H);
 
-            // Rain streaks
-            var rng2 = new Random(42 + (int)(_stormAnim * 10));
+            // Rain streaks (cached-seed mode to avoid per-frame allocations).
             using (var pen = new Pen(Color.FromArgb(60, Color.LightBlue), 1))
-                for (int i = 0; i < 80; i++)
+            {
+                for (int i = 0; i < _rainSeedX.Length; i++)
                 {
-                    float rx = (float)(rng2.NextDouble() * W + _stormAnim * 200) % W;
-                    float ry = (float)(rng2.NextDouble() * H + _stormAnim * 300) % H;
+                    float rx = (float)((_rainSeedX[i] * W + _stormAnim * 200) % W);
+                    float ry = (float)((_rainSeedY[i] * H + _stormAnim * 300) % H);
                     g.DrawLine(pen, rx, ry, rx - 4, ry + 18);
                 }
+            }
         }
 
         private void DrawSea(Graphics g, int W, int H)
@@ -387,21 +463,37 @@ namespace Fridays_Adventure.Scenes
 
         private void DrawHUD(Graphics g, int W, int H)
         {
-            using (var br = new SolidBrush(Color.FromArgb(180, 0, 0, 0)))
-                g.FillRectangle(br, 0, 0, W, 46);
+            // Solid black HUD panel for readability against storm flashes.
+            g.FillRectangle(Brushes.Black, 0, 0, W, 70);
+            g.DrawLine(Pens.DimGray, 0, 70, W, 70);
 
+            // Primary objective line.
             float remaining = Math.Max(0, SurvivalGoal - _survivalTimer);
             g.DrawString($"Survive the storm: {remaining:F1}s", _hudFont, Brushes.Cyan, 10, 6);
 
+            // Progress bar shifts color as the player gets closer to clearing.
             float pct = _survivalTimer / SurvivalGoal;
             g.FillRectangle(Brushes.DarkSlateBlue, 10, 28, 300, 10);
-            using (var br = new SolidBrush(Color.FromArgb(180, Color.DeepSkyBlue)))
+            Color progressColor = pct < 0.5f ? Color.DeepSkyBlue : (pct < 0.85f ? Color.Cyan : Color.Lime);
+            using (var br = new SolidBrush(Color.FromArgb(180, progressColor)))
                 g.FillRectangle(br, 10, 28, (int)(300 * pct), 10);
 
+            // Health readout.
             g.DrawString("HP", _hudFont, Brushes.White, W - 170, 6);
             g.FillRectangle(Brushes.DarkRed, W - 140, 8, 120, 12);
             using (var br = new SolidBrush(Color.LimeGreen))
                 g.FillRectangle(br, W - 140, 8, (int)(120 * (float)_player.Health / _player.MaxHealth), 12);
+
+            // Live danger telemetry to help player decision-making.
+            Brush dangerBrush = _warningStrikeCount > 0 ? Brushes.Orange : Brushes.DarkGray;
+            g.DrawString($"Warnings: {_warningStrikeCount}", _hudFont, dangerBrush, W - 180, 28);
+
+            // Score line.
+            g.DrawString($"SCORE: {BountySystem.Formatted()}", _hudFont, Brushes.Gold, W - 220, 48);
+
+            // Quick controls help for this mode (SMB3-style readability + onboarding).
+            using (var f = new Font("Courier New", 9, FontStyle.Bold))
+                g.DrawString("Move A/D  Jump Space  Dodge X  Pause Esc", f, Brushes.DimGray, 10, 48);
         }
 
         private void DrawComplete(Graphics g, int W, int H)

@@ -36,6 +36,13 @@ namespace Fridays_Adventure.Scenes
         private string _status = "Choose your next destination.";
         private Bitmap _bg;
         private Rectangle _mainMenuBtn;
+        private Rectangle _crewBtn;
+
+        /// <summary>
+        /// The node that was most recently launched as a gameplay scene.
+        /// Cleared in OnResume once the completion is processed.
+        /// </summary>
+        private OverworldNode _pendingNode;
 
         public override void OnEnter()
         {
@@ -43,11 +50,71 @@ namespace Fridays_Adventure.Scenes
             string path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory,
                                        "Assets", "Sprites", "bg_overworld.png");
             if (File.Exists(path)) _bg = new Bitmap(path);
-            Game.Instance.Audio.PlayOverworld();
+            Game.Instance.Audio.ContinueOrPlay("overworld");
         }
 
         public override void OnExit()   { _bg?.Dispose(); _bg = null; }
-        public override void OnResume() => Game.Instance.Audio.PlayOverworld();
+        public override void OnResume()
+        {
+            Game.Instance.Audio.ContinueOrPlay("overworld");
+
+            // Only process a level completion if a gameplay scene was pending AND it
+            // returned successfully (LevelJustCompleted flag set by the scene itself).
+            if (_pendingNode != null && Game.Instance.LevelJustCompleted)
+            {
+                Game.Instance.LevelJustCompleted = false;
+
+                // Unlock the nodes connected to the completed node (progression gate)
+                foreach (var id in _pendingNode.Links)
+                {
+                    var linked = Find(id);
+                    if (linked != null) linked.Unlocked = true;
+                }
+
+                // Increment the campaign level counter for main-content nodes.
+                // Bosses and training scenes also count as campaign progress.
+                if (_pendingNode.Type != NodeType.Start)
+                    Game.Instance.CurrentLevel++;
+
+                // ── END CONDITION: Game ends after completing ALL ISLANDS ──
+                // Check if all islands have been visited and completed.
+                if (AllIslandsCompleted())
+                {
+                    Game.Instance.Scenes.Replace(new VictoryScene(
+                        "ALL ISLANDS CONQUERED!",
+                        $"All 11 Islands Explored   Score: {Game.Instance.PlayerBounty:N0}",
+                        () => Game.Instance.Scenes.Replace(new CreditsScene())));
+                    return;
+                }
+
+                _status = $"Level {Game.Instance.CurrentLevel} — Choose your next destination.";
+            }
+            else if (_pendingNode != null)
+            {
+                // Returned without clearing (e.g. quit via pause) — do NOT advance level.
+                _status = "Choose your next destination.";
+            }
+
+            _pendingNode = null;
+        }
+
+        /// <summary>
+        /// Returns true if all island nodes have been visited.
+        /// Islands are: dino, sky, wano, harbor, coral, tundra, dive_gate, sunken_gate, kelp, boiling_vent, abyss
+        /// </summary>
+        private bool AllIslandsCompleted()
+        {
+            string[] islandIds = { "dino", "sky", "wano", "harbor", "coral", "tundra", 
+                                  "dive_gate", "sunken_gate", "kelp", "boiling_vent", "abyss" };
+            
+            foreach (string id in islandIds)
+            {
+                var island = Find(id);
+                if (island == null || !island.Visited)
+                    return false;
+            }
+            return true;
+        }
 
         private void BuildNodes()
         {
@@ -55,17 +122,46 @@ namespace Fridays_Adventure.Scenes
             int H = Game.Instance.CanvasHeight;
             _nodes = new List<OverworldNode>
             {
-                new OverworldNode("start",   "Sea Serpent",    new Point((int)(W*0.10f), H/2),            NodeType.Start,  true),
-                new OverworldNode("dino",    "Dinosaur Island",new Point((int)(W*0.28f), (int)(H*0.42f)), NodeType.Island, true),
-                new OverworldNode("storm1",  "Storm Belt",     new Point((int)(W*0.46f), (int)(H*0.55f)), NodeType.Storm,  false),
-                new OverworldNode("sky",     "Sky Island",     new Point((int)(W*0.62f), (int)(H*0.30f)), NodeType.Island, false),
-                new OverworldNode("wano",    "Blade Nation",   new Point((int)(W*0.82f), (int)(H*0.48f)), NodeType.Island, false),
-                new OverworldNode("blockade","Marine Blockade",new Point((int)(W*0.55f), (int)(H*0.68f)), NodeType.Boss,   false),
-                new OverworldNode("warlord1","Warlord: Lord Sudo", new Point((int)(W*0.92f),(int)(H*0.30f)),NodeType.Boss, false),
+                // ── Original game ──────────────────────────────────────────
+                new OverworldNode("start",          "Sea Serpent",        new Point((int)(W*0.10f), H/2),            NodeType.Start,  true),
+                new OverworldNode("dino",           "Dinosaur Island",    new Point((int)(W*0.28f), (int)(H*0.42f)), NodeType.Island, true),
+                new OverworldNode("storm1",         "Storm Belt",         new Point((int)(W*0.46f), (int)(H*0.55f)), NodeType.Storm,  false),
+                new OverworldNode("sky",            "Sky Island",         new Point((int)(W*0.62f), (int)(H*0.30f)), NodeType.Island, false),
+                new OverworldNode("wano",           "Blade Nation",       new Point((int)(W*0.82f), (int)(H*0.48f)), NodeType.Island, false),
+                new OverworldNode("blockade",       "Marine Blockade",    new Point((int)(W*0.55f), (int)(H*0.68f)), NodeType.Boss,   false),
+                new OverworldNode("warlord1",       "Warlord: Sudo",      new Point((int)(W*0.92f), (int)(H*0.30f)), NodeType.Boss,   false),
+                // ── Sequel expansion ───────────────────────────────────
+                new OverworldNode("harbor",         "Harbor Town",        new Point((int)(W*0.65f), (int)(H*0.72f)), NodeType.Island, false),
+                new OverworldNode("coral",          "Coral Reef",         new Point((int)(W*0.55f), (int)(H*0.82f)), NodeType.Island, false),
+                new OverworldNode("tundra",         "Tundra Peak",        new Point((int)(W*0.75f), (int)(H*0.82f)), NodeType.Island, false),
+                new OverworldNode("storm2",         "Tempest Strait",     new Point((int)(W*0.85f), (int)(H*0.67f)), NodeType.Storm,  false),
+                new OverworldNode("warlord2",       "Warlord: Vanta",     new Point((int)(W*0.92f), (int)(H*0.55f)), NodeType.Boss,   false),
+                // ── Underwater chapter (Tide of the Lost) ───────────────
+                new OverworldNode("dive_gate",      "Dive Gate",          new Point((int)(W*0.12f), (int)(H*0.60f)), NodeType.Island, false),
+                new OverworldNode("sunken_gate",    "Sunken Gate",        new Point((int)(W*0.08f), (int)(H*0.68f)), NodeType.Island, false),
+                new OverworldNode("kelp",           "Kelp Maze",          new Point((int)(W*0.08f), (int)(H*0.78f)), NodeType.Island, false),
+                new OverworldNode("boiling_vent",   "Vent Ruins",         new Point((int)(W*0.18f), (int)(H*0.82f)), NodeType.Island, false),
+                new OverworldNode("abyss",          "Abyss",              new Point((int)(W*0.28f), (int)(H*0.75f)), NodeType.Island, false),
+                new OverworldNode("centipede_final","Centipede",          new Point((int)(W*0.22f), (int)(H*0.53f)), NodeType.Boss,   false),
             };
             Link("start","dino"); Link("dino","storm1"); Link("storm1","sky");
             Link("storm1","blockade"); Link("sky","wano"); Link("blockade","wano");
             Link("wano","warlord1");
+            // Sequel
+            Link("warlord1","harbor");
+            Link("harbor","coral"); Link("harbor","tundra");
+            Link("coral","storm2"); Link("tundra","storm2");
+            Link("storm2","warlord2");
+            // Underwater chapter
+            Link("harbor","dive_gate");
+            Link("dive_gate","sunken_gate");
+            Link("sunken_gate","kelp");
+            Link("kelp","boiling_vent");
+            Link("boiling_vent","abyss");
+            Link("abyss","centipede_final");
+            // Team 1 (Game Director) — Idea 5: centipede gauntlet unlocks Warlord Sudo.
+            // Requested: centipede_final connects to Warlord Sudo on the campaign map.
+            Link("centipede_final","warlord1");
             _current = Find("start");
             _current.Visited = true;
         }
@@ -78,9 +174,15 @@ namespace Fridays_Adventure.Scenes
 
         public override void HandleClick(Point p)
         {
+            if (HandleDevMenuClick(p)) return;
             if (_mainMenuBtn.Contains(p))
             {
                 Game.Instance.Scenes.Replace(new TitleScene());
+                return;
+            }
+            if (_crewBtn.Contains(p))
+            {
+                Game.Instance.Scenes.Push(new CrewScene());
                 return;
             }
             foreach (var n in _nodes)
@@ -97,6 +199,19 @@ namespace Fridays_Adventure.Scenes
         public override void Update(float dt)
         {
             _anim += dt;
+
+            // Team 1 (Game Director) — Idea 7: N-Spade mini-game entry.
+            // If the player has enough coins and hasn't seen the hint this world,
+            // allow quick access to the card mini-game with N.
+            if (Game.Instance.Input.IsPressed(System.Windows.Forms.Keys.N)
+                && GameDirector.Instance.ShouldShowNSpadeHint())
+            {
+                GameDirector.Instance.NSpadeHintShown = true;
+                _status = "N-SPADE! Match cards to win items.";
+                Game.Instance.Scenes.Push(new CardMiniGameScene());
+                return;
+            }
+
             if (Game.Instance.Input.PausePressed)
                 Game.Instance.Scenes.Replace(new TitleScene());
             if (Game.Instance.Input.InteractPressed && _selected != null && _selected.Unlocked)
@@ -110,16 +225,67 @@ namespace Fridays_Adventure.Scenes
             _selected       = null;
             Game.Instance.Save.CurrentNodeId = node.Id;
             Systems.ThreatSystem.OnNodeTraversed();
-            foreach (var id in node.Links) Find(id).Unlocked = true;
+            // NOTE: node links are unlocked in OnResume *after* the level is successfully
+            // cleared — this ensures progression only advances on completion, not on entry.
+
+            // Pre-set _pendingNode for direct-push branches (no dialogue).
+            // TriggerDialogueThen overrides this inside its callback after the dialogue pops,
+            // so dialogue-first branches also work correctly.
+            _pendingNode = node;
 
             if (node.Id == "storm1")
             {
                 Game.Instance.Scenes.Push(new StormScene());
             }
+            else if (node.Id == "blockade")
+            {
+                // Team 5 (Level Designer) — Fortress level integration.
+                Game.Instance.Scenes.Push(new FortressScene());
+            }
             else if (node.Id == "warlord1")
             {
                 TriggerDialogueThen(Dialogues.MarineEncounter(), () =>
                     Game.Instance.Scenes.Push(new WarlordBossScene(WarlordConfig.FireLordSudo())));
+            }
+            else if (node.Id == "centipede_final")
+            {
+                TriggerDialogueThen(Dialogues.MarineEncounter(), () =>
+                    Game.Instance.Scenes.Push(new WarlordBossScene(WarlordConfig.CentipedeOfTheDeep())));
+            }
+            else if (node.Id == "dive_gate")
+            {
+                // Team 5 (Level Designer) — underwater chapter entry point.
+                Game.Instance.Scenes.Push(new UnderwaterScene());
+            }
+            else if (node.Id == "sunken_gate")
+            {
+                bool firstVisit = !Game.Instance.Save.GetFlag(NarrativeFlags.SunkenGateVisited);
+                Game.Instance.Save.SetFlag(NarrativeFlags.SunkenGateVisited);
+                if (firstVisit)
+                    TriggerDialogueThen(Dialogues.OrcaJoinsCrew(), () =>
+                        Game.Instance.Scenes.Push(new UnderwaterScene()));
+                else
+                    Game.Instance.Scenes.Push(new UnderwaterScene());
+            }
+            else if (node.Id == "kelp")
+            {
+                Game.Instance.Save.SetFlag(NarrativeFlags.KelpVisited);
+                Game.Instance.Scenes.Push(new UnderwaterScene());
+            }
+            else if (node.Id == "boiling_vent")
+            {
+                Game.Instance.Save.SetFlag(NarrativeFlags.BoilingVentVisited);
+                Game.Instance.Scenes.Push(new UnderwaterScene());
+            }
+            else if (node.Id == "abyss")
+            {
+                bool firstVisit = !Game.Instance.Save.GetFlag(NarrativeFlags.AbyssVisited);
+                Game.Instance.Save.SetFlag(NarrativeFlags.AbyssVisited);
+                if (firstVisit)
+                    TriggerDialogueThen(Dialogues.SwanJoinsCrew(), () =>
+                        Game.Instance.Scenes.Push(new UnderwaterScene()));
+                else
+                    Game.Instance.Scenes.Push(new UnderwaterScene());
             }
             else if (node.Type == NodeType.Boss)
             {
@@ -146,6 +312,41 @@ namespace Fridays_Adventure.Scenes
                 else
                     Game.Instance.Scenes.Push(new IslandScene(node.Id, node.Name));
             }
+            else if (node.Id == "harbor")
+            {
+                bool firstVisit = !Game.Instance.Save.GetFlag(NarrativeFlags.HarborVisited);
+                Game.Instance.Save.SetFlag(NarrativeFlags.HarborVisited);
+                if (firstVisit)
+                    TriggerDialogueThen(Dialogues.MeetOrca(), () =>
+                        Game.Instance.Scenes.Push(new IslandScene(node.Id, node.Name)));
+                else
+                    Game.Instance.Scenes.Push(new IslandScene(node.Id, node.Name));
+            }
+            else if (node.Id == "coral")
+            {
+                bool firstVisit = !Game.Instance.Save.GetFlag(NarrativeFlags.CoralVisited);
+                Game.Instance.Save.SetFlag(NarrativeFlags.CoralVisited);
+                if (firstVisit)
+                    TriggerDialogueThen(Dialogues.MeetSwan(), () =>
+                        Game.Instance.Scenes.Push(new IslandScene(node.Id, node.Name)));
+                else
+                    Game.Instance.Scenes.Push(new IslandScene(node.Id, node.Name));
+            }
+            else if (node.Id == "tundra")
+            {
+                Game.Instance.Save.SetFlag(NarrativeFlags.TundraVisited);
+                Game.Instance.Scenes.Push(new IslandScene(node.Id, node.Name));
+            }
+            else if (node.Id == "storm2")
+            {
+                // Team 5 (Level Designer) — Airship level integration.
+                Game.Instance.Scenes.Push(new AirshipLevelScene());
+            }
+            else if (node.Id == "warlord2")
+            {
+                TriggerDialogueThen(Dialogues.MarineEncounter(), () =>
+                    Game.Instance.Scenes.Push(new WarlordBossScene(WarlordConfig.StormLordVanta())));
+            }
             else if (node.Id == "dino")
             {
                 bool firstVisit = !Game.Instance.Save.GetFlag("dino_visited");
@@ -162,7 +363,17 @@ namespace Fridays_Adventure.Scenes
 
         private void TriggerDialogueThen(DialogueSequence seq, Action then)
         {
-            seq.OnDone = _ => then?.Invoke();
+            // Capture the current node so OnResume can credit it on success.
+            var nodeToCredit = _current;
+            seq.OnDone = _ =>
+            {
+                // Set _pendingNode just before the gameplay scene is pushed so that
+                // OnResume (which fires when dialogue pops) still sees false while the
+                // callback hasn't run yet.  By the time the gameplay scene eventually
+                // pops and triggers OnResume, _pendingNode will be set.
+                _pendingNode = nodeToCredit;
+                then?.Invoke();
+            };
             Game.Instance.Scenes.Push(new DialogueScene(seq));
         }
 
@@ -174,25 +385,10 @@ namespace Fridays_Adventure.Scenes
             DrawLinks(g);
             DrawNodes(g);
             DrawShip(g);
+            DrawIslandChecklist(g, W, H);  // ── Island completion checklist
             DrawHUD(g, W, H);
             DrawMainMenuButton(g);
-        }
-
-        private void DrawMainMenuButton(Graphics g)
-        {
-            _mainMenuBtn = new Rectangle(10, 10, 148, 34);
-            using (var br = new SolidBrush(Color.FromArgb(190, 100, 20, 20)))
-                g.FillRectangle(br, _mainMenuBtn);
-            using (var pen = new Pen(Color.FromArgb(220, Color.Crimson), 1))
-                g.DrawRectangle(pen, _mainMenuBtn);
-            using (var f = new Font("Courier New", 10, FontStyle.Bold))
-            {
-                const string label = "\u2190  MAIN MENU";
-                SizeF sz = g.MeasureString(label, f);
-                g.DrawString(label, f, Brushes.White,
-                    _mainMenuBtn.X + (_mainMenuBtn.Width  - sz.Width)  / 2f,
-                    _mainMenuBtn.Y + (_mainMenuBtn.Height - sz.Height) / 2f);
-            }
+            DrawDevMenuButton(g);
         }
 
         private void DrawOcean(Graphics g, int W, int H)
@@ -215,6 +411,12 @@ namespace Fridays_Adventure.Scenes
 
         private void DrawLinks(Graphics g)
         {
+            // Draw the complete route graph as dotted red flow lines.
+            // Unlocked paths get a bright, thick stroke; locked paths are dark and thin.
+            // Team 1  (Game Director)      — visual clarity of progression routes.
+            // Team 9  (UI Programmer)      — darker unlocked lines improve readability.
+            // Team 15 (UI/UX Artist)       — thicker dots match SMB3 map path style.
+            // Requested change: darker, thicker red dotted lines throughout.
             var seen = new HashSet<string>();
             foreach (var n in _nodes)
                 foreach (var id in n.Links)
@@ -224,11 +426,23 @@ namespace Fridays_Adventure.Scenes
                     if (!seen.Add(key)) continue;
                     var other = Find(id);
                     if (other == null) continue;
-                    bool both = n.Unlocked && other.Unlocked;
-                    using (var pen = new Pen(both
-                        ? Color.FromArgb(100, Color.Cyan) : Color.FromArgb(40, Color.Gray), 2)
-                        { DashStyle = both ? DashStyle.Dash : DashStyle.Dot })
+
+                    bool unlockedPath = n.Unlocked && other.Unlocked;
+
+                    // Unlocked: deep crimson, 5 px wide.  Locked: dark maroon, 3 px wide.
+                    Color lineColor = unlockedPath
+                        ? Color.FromArgb(240, 220, 30, 30)    // deep crimson — high contrast
+                        : Color.FromArgb(150, 120, 20, 20);   // dark maroon  — subtle locked hint
+
+                    float lineWidth = unlockedPath ? 5f : 3f;
+
+                    using (var pen = new Pen(lineColor, lineWidth) { DashStyle = DashStyle.Dot })
                         g.DrawLine(pen, n.Pos, other.Pos);
+
+                    // Extra glow pass on unlocked paths (slightly wider, semi-transparent).
+                    if (unlockedPath)
+                        using (var glowPen = new Pen(Color.FromArgb(50, 255, 60, 60), lineWidth + 4f) { DashStyle = DashStyle.Dot })
+                            g.DrawLine(glowPen, n.Pos, other.Pos);
                 }
         }
 
@@ -262,7 +476,7 @@ namespace Fridays_Adventure.Scenes
                     g.FillEllipse(br, n.Pos.X-14, n.Pos.Y-14, 28, 28);
                 using (var pen = new Pen(n.Visited ? Color.White : Color.DimGray, 1))
                     g.DrawEllipse(pen, n.Pos.X-14, n.Pos.Y-14, 28, 28);
-                using (var f = new Font("Courier New", 12, FontStyle.Bold))
+                using (var f = new Font("Courier New", 10, FontStyle.Bold))
                 {
                     SizeF sz = g.MeasureString(n.Name, f);
                     float tx = n.Pos.X - sz.Width / 2f;
@@ -279,6 +493,97 @@ namespace Fridays_Adventure.Scenes
             }
         }
 
+        private void DrawShip(Graphics g)
+        {
+            int sx = _current.Pos.X - 10, sy = _current.Pos.Y - 32;
+            g.FillRectangle(Brushes.SaddleBrown, sx, sy + 10, 20, 8);
+            g.FillRectangle(Brushes.Sienna, sx + 9, sy, 3, 18);
+            g.FillPolygon(Brushes.Ivory, new[]
+            { new Point(sx+10,sy+1), new Point(sx+19,sy+8), new Point(sx+10,sy+14) });
+        }
+
+        /// <summary>
+        /// Draws a numbered island completion checklist on the right side of the screen.
+        /// Shows which islands have been visited (✓) and which remain (•).
+        /// </summary>
+        private void DrawIslandChecklist(Graphics g, int W, int H)
+        {
+            string[] islandIds = { "dino", "sky", "wano", "harbor", "coral", "tundra", 
+                                  "dive_gate", "sunken_gate", "kelp", "boiling_vent", "abyss" };
+            string[] islandNames = { "Dinosaur", "Sky", "Blade Nation", "Harbor", "Coral", "Tundra",
+                                    "Dive Gate", "Sunken Gate", "Kelp", "Vent Ruins", "Abyss" };
+
+            int panelX = W - 240;
+            int panelY = 60;
+            int panelW = 230;
+            int panelH = 16 + (islandIds.Length * 16) + 4;
+
+            // ── Panel background ──
+            using (var br = new SolidBrush(Color.FromArgb(200, 20, 20, 40)))
+                g.FillRectangle(br, panelX, panelY, panelW, panelH);
+            using (var pen = new Pen(Color.FromArgb(160, Color.LimeGreen), 2))
+                g.DrawRectangle(pen, panelX, panelY, panelW, panelH);
+
+            // ── Title ──
+            using (var f = new Font("Courier New", 10, FontStyle.Bold))
+                g.DrawString("ISLANDS VISITED", f, Brushes.LimeGreen, panelX + 8, panelY + 2);
+
+            // ── Island list ──
+            int completedCount = 0;
+            for (int i = 0; i < islandIds.Length; i++)
+            {
+                var island = Find(islandIds[i]);
+                bool visited = island != null && island.Visited;
+                if (visited) completedCount++;
+
+                int itemY = panelY + 20 + (i * 16);
+                
+                // Item number
+                using (var f = new Font("Courier New", 9, FontStyle.Bold))
+                {
+                    Color numColor = visited ? Color.LimeGreen : Color.DimGray;
+                    g.DrawString($"{i + 1}.", f, new SolidBrush(numColor), panelX + 8, itemY);
+                    
+                    // Checkmark or bullet
+                    string marker = visited ? "✓" : "•";
+                    g.DrawString(marker, f, new SolidBrush(numColor), panelX + 22, itemY);
+                    
+                    // Island name
+                    Color nameColor = visited ? Color.White : Color.DarkGray;
+                    g.DrawString(islandNames[i], f, new SolidBrush(nameColor), panelX + 35, itemY);
+                }
+            }
+
+            // ── Progress summary ──
+            int summaryY = panelY + panelH + 4;
+            using (var f = new Font("Courier New", 9, FontStyle.Bold))
+            {
+                string progressText = $"{completedCount}/11 Islands";
+                Color progressColor = completedCount == islandIds.Length ? Color.Gold : Color.LimeGreen;
+                g.DrawString(progressText, f, new SolidBrush(progressColor), panelX + 8, summaryY);
+            }
+        }
+
+        private void DrawHUD(Graphics g, int W, int H)
+        {
+            using (var br = new SolidBrush(Color.FromArgb(190, 0, 0, 0)))
+                g.FillRectangle(br, 0, H-50, W, 50);
+            using (var f = new Font("Courier New", 13, FontStyle.Bold))
+                g.DrawString(_status, f, Brushes.White, 10, H-38);
+            using (var f = new Font("Courier New", 10, FontStyle.Bold))
+                g.DrawString("[Click] Select node   [Enter/F] Travel   [Esc] Main Menu",
+                             f, Brushes.LightGray, W-390, H-34);
+            float threat = Game.Instance.ThreatLevel;
+            using (var f = new Font("Courier New", 11, FontStyle.Bold))
+                g.DrawString($"Marine Threat: {(int)threat}%", f, Brushes.OrangeRed, W-200, 10);
+            g.FillRectangle(Brushes.DarkRed, W-200, 30, 175, 12);
+            using (var br = new SolidBrush(Color.OrangeRed))
+                g.FillRectangle(br, W-200, 30, (int)(175*threat/100f), 12);
+        }
+
+        /// <summary>
+        /// Draws a procedural island landmass under each node on the map.
+        /// </summary>
         private void DrawIslandLandmass(Graphics g, OverworldNode n)
         {
             int cx = n.Pos.X;
@@ -318,30 +623,35 @@ namespace Fridays_Adventure.Scenes
                 g.DrawPolygon(pen, shape);
         }
 
-        private void DrawShip(Graphics g)
+        private void DrawMainMenuButton(Graphics g)
         {
-            int sx = _current.Pos.X - 10, sy = _current.Pos.Y - 32;
-            g.FillRectangle(Brushes.SaddleBrown, sx, sy + 10, 20, 8);
-            g.FillRectangle(Brushes.Sienna, sx + 9, sy, 3, 18);
-            g.FillPolygon(Brushes.Ivory, new[]
-            { new Point(sx+10,sy+1), new Point(sx+19,sy+8), new Point(sx+10,sy+14) });
-        }
-
-        private void DrawHUD(Graphics g, int W, int H)
-        {
-            using (var br = new SolidBrush(Color.FromArgb(190, 0, 0, 0)))
-                g.FillRectangle(br, 0, H-50, W, 50);
-            using (var f = new Font("Courier New", 13, FontStyle.Bold))
-                g.DrawString(_status, f, Brushes.White, 10, H-38);
+            _mainMenuBtn = new Rectangle(10, 10, 148, 34);
+            using (var br = new SolidBrush(Color.FromArgb(190, 100, 20, 20)))
+                g.FillRectangle(br, _mainMenuBtn);
+            using (var pen = new Pen(Color.FromArgb(220, Color.Crimson), 1))
+                g.DrawRectangle(pen, _mainMenuBtn);
             using (var f = new Font("Courier New", 10, FontStyle.Bold))
-                g.DrawString("[Click] Select node   [Enter/F] Travel   [Esc] Main Menu",
-                             f, Brushes.LightGray, W-390, H-34);
-            float threat = Game.Instance.ThreatLevel;
-            using (var f = new Font("Courier New", 11, FontStyle.Bold))
-                g.DrawString($"Marine Threat: {(int)threat}%", f, Brushes.OrangeRed, W-200, 10);
-            g.FillRectangle(Brushes.DarkRed, W-200, 30, 175, 12);
-            using (var br = new SolidBrush(Color.OrangeRed))
-                g.FillRectangle(br, W-200, 30, (int)(175*threat/100f), 12);
+            {
+                const string label = "\u2190  MAIN MENU";
+                SizeF sz = g.MeasureString(label, f);
+                g.DrawString(label, f, Brushes.White,
+                    _mainMenuBtn.X + (_mainMenuBtn.Width  - sz.Width)  / 2f,
+                    _mainMenuBtn.Y + (_mainMenuBtn.Height - sz.Height) / 2f);
+            }
+
+            _crewBtn = new Rectangle(168, 10, 110, 34);
+            using (var br = new SolidBrush(Color.FromArgb(190, 20, 80, 130)))
+                g.FillRectangle(br, _crewBtn);
+            using (var pen = new Pen(Color.FromArgb(220, Color.SteelBlue), 1))
+                g.DrawRectangle(pen, _crewBtn);
+            using (var f = new Font("Courier New", 10, FontStyle.Bold))
+            {
+                const string label = "\u2605  CREW";
+                SizeF sz = g.MeasureString(label, f);
+                g.DrawString(label, f, Brushes.LightCyan,
+                    _crewBtn.X + (_crewBtn.Width  - sz.Width)  / 2f,
+                    _crewBtn.Y + (_crewBtn.Height - sz.Height) / 2f);
+            }
         }
     }
 }
