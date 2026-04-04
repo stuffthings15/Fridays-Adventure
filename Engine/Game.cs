@@ -267,6 +267,15 @@ namespace Fridays_Adventure.Engine
         /// </summary>
         public bool CrtFilterEnabled { get; set; }
 
+        // ── Phase 2: Team 9 — Accessibility Outline Mode ──────────────────────
+        /// <summary>
+        /// When true, a solid coloured outline is drawn around every entity and
+        /// interactive object so players with visual impairments can track them.
+        /// Toggleable from the Options screen or Settings menu.
+        /// Phase 2 — Team 9 (UI Programmer) Idea 10 / accessibility feature.
+        /// </summary>
+        public bool OutlineModeEnabled { get; set; }
+
         private readonly GameCanvas _canvas;
         private readonly Timer      _timer;
         private const float FixedDt = 1f / 60f;

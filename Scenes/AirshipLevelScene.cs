@@ -206,6 +206,9 @@ namespace Fridays_Adventure.Scenes
                 BreakNearbyWallsAndProjectiles();
                 Game.Instance.Audio.BeepBreak();
             }
+            // Pause and inventory consistent with all other gameplay scenes
+            if (input.PausePressed) Game.Instance.Scenes.Push(new PauseScene());
+            if (input.InventoryPressed) Game.Instance.Scenes.Push(new InventoryScene(_player));
 
             _player.Update(dt);
             _player.X += _player.VelocityX * dt;
@@ -423,7 +426,7 @@ namespace Fridays_Adventure.Scenes
             GameHUD.Draw(g, _player, W, H);
             using (var f  = new Font("Courier New", 9, FontStyle.Bold))
             using (var br = new SolidBrush(Color.OrangeRed))
-                g.DrawString("AIRSHIP  ◄ AUTO-SCROLL ►", f, br, W / 2 - 80, 10);
+                g.DrawString("AIRSHIP  < AUTO-SCROLL >", f, br, W / 2 - 80, GameHUD.BandHeight + 4);
         }
 
         private void BreakNearbyWallsAndProjectiles()

@@ -72,6 +72,12 @@ namespace Fridays_Adventure.Scenes
             string crtLabel = Game.Instance.CrtFilterEnabled ? "CRT Filter: ON  [Toggle]" : "CRT Filter: OFF [Toggle]";
             _rows.Add(new Row { Type = RowType.ToolAction, Label = crtLabel, ToolAction = ToggleCrtFilter });
 
+            // Phase 2 — Team 9: Accessibility outline mode toggle.
+            string outlineLabel = Game.Instance.OutlineModeEnabled
+                ? "Outline Mode: ON  [Toggle]"
+                : "Outline Mode: OFF [Toggle]";
+            _rows.Add(new Row { Type = RowType.ToolAction, Label = outlineLabel, ToolAction = ToggleOutlineMode });
+
             _rows.Add(new Row { Type = RowType.Header,   Label = "PLAYLISTS" });
             foreach (string mood in new[] { "overworld", "combat", "island", "boss" })
             {
@@ -97,6 +103,16 @@ namespace Fridays_Adventure.Scenes
         {
             Game.Instance.CrtFilterEnabled = !Game.Instance.CrtFilterEnabled;
             SMB3Hud.ShowToast(Game.Instance.CrtFilterEnabled ? "CRT Filter: ON" : "CRT Filter: OFF");
+        }
+
+        /// <summary>
+        /// Phase 2 — Team 9 (UI Programmer): Accessibility outline toggle.
+        /// Draws coloured borders around all entities so they stand out on any background.
+        /// </summary>
+        private static void ToggleOutlineMode()
+        {
+            Game.Instance.OutlineModeEnabled = !Game.Instance.OutlineModeEnabled;
+            SMB3Hud.ShowToast(Game.Instance.OutlineModeEnabled ? "Outline Mode: ON" : "Outline Mode: OFF");
         }
 
         private List<string> ScanTracks(string mood)

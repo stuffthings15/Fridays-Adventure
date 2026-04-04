@@ -196,6 +196,9 @@ namespace Fridays_Adventure.Scenes
                 _breakShockwaveWorldX = _player.CenterX;
                 _breakShockwaveWorldY = _player.CenterY;
             }
+            // Pause and inventory consistent with all other gameplay scenes
+            if (input.PausePressed) Game.Instance.Scenes.Push(new PauseScene());
+            if (input.InventoryPressed) Game.Instance.Scenes.Push(new InventoryScene(_player));
         }
 
         private void UpdateBossAI(float dt)

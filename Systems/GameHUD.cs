@@ -156,17 +156,26 @@ namespace Fridays_Adventure.Systems
             g.DrawString(val, _f8, Brushes.White, barX + segs * 10 + 3, barY);
         }
 
-        // ── ICE bar ───────────────────────────────────────────────────────────
+        // ── ENERGY bar (Phase 2 — Team 4 Idea 1 — replaces raw ICE display) ─────
+        /// <summary>
+        /// Draws the shared ability-energy bar in the left HUD column.
+        /// All special abilities drain this pool; it regenerates passively.
+        /// Phase 2 — Team 4 (Lead Game Designer) Idea 1: Energy Meter System.
+        /// </summary>
         private static void DrawIce(Graphics g, Player player)
         {
-            g.DrawString("ICE", _f9, Brushes.Cyan, LeftX, 26);
+            g.DrawString("EN", _f9, Brushes.MediumPurple, LeftX, 26);
 
             const int barX = 32, barY = 26, segs = 20;
-            DrawSegBar(g, player.IceReserve, player.MaxIceReserve, barX, barY, segs,
-                       Color.FromArgb(110, 200, 255), Color.FromArgb(30, 60, 100));
+            DrawSegBar(g,
+                (int)player.Energy,
+                (int)Player.MaxEnergy,
+                barX, barY, segs,
+                Color.FromArgb(180, 80, 255),   // purple fill
+                Color.FromArgb(80, 0, 120));    // dark-purple warn
 
-            string val = $"{player.IceReserve}/{player.MaxIceReserve}";
-            using (var br = new SolidBrush(Color.FromArgb(180, 220, 255)))
+            string val = $"{(int)player.Energy}/{(int)Player.MaxEnergy}";
+            using (var br = new SolidBrush(Color.FromArgb(200, 180, 140, 255)))
                 g.DrawString(val, _f8, br, barX + segs * 10 + 3, barY);
         }
 

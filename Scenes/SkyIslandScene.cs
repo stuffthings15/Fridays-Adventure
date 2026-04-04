@@ -205,6 +205,8 @@ namespace Fridays_Adventure.Scenes
             if (input.Ability3Pressed && _player.UseBreakWall())
             { BreakNearbyWalls(); Game.Instance.Audio.BeepBreak(); }
             if (input.PausePressed) Game.Instance.Scenes.Push(new PauseScene());
+            // ── I key — quick-open inventory during gameplay ──────────────────
+            if (input.InventoryPressed) Game.Instance.Scenes.Push(new InventoryScene(_player));
         }
 
         private void MoveAndCollide(Character c, float dt)
@@ -277,7 +279,8 @@ namespace Fridays_Adventure.Scenes
                 {
                     float pBot = _player.Y + _player.Height;
                     float overlap = pBot - e.Y;
-                    if (overlap > 0 && overlap < 22 &&
+                    // Use half the enemy's height as the overlap threshold so fast falls still register as stomps
+                    if (overlap > 0 && overlap < e.Height * 0.5f &&
                         _player.CenterX > e.X - 8 && _player.CenterX < e.X + e.Width + 8)
                     {
                         e.Health = 0;
@@ -302,8 +305,10 @@ namespace Fridays_Adventure.Scenes
                     }
                 }
 
-                // Horizontal body contact
-                if (!stomped && e.IsAlive && !_player.IsInvincible &&
+                // Horizontal body contact — skip if the player is clearly descending onto the enemy's head
+                bool fallingOnTop = _player.VelocityY > 0 &&
+                    (_player.Y + _player.Height) < (e.Y + e.Height * 0.6f);
+                if (!stomped && !fallingOnTop && e.IsAlive && !_player.IsInvincible &&
                     _player.Hitbox.IntersectsWith(e.Hitbox))
                 {
                     _player.TakeDamage(_player.MaxHealth / 10);

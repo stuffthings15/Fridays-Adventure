@@ -179,6 +179,9 @@ namespace Fridays_Adventure.Scenes
                 BreakNearbyWalls();
                 Game.Instance.Audio.BeepBreak();
             }
+            // Pause and inventory consistent with all other gameplay scenes
+            if (input.PausePressed) Game.Instance.Scenes.Push(new PauseScene());
+            if (input.InventoryPressed) Game.Instance.Scenes.Push(new InventoryScene(_player));
 
             _player.Update(dt);
 

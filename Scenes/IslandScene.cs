@@ -1066,7 +1066,9 @@ namespace Fridays_Adventure.Scenes
                 else if (_player.JumpsRemaining > 0 ||
                          _player.CoyoteTimeRemaining > 0f)
                 {
-                    _player.VelocityY      = _player.JumpForce;
+                    // Phase 2 T4 #3: Momentum-Based Jumping — P-Meter full run boosts jump 12 %.
+                    float momentumMult = _player.PMeterActive ? 1.12f : 1.0f;
+                    _player.VelocityY      = _player.JumpForce * momentumMult;
                     _player.IsGrounded     = false;
                     _player.JumpsRemaining = Math.Max(0, _player.JumpsRemaining - 1);
                     Game.Instance.Audio.BeepJump();
@@ -1189,6 +1191,10 @@ namespace Fridays_Adventure.Scenes
 
             if (input.PausePressed)
                 Game.Instance.Scenes.Push(new PauseScene());
+
+            // ── I key — quick-open inventory during gameplay ──────────────────
+            if (input.InventoryPressed)
+                Game.Instance.Scenes.Push(new InventoryScene(_player));
 
             // ── PHASE 3: Warp Whistle use (Tab key) ──────────────────────────
             if (input.IsPressed(System.Windows.Forms.Keys.Tab) && Game.Instance.WarpWhistleCount > 0)
@@ -1431,14 +1437,24 @@ namespace Fridays_Adventure.Scenes
                     float pBot = _player.Y + _player.Height;
                     float eTop = e.Y;
                     float overlap = pBot - eTop;
-                    if (overlap > 0 && overlap < 22 &&
+                    // Use half the enemy's height as the overlap threshold so fast falls still register as stomps
+                    if (overlap > 0 && overlap < e.Height * 0.5f &&
                         _player.CenterX > e.X - 8 && _player.CenterX < e.X + e.Width + 8)
                     {
                         e.Health = 0;
                         _player.VelocityY = _player.JumpForce * 0.45f;
                         _player.IsGrounded = false;
                         Game.Instance.Audio.BeepStomp();
-                        BountySystem.Award(e.ScoreValue);
+
+                        // Phase 2 T4 #10: Risk/Reward Scoring — double score near hazards.
+                        int stompScore = e.ScoreValue;
+                        if (IsPlayerNearHazard())
+                        {
+                            stompScore *= 2;
+                            Game.Instance.FloatingText.Spawn("RISKY! ×2", (int)_player.CenterX,
+                                (int)_player.Y - 28, Color.OrangeRed, large: true);
+                        }
+                        BountySystem.Award(stompScore);
                         Game.Instance.TotalBerriesCollected += 10;
                         _player.RegisterStompChain();
                         AchievementSystem.CheckCombo(_player.StompChain);
@@ -1460,10 +1476,17 @@ namespace Fridays_Adventure.Scenes
                         // 15 % chance to drop a power-up on melee kill
                         TryDropPowerUp(e.CenterX, e.Y);
                     }
+                    // Phase 2 T4 #9: Knockback Multiplier — scale by run speed.
+                    float kbDir   = _player.FacingRight ? 1f : -1f;
+                    float kbForce = 180f + Math.Abs(_player.VelocityX) * 0.4f;
+                    e.VelocityX = kbDir * kbForce;
+                    e.VelocityY = -80f;
                 }
 
-                // Horizontal body contact
-                if (!stomped && e.IsAlive && !_player.IsInvincible &&
+                // Horizontal body contact — skip if the player is clearly descending onto the enemy's head
+                bool fallingOnTop = _player.VelocityY > 0 &&
+                    (_player.Y + _player.Height) < (e.Y + e.Height * 0.6f);
+                if (!stomped && !fallingOnTop && e.IsAlive && !_player.IsInvincible &&
                     _player.Hitbox.IntersectsWith(e.Hitbox))
                 {
                     // Phase 2 T4 #6: Parry — open window deflects the hit
@@ -1563,9 +1586,26 @@ namespace Fridays_Adventure.Scenes
                     e.TakeDamage(_player.BreakWallShockwaveDamage);
         }
 
+        /// <summary>
+        /// Phase 2 T4 #10: Risk/Reward Scoring — true when the player is within
+        /// 80 px of any active hazard (water pit, fire source, or sea-stone zone).
+        /// Used to award a ×2 score multiplier on stomps and kills near danger.
+        /// </summary>
+        private bool IsPlayerNearHazard()
+        {
+            const float dangerRadius = 80f;
+            foreach (var hz in _hazards)
+            {
+                float dx = _player.CenterX - (hz.X + hz.Width  * 0.5f);
+                float dy = _player.CenterY - (hz.Y + hz.Height * 0.5f);
+                if (dx * dx + dy * dy < dangerRadius * dangerRadius)
+                    return true;
+            }
+            return false;
+        }
+
         private void CheckExit()
         {
-            if (_player.Hitbox.IntersectsWith(_exitFlag) && !_levelComplete)
             {
                 _levelComplete = true;
                 _completeTimer = 0;
@@ -1684,6 +1724,11 @@ namespace Fridays_Adventure.Scenes
             if (_player.IsAttacking) DrawAttackArc(g);
             if (_breakShockwaveTimer > 0f) DrawBreakShockwave(g);
 
+            // Phase 2 — Team 9: Accessibility outline mode — draws bright borders
+            // around every interactive object so they read against any background.
+            if (Game.Instance.OutlineModeEnabled)
+                DrawAccessibilityOutlines(g);
+
             g.ResetTransform();
 
             DrawSnowfall(g, W, H);          // tundra: screen-space falling snow
@@ -1697,6 +1742,44 @@ namespace Fridays_Adventure.Scenes
             if (_showRescue)    DrawRescuePrompt(g, W, H);
             if (_levelComplete) DrawComplete(g, W, H);
             DrawDevMenuButton(g);
+        }
+
+        /// <summary>
+        /// Phase 2 — Team 9 (UI Programmer): Accessibility outline mode.
+        /// Draws a thick coloured border around the player (cyan), living enemies (red),
+        /// berries (gold) and health pickups (lime) so they are readable on any background.
+        /// Called only when <see cref="Engine.Game.OutlineModeEnabled"/> is true.
+        /// </summary>
+        private void DrawAccessibilityOutlines(Graphics g)
+        {
+            // Player — cyan
+            using (var pen = new System.Drawing.Pen(Color.Cyan, 2))
+                g.DrawRectangle(pen, (int)_player.X, (int)_player.Y,
+                    _player.Width, _player.Height);
+
+            // Enemies — red (only living)
+            using (var pen = new System.Drawing.Pen(Color.OrangeRed, 2))
+                foreach (var e in _enemies)
+                    if (e.IsAlive)
+                        g.DrawRectangle(pen, (int)e.X, (int)e.Y, e.Width, e.Height);
+
+            // Berries — gold
+            using (var pen = new System.Drawing.Pen(Color.Gold, 1))
+                foreach (var b in _berries)
+                    if (!b.Collected)
+                        g.DrawRectangle(pen, (int)b.X, (int)b.Y, b.Width, b.Height);
+
+            // Health pickups — lime
+            using (var pen = new System.Drawing.Pen(Color.LimeGreen, 2))
+                foreach (var hp in _healthPickups)
+                    if (!hp.Collected)
+                        g.DrawRectangle(pen, hp.Hitbox);
+
+            // Star coins — white
+            using (var pen = new System.Drawing.Pen(Color.White, 2))
+                foreach (var sc in _starCoins)
+                    if (!sc.Collected)
+                        g.DrawRectangle(pen, sc.Hitbox);
         }
 
         private void DrawBackground(Graphics g, int W, int H)

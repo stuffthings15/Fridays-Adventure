@@ -30,6 +30,8 @@ namespace Fridays_Adventure.Engine
         public bool Ability3Pressed => IsPressed(Keys.R);
         /// <summary>C key — air dash burst (Phase 2, Team 7 #2).</summary>
         public bool AirDashPressed  => IsPressed(Keys.C);
+        /// <summary>I key — open inventory screen during gameplay.</summary>
+        public bool InventoryPressed => IsPressed(Keys.I);
         public bool InteractPressed => IsPressed(Keys.F) || IsPressed(Keys.Enter);
         public bool PausePressed    => IsPressed(Keys.Escape);
         public bool AnyMash         => IsPressed(Keys.Space) || IsPressed(Keys.Z) || IsPressed(Keys.X);

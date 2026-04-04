@@ -309,6 +309,8 @@ namespace Fridays_Adventure.Scenes
 
             if (input.DodgePressed) _player.TryDodge();
             if (input.PausePressed) Game.Instance.Scenes.Push(new PauseScene());
+            // I key — quick-open inventory during storm
+            if (input.InventoryPressed) Game.Instance.Scenes.Push(new InventoryScene(_player));
         }
 
         private void ResolveDeck(float dt)

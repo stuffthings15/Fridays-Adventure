@@ -204,25 +204,35 @@
 
 ---
 
-## SESSION 4: [Title]
+## SESSION 4: HUD/Input Consistency + Release Packaging + GitHub Push
 
-**Date/Time:** [To be filled]  
-**Duration:** [To be filled]  
+**Date/Time:** April 4, 2026  
+**Duration:** Implementation + verification session  
 
 ### ✅ Features Implemented
-- (To be filled)
+- Standardized gameplay input consistency across scenes:
+  - Added inventory hotkey (`I`) handling in gameplay scenes that were missing it.
+  - Added missing pause handling in gameplay scenes that did not support `Esc` consistently.
+- HUD consistency pass across levels:
+  - Unified HUD pipeline kept on `GameHUD.Draw(...)` in gameplay scenes.
+  - Corrected scene-specific overlay placement so labels/timers do not conflict with top HUD band.
+- Release packaging:
+  - Rebuilt in Release configuration.
+  - Packaged standalone runnable output in `Release/` including executable, required DLLs, and `Assets/`.
 
 ### 🐛 Bugs Fixed
-- (To be filled)
+- Fixed compile-breaking signature issue in `Scenes/WarlordBossScene.cs` (`UpdateBossAI(float dt)`), which caused large cascading compiler errors.
+- Fixed stomp/body-contact behavior and gameplay inventory accessibility regressions from inconsistent scene input handling.
 
 ### 📋 Documentation Updated
-- (To be filled)
+- Updated this running log (`docs/WEEK_10_LOG_TEMPLATE.md`) with Session 4 details.
 
 ### 🏗️ Build Status
-- Build: (To be filled)
+- Build: ✅ PASSING
 
 ### 🎯 Next Steps
-- (To be filled)
+- Push latest local commits to `origin/master`.
+- Continue Phase 2 implementation sequence from tracker priorities.
 
 ---
 

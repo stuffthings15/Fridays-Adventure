@@ -189,6 +189,9 @@ namespace Fridays_Adventure.Scenes
             }
             if (input.PausePressed)
                 Game.Instance.Scenes.Push(new PauseScene());
+            // I key — quick-open inventory during boss fight
+            if (input.InventoryPressed)
+                Game.Instance.Scenes.Push(new InventoryScene(_player));
         }
 
         // ── Boss AI Pattern ───────────────────────────────────────────────────

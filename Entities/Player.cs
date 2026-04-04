@@ -26,6 +26,32 @@ namespace Fridays_Adventure.Entities
         /// <summary>True while sprint is actively consuming stamina this frame.</summary>
         public bool IsSprinting { get; private set; }
 
+        // ── Phase 2: Team 4 — Energy Meter (Idea 1) ───────────────────────────
+        /// <summary>
+        /// Shared energy pool drained by all special abilities.
+        /// Regenerates passively at 8 units/sec (full recharge ≈ 12 s).
+        /// Phase 2 — Team 4 (Lead Game Designer) Idea 1: Energy Meter System.
+        /// </summary>
+        public float Energy    { get; private set; } = 100f;
+        /// <summary>Maximum energy capacity.</summary>
+        public const float MaxEnergy = 100f;
+
+        // Energy costs per ability
+        private const float EnergyCostIceWall   = 20f;
+        private const float EnergyCostCharAbility= 30f;
+        private const float EnergyCostBreakWall  = 25f;
+
+        /// <summary>
+        /// Attempts to drain <paramref name="amount"/> energy.
+        /// Returns true and deducts energy if sufficient; false otherwise.
+        /// </summary>
+        public bool DrainEnergy(float amount)
+        {
+            if (Energy < amount) return false;
+            Energy = Math.Max(0f, Energy - amount);
+            return true;
+        }
+
         /// <summary>Maximum number of jumps before landing (2 = double jump).</summary>
         public int MaxJumps       { get; set; } = 2;
 
@@ -343,7 +369,8 @@ namespace Fridays_Adventure.Entities
         public bool UseIceWall(out IceWallInstance wall)
         {
             wall = null;
-            if (IsSuppressed || !_iceWall.IsReady) return false;
+            // Phase 2 T4 #1: Energy gate — ability requires energy as well as cooldown.
+            if (IsSuppressed || !_iceWall.IsReady || !DrainEnergy(EnergyCostIceWall)) return false;
             _iceWall.TryUse(this);
 
             float wx = FacingRight ? X + Width + 4 : X - 24;
@@ -361,7 +388,8 @@ namespace Fridays_Adventure.Entities
 
         public bool UseFlashFreeze()
         {
-            if (IsSuppressed || !_flash.IsReady) return false;
+            // Phase 2 T4 #1: Energy gate.
+            if (IsSuppressed || !_flash.IsReady || !DrainEnergy(EnergyCostCharAbility)) return false;
             _flash.TryUse(this);
             AbilityCastGlowTimer = 0.3f;  // trigger cast glow (VFX Artist)
             return true;
@@ -374,21 +402,34 @@ namespace Fridays_Adventure.Entities
         /// Friday → FlashFreeze (standard freeze).
         /// Returns true if the ability activated successfully.
         /// </summary>
+        /// <summary>
+        /// PHASE 2 — E-key ability dispatcher.
+        /// Orca  → TidalSlam (ground-pound AOE; scene handles damage radius).
+        /// Swan  → WingDash  (directional burst + i-frames).
+        /// Friday → FlashFreeze (standard freeze).
+        /// Returns true if the ability activated successfully.
+        /// Phase 2 T4 #1: All paths check energy via DrainEnergy before activating.
+        /// </summary>
         public bool UseCharacterAbility()
         {
+            // Phase 2 T4 #1: Energy gate for the character-unique ability.
+            if (!DrainEnergy(EnergyCostCharAbility)) return false;
             AbilityCastGlowTimer = 0.3f;
             switch (Archetype)
             {
                 case PlayableCharacter.Orca:
-                    if (!_tidalSlam.IsReady) return false;
+                    if (!_tidalSlam.IsReady) { Energy = Math.Min(MaxEnergy, Energy + EnergyCostCharAbility); return false; }
                     _tidalSlam.TryUse(this);
                     return true;
                 case PlayableCharacter.Swan:
-                    if (!_wingDash.IsReady) return false;
+                    if (!_wingDash.IsReady)  { Energy = Math.Min(MaxEnergy, Energy + EnergyCostCharAbility); return false; }
                     _wingDash.TryUse(this);
                     return true;
                 default:
-                    return UseFlashFreeze();
+                    // FlashFreeze already drained energy above; pass 0 to skip double-drain.
+                    if (IsSuppressed || !_flash.IsReady) { Energy = Math.Min(MaxEnergy, Energy + EnergyCostCharAbility); return false; }
+                    _flash.TryUse(this);
+                    return true;
             }
         }
 
@@ -477,7 +518,8 @@ namespace Fridays_Adventure.Entities
 
         public bool UseBreakWall()
         {
-            if (!_breakWall.IsReady) return false;
+            // Phase 2 T4 #1: Energy gate for Break Wall.
+            if (!_breakWall.IsReady || !DrainEnergy(EnergyCostBreakWall)) return false;
             bool used = _breakWall.TryUse(this);
             if (used) AbilityCastGlowTimer = 0.3f;  // trigger cast glow (VFX Artist)
             return used;
@@ -580,8 +622,12 @@ namespace Fridays_Adventure.Entities
                 MeltRisk = Math.Max(0f, MeltRisk - dt * 0.1f);
             
             // Stamina passively recovers if not sprinting this frame.
-            if (!IsSprinting)
-                Stamina = Math.Min(MaxStamina, Stamina + 10f * dt);
+                if (!IsSprinting)
+                    Stamina = Math.Min(MaxStamina, Stamina + 10f * dt);
+
+                // ── Phase 2 T4 #1: Energy regen (8 units/sec; suppressed stops it) ─
+                if (!IsSuppressed)
+                    Energy = Math.Min(MaxEnergy, Energy + 8f * dt);
 
             // ── Combo multiplier decay (Phase 2 — Team 4 Idea 2) ───────────────
             if (StompChainTimer > 0f)

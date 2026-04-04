@@ -259,6 +259,10 @@ namespace Fridays_Adventure.Scenes
             // ── Death check ───────────────────────────────────────────────────
             if (!_player.IsAlive) HandleDeath();
 
+            // Pause and inventory consistent with all other gameplay scenes
+            if (Game.Instance.Input.PausePressed) Game.Instance.Scenes.Push(new PauseScene());
+            if (Game.Instance.Input.InventoryPressed) Game.Instance.Scenes.Push(new InventoryScene(_player));
+
             SMB3Hud.Update(dt);
         }
 
