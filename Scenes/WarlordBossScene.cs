@@ -410,10 +410,10 @@ namespace Fridays_Adventure.Scenes
                     g.FillRectangle(br, _player.AttackHitbox);
             HudHelper.DrawBreakShockwave(g, _breakShockwaveTimer, _breakShockwaveWorldX, _breakShockwaveWorldY);
 
-            DrawBossHUD(g, W, H);
-            DrawPlayerHUD(g, W, H);
-            // SMB3 top-bar: lives, score, coin counter (complements the scene's own boss HP bar)
-            SMB3Hud.Draw(g, W, H);
+            // ── Unified HUD (single call, warlord fight) ──────────────────────
+            g.ResetTransform();
+            GameHUD.Draw(g, _player, W, H, _boss, _config.Name);
+
             if (_telegraphTimer > 0)  DrawTelegraph(g, W, H);
             if (_phaseTransition)     DrawPhaseTransition(g, W, H);
             if (_showRescue)          DrawRescuePrompt(g, W, H);

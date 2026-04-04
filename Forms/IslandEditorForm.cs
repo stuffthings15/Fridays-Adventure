@@ -16,7 +16,7 @@ namespace Fridays_Adventure.Forms
         private object _selected;
         private Point _dragStart;
         private bool _dragging;
-        private const float Scale = 0.25f;
+        private const float EditorScale = 0.25f;
 
         private Panel _canvas;
         private PropertyGrid _propGrid;
@@ -113,10 +113,10 @@ namespace Fridays_Adventure.Forms
         }
 
         private Point IslandToCanvas(float ix, float iy)
-            => new Point((int)(ix * Scale), (int)(iy * Scale));
+            => new Point((int)(ix * EditorScale), (int)(iy * EditorScale));
 
         private PointF CanvasToIsland(int cx, int cy)
-            => new PointF(cx / Scale, cy / Scale);
+            => new PointF(cx / EditorScale, cy / EditorScale);
 
         private void DrawCanvas(Graphics g)
         {
@@ -165,7 +165,7 @@ namespace Fridays_Adventure.Forms
         }
 
         private Rectangle ScaleRect(int x, int y, int w, int h)
-            => new Rectangle((int)(x * Scale), (int)(y * Scale), (int)(w * Scale), (int)(h * Scale));
+            => new Rectangle((int)(x * EditorScale), (int)(y * EditorScale), (int)(w * EditorScale), (int)(h * EditorScale));
 
         private void OnCanvasMouseDown(object sender, MouseEventArgs e)
         {

@@ -23,7 +23,7 @@ namespace Fridays_Adventure.Entities
     {
         // ── Config ────────────────────────────────────────────────────────────
         /// <summary>Platform tile dimensions.</summary>
-        public int Width  { get; }
+        public int Width  { get; private set; }
         public int Height { get; } = 16;
 
         /// <summary>Current top-left world position.</summary>
@@ -71,6 +71,37 @@ namespace Fridays_Adventure.Entities
             IsMovingHorizontal = horizontal;
         }
 
+        /// <summary>
+        /// Scales world-space positions and extents by a uniform factor.
+        /// Called by IslandScene.ApplyLevelScale() after level construction.
+        /// Team 5 (Level Designer) — scale support.
+        /// </summary>
+        public void ApplyScale(float scale)
+        {
+            X     *= scale;
+            Y     *= scale;
+            Width  = (int)(Width * scale);
+            ApplyScaleInternal(scale);
+        }
+
+        // Backing mutable copies of extents, patched by ApplyScale.
+        private float _scaledA, _scaledB;
+        private bool  _scaleApplied;
+
+        private void ApplyScaleInternal(float scale)
+        {
+            if (!_scaleApplied)
+            {
+                _scaledA      = _startA * scale;
+                _scaledB      = _startB * scale;
+                _scaleApplied = true;
+            }
+        }
+
+        // Override extent accessors to use scaled values when present.
+        private float EffectiveA => _scaleApplied ? _scaledA : _startA;
+        private float EffectiveB => _scaleApplied ? _scaledB : _startB;
+
         // ── Update ────────────────────────────────────────────────────────────
         /// <summary>
         /// Moves the platform and carries a riding player with it.
@@ -83,21 +114,25 @@ namespace Fridays_Adventure.Entities
             VelocityX = 0f;
             VelocityY = 0f;
 
+            // Use scaled extents when ApplyScale has been called.
+            float a = EffectiveA;
+            float b = EffectiveB;
+
             if (IsMovingHorizontal)
             {
                 X += move;
                 VelocityX = move;
 
-                if (X <= _startA) { X = _startA; _direction =  1; }
-                if (X >= _startB - Width) { X = _startB - Width; _direction = -1; }
+                if (X <= a) { X = a; _direction =  1; }
+                if (X >= b - Width) { X = b - Width; _direction = -1; }
             }
             else
             {
                 Y += move;
                 VelocityY = move;
 
-                if (Y <= _startA) { Y = _startA; _direction =  1; }
-                if (Y >= _startB) { Y = _startB; _direction = -1; }
+                if (Y <= a) { Y = a; _direction =  1; }
+                if (Y >= b) { Y = b; _direction = -1; }
             }
 
             // Carry the player if they are standing on top.

@@ -47,7 +47,7 @@ namespace Fridays_Adventure.Scenes
         private float[] _spinRate = new float[3];// symbols per second for each card
 
         // Spin timer — drives face cycling for each spinning card.
-        private float _spinTimer;
+        private float _spinTimer;   // global spin tick accumulator
         private float[] _faceTimer = new float[3];
 
         // Result display.
@@ -115,6 +115,7 @@ namespace Fridays_Adventure.Scenes
             if (_advancing) return;
 
             // Spin active (non-stopped) cards.
+            _spinTimer += dt;   // advance global spin accumulator
             for (int i = 0; i < 3; i++)
             {
                 if (_stopped[i]) continue;

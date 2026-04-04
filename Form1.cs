@@ -65,7 +65,11 @@ namespace Fridays_Adventure
             KeyUp    += (s, e) => _game.Input.OnKeyUp(e.KeyCode);
             KeyPress += (s, e) => _game.Input.OnKeyChar(e.KeyChar);
 
-            _canvas.MouseClick += (s, e) => _game.Scenes.Current?.HandleClick(e.Location);
+            _canvas.MouseClick += (s, e) =>
+            {
+                if (_game.TryHandleHudClick(e.Location)) return;
+                _game.Scenes.Current?.HandleClick(e.Location);
+            };
             _canvas.MouseWheel += (s, e) => _game.Scenes.Current?.HandleMouseWheel(e.Delta);
 
             FormClosed += (s, e) => _game.Stop();

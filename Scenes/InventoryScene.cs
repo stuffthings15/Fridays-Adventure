@@ -30,12 +30,29 @@ namespace Fridays_Adventure.Scenes
             _player = player;
         }
 
+        private Rectangle _useHealthBtn;
+
         public override void OnEnter() { }
         public override void OnExit()  { }
 
         public override void Update(float dt)
         {
             var input = Game.Instance.Input;
+
+            // Use health item while inventory is open.
+            if (input.IsPressed(System.Windows.Forms.Keys.H) && _player != null)
+            {
+                if (PowerUpInventory.UseHealthItem(_player))
+                {
+                    Game.Instance.Audio.BeepHeal();
+                    SMB3Hud.ShowToast($"Used medkit. Remaining: {PowerUpInventory.HealthItemCount}");
+                }
+                else
+                {
+                    SMB3Hud.ShowToast("No medkit available (or HP is full).");
+                }
+            }
+
             // Close inventory on Esc, I, or Enter
             if (input.PausePressed || input.InteractPressed ||
                 input.IsPressed(System.Windows.Forms.Keys.I))
@@ -45,7 +62,22 @@ namespace Fridays_Adventure.Scenes
         public override void HandleClick(Point p)
         {
             if (HandleDevMenuClick(p)) return;
-            // Click anywhere to close
+
+            if (_useHealthBtn.Contains(p) && _player != null)
+            {
+                if (PowerUpInventory.UseHealthItem(_player))
+                {
+                    Game.Instance.Audio.BeepHeal();
+                    SMB3Hud.ShowToast($"Used medkit. Remaining: {PowerUpInventory.HealthItemCount}");
+                }
+                else
+                {
+                    SMB3Hud.ShowToast("No medkit available (or HP is full).");
+                }
+                return;
+            }
+
+            // Click elsewhere to close
             Game.Instance.Scenes.Pop();
         }
 
@@ -124,10 +156,18 @@ namespace Fridays_Adventure.Scenes
                 "Berries (Gold)", Game.Instance.TotalBerriesCollected,
                 "Increases score when collected", Color.Gold);
 
-            // Health Pickups (tracked indirectly — show description)
+            // Health Pickups (inventory-backed consumables)
             DrawItemEntry(g, rightX, ref ry, colW,
-                "Health Pickups", -1,
-                "Red cross items — restores 30 HP", Color.FromArgb(220, 55, 55));
+                "Health Items", PowerUpInventory.HealthItemCount,
+                "Press H or click USE to restore 30 HP", Color.FromArgb(220, 55, 55));
+
+            _useHealthBtn = new Rectangle(rightX + 28, ry - 4, 110, 26);
+            using (var br = new SolidBrush(Color.FromArgb(120, 40, 90, 40)))
+                g.FillRectangle(br, _useHealthBtn);
+            g.DrawRectangle(Pens.LimeGreen, _useHealthBtn);
+            using (var bf = new Font("Courier New", 10, FontStyle.Bold))
+                g.DrawString("USE (H)", bf, Brushes.LimeGreen, _useHealthBtn.X + 12, _useHealthBtn.Y + 4);
+            ry += 28;
 
             // Ice Reserve
             DrawItemEntry(g, rightX, ref ry, colW,
@@ -157,8 +197,8 @@ namespace Fridays_Adventure.Scenes
             DrawLabelValue(g, rightX, ref ry, "Player", Game.Instance.PlayerName, Brushes.LightGray);
 
             // ── Control hints ────────────────────────────────────────────────
-            g.DrawString("[Esc / I / Enter] Close Inventory",
-                _hintFont, Brushes.DimGray, W / 2 - 130, H - 24);
+            g.DrawString("[Esc / I / Enter] Close Inventory   [H] Use Health Item",
+                _hintFont, Brushes.DimGray, W / 2 - 220, H - 24);
 
             DrawDevMenuButton(g);
         }

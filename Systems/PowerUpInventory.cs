@@ -403,6 +403,40 @@ namespace Fridays_Adventure.Systems
             }
         }
 
+        // ── Health item inventory (consumable pickups) ─────────────────────
+
+        /// <summary>
+        /// Number of collected health items currently in the player's inventory.
+        /// These can be consumed from the inventory screen or HUD.
+        /// </summary>
+        public static int HealthItemCount { get; private set; }
+
+        /// <summary>
+        /// Adds one or more health items to inventory.
+        /// </summary>
+        public static void AddHealthItem(int amount = 1)
+        {
+            if (amount <= 0) return;
+            HealthItemCount += amount;
+            DebugLogger.LogInfo("PowerUpInventory", $"Health items +{amount} (total={HealthItemCount})");
+        }
+
+        /// <summary>
+        /// Consumes one health item and heals the specified player.
+        /// Returns true if an item was used.
+        /// </summary>
+        public static bool UseHealthItem(Entities.Player player, int healAmount = 30)
+        {
+            if (player == null) return false;
+            if (HealthItemCount <= 0) return false;
+            if (player.Health >= player.MaxHealth) return false;
+
+            HealthItemCount--;
+            player.Health = Math.Min(player.MaxHealth, player.Health + healAmount);
+            DebugLogger.LogInfo("PowerUpInventory", $"Health item used (remaining={HealthItemCount})");
+            return true;
+        }
+
         // ── Private helpers ────────────────────────────────────────────────────
 
         private static Color SuitColor(SuitType suit)

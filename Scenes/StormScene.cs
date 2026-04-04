@@ -385,7 +385,8 @@ namespace Fridays_Adventure.Scenes
                 p.Update(dt);
                 if (p.TryCollect(_player))
                 {
-                    _player.Health = Math.Min(_player.MaxHealth, _player.Health + 25);
+                    PowerUpInventory.AddHealthItem(1);
+                    Game.Instance.FloatingText.Spawn("+1 MEDKIT", p.X, p.Y - 16, Color.LimeGreen, large: false);
                     Game.Instance.Audio.BeepHeal();
                 }
             }
@@ -404,11 +405,12 @@ namespace Fridays_Adventure.Scenes
             foreach (var p in _healthPickups) p.Draw(g);
             foreach (var s in _strikes) s.Draw(g, H);
             _player.Draw(g);
-            // ── SMB3 HUD: Ability cooldown indicators and all UI elements ──
-            SMB3Hud.DrawAll(g, _player, null, W, H);
             if (_lightningFlash > 0f)
                 using (var br = new SolidBrush(Color.FromArgb((int)(_lightningFlash * 180), Color.White)))
                     g.FillRectangle(br, 0, 0, W, H);
+            // ── Unified HUD (single call, screen space) ───────────────────────
+            g.ResetTransform();
+            GameHUD.Draw(g, _player, W, H);
             if (_complete) DrawComplete(g, W, H);
             DrawDevMenuButton(g);
         }

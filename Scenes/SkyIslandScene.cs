@@ -329,18 +329,25 @@ namespace Fridays_Adventure.Scenes
 
         private void BreakNearbyWalls()
         {
-            float range = 70f;
+            const float range = 200f;
             for (int i = _iceWalls.Count - 1; i >= 0; i--)
             {
                 var wall = _iceWalls[i];
                 if (!wall.IsAlive) continue;
                 float dx = _player.CenterX - (wall.X + wall.Width / 2f);
                 float dy = _player.CenterY - (wall.Y + wall.Height / 2f);
-                if (Math.Sqrt(dx * dx + dy * dy) <= range)
+                if ((float)Math.Sqrt(dx * dx + dy * dy) <= range)
+                {
                     wall.Health = 0;
+                    Game.Instance.FloatingText.Spawn(
+                        "SMASH!",
+                        (int)(wall.X + wall.Width / 2f),
+                        (int)wall.Y,
+                        Color.OrangeRed, large: true);
+                }
             }
             foreach (var e in _enemies)
-                if (e.IsAlive && _player.DistanceTo(e) <= 80f)
+                if (e.IsAlive && _player.DistanceTo(e) <= 120f)
                     e.TakeDamage(_player.BreakWallShockwaveDamage);
         }
 
@@ -396,9 +403,8 @@ namespace Fridays_Adventure.Scenes
             _player.Draw(g);
 
             g.ResetTransform();
-            DrawHUD(g, W, H);
-            // ── SMB3 HUD: Ability cooldown indicators and all UI elements ──
-            SMB3Hud.DrawAll(g, _player, null, W, H);
+            // ── Unified HUD (single call) ─────────────────────────────────────
+            GameHUD.Draw(g, _player, W, H);
             if (_windAnnouncTimer > 0) DrawWindWarning(g, W, H);
             if (_showRescue) DrawRescuePrompt(g, W, H);
             if (_levelComplete) DrawComplete(g, W, H);

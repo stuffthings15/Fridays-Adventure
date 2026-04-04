@@ -24,6 +24,7 @@ namespace Fridays_Adventure.Scenes
     /// </summary>
     public sealed class AirshipLevelScene : Scene
     {
+        private const float LevelScale = 1.5f;
         private Player _player;
         private List<Rectangle> _platforms = new List<Rectangle>();
         private readonly List<Abilities.IceWallInstance> _iceWalls = new List<Abilities.IceWallInstance>();
@@ -123,8 +124,42 @@ namespace Fridays_Adventure.Scenes
 
             // Exit flagpole.
             _exitFlag = new Rectangle((int)WorldWidth - 100, H - 200, 40, 140);
+
+            ApplyLevelScale();
         }
 
+                private void ApplyLevelScale()
+        {
+            Rectangle ScaleRect(Rectangle r) => new Rectangle(
+                (int)(r.X * LevelScale),
+                (int)(r.Y * LevelScale),
+                (int)(r.Width * LevelScale),
+                (int)(r.Height * LevelScale));
+
+            for (int i = 0; i < _platforms.Count; i++) _platforms[i] = ScaleRect(_platforms[i]);
+            _exitFlag = ScaleRect(_exitFlag);
+
+            for (int i = 0; i < _cannons.Count; i++)
+            {
+                var c = _cannons[i];
+                c.X *= LevelScale;
+                c.Y *= LevelScale;
+                _cannons[i] = c;
+            }
+
+            for (int i = 0; i < _pipes.Count; i++)
+            {
+                var p2 = _pipes[i];
+                p2.X *= LevelScale; p2.Y *= LevelScale; p2.MinY *= LevelScale; p2.MaxY *= LevelScale;
+                _pipes[i] = p2;
+            }
+
+            _player.X *= LevelScale;
+            _player.Y *= LevelScale;
+            _player.Width = (int)(_player.Width * LevelScale);
+            _player.Height = (int)(_player.Height * LevelScale);
+            _player.ApplySelectedSprite();
+        }
         private void AddPipe(float x, float y, float minY, float maxY)
         {
             _pipes.Add(new MovingPipe { X = x, Y = y, VY = 60f, MinY = minY, MaxY = maxY });
@@ -384,11 +419,11 @@ namespace Fridays_Adventure.Scenes
 
             g.ResetTransform();
 
-            // ── HUD ──────────────────────────────────────────────────────────
-            SMB3Hud.DrawAll(g, _player, null, W, H);
+            // ── Unified HUD (single call) ─────────────────────────────────────
+            GameHUD.Draw(g, _player, W, H);
             using (var f  = new Font("Courier New", 9, FontStyle.Bold))
             using (var br = new SolidBrush(Color.OrangeRed))
-                g.DrawString($"AIRSHIP  ◄ AUTO-SCROLL ►", f, br, W / 2 - 80, 10);
+                g.DrawString("AIRSHIP  ◄ AUTO-SCROLL ►", f, br, W / 2 - 80, 10);
         }
 
         private void BreakNearbyWallsAndProjectiles()
@@ -414,3 +449,5 @@ namespace Fridays_Adventure.Scenes
         }
     }
 }
+
+

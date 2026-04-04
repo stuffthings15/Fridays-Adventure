@@ -96,7 +96,7 @@ namespace Fridays_Adventure.Systems
 
         // ── Team 3 — Idea 6: performance hit warnings ─────────────────────────
         // Tracks how many errors were logged in the last second.
-        private static float _errorRateWindow;
+        private static float _errorRateWindow;   // seconds elapsed in current rate window
         private static int   _errorRateCount;
         private const  int   ErrorFloodThreshold = 10;  // >10 errors/sec → flood warning
 
@@ -346,15 +346,23 @@ namespace Fridays_Adventure.Systems
                 }
 
                 // ── Team 3 — Idea 6: performance hit warning ──────────────────
+                // Use Environment.TickCount to track errors within a 1-second window.
+                float nowSec = Environment.TickCount / 1000f;
                 if (level >= LogLevel.Error)
                 {
+                    if (nowSec - _errorRateWindow >= 1.0f)
+                    {
+                        // New 1-second window: reset the rate counter and window start.
+                        _errorRateWindow = nowSec;
+                        _errorRateCount  = 0;
+                    }
                     _errorRateCount++;
                     if (_errorRateCount >= ErrorFloodThreshold)
                     {
-                        // Inject a single flood warning, then reset.
                         AppendText(LogLevel.Warning,
                             $"[FLOOD] {_errorRateCount} errors in 1 s — possible error storm in [{context}]");
                         _errorRateCount = 0;
+                        _errorRateWindow = nowSec;
                     }
                 }
 

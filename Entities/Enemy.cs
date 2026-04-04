@@ -1,3 +1,4 @@
+using System;
 using System.Drawing;
 using Fridays_Adventure.AI;
 using Fridays_Adventure.Data;
@@ -22,14 +23,14 @@ namespace Fridays_Adventure.Entities
         }
 
         public Enemy(float x, float y, int w, int h, int maxHp, float patrolLeft, float patrolRight)
-            : base(x, y, w, h, maxHp)
+            : base(x, y, Math.Max(1, (int)(w * 1.5f)), Math.Max(1, (int)(h * 1.5f)), maxHp)
         {
             MoveSpeed    = 105f;
             AttackDamage = 10;
             AI           = new EnemyAI(this, patrolLeft, patrolRight);
 
             // Default enemy visual — enemy_Garp.png (renamed from GARP.png)
-            var garp = SpriteManager.GetScaled("enemy_Garp.png", w, h);
+            var garp = SpriteManager.GetScaled("enemy_Garp.png", Width, Height);
             if (garp != null) Sprite = garp;
         }
 

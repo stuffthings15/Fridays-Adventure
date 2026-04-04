@@ -49,6 +49,10 @@ namespace Fridays_Adventure.Abilities
 
         public void Draw(Graphics g)
         {
+            // Never render a dead wall — guards against any frame where
+            // IceSystem.Update hasn't yet pruned the list.
+            if (!IsAlive) return;
+
             float alpha = Math.Max(60, 200 - (Age / MaxAge) * 140);
 
             // Ice body fill

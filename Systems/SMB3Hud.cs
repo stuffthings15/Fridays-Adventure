@@ -35,6 +35,10 @@ namespace Fridays_Adventure.Systems
         private static readonly Font _smFont   = new Font("Courier New", 9,  FontStyle.Bold);
         private static readonly Font _bigFont  = new Font("Courier New", 22, FontStyle.Bold);
 
+        // ── Top HUD quick-action buttons ─────────────────────────────────────
+        private static Rectangle _inventoryHudButton;
+        private static Rectangle _medkitHudButton;
+
         // ── GET READY overlay ──────────────────────────────────────────────────
         private static float  _getReadyTimer;
         private static bool   _getReadyActive;
@@ -103,7 +107,7 @@ namespace Fridays_Adventure.Systems
         {
             // Consistent top HUD container for all gameplay scenes.
             // Solid black band ensures readability on every background.
-            const int topBarHeight = 88;
+            const int topBarHeight = 104;
             g.FillRectangle(Brushes.Black, 0, 0, W, topBarHeight);
             g.DrawLine(Pens.DimGray, 0, topBarHeight, W, topBarHeight);
 
@@ -114,41 +118,88 @@ namespace Fridays_Adventure.Systems
             DrawLevelTimer(g, W);
             DrawScore(g);
             DrawCoinCounter(g, W);
+
+            DrawTopHudQuickAccess(g, W);
         }
 
         /// <summary>
-        /// Draws all SMB3-style HUD elements including ability cooldowns.
-        /// Call from each gameplay scene's Draw() method after the game world but before debug overlays.
+        /// Draws player HP and ICE reserve bars in the top HUD band.
         /// </summary>
-        public static void DrawAll(Graphics g, Player player, Enemy boss, int W, int H)
+        private static void DrawTopVitals(Graphics g, Entities.Player player)
         {
-            // Core HUD panels (lives, world label, GET READY, boss bar, timer, score, coins).
-            Draw(g, W, H);
+            if (player == null) return;
 
-            if (player != null)
+            int x = 6;
+            int hpY = 62;
+            int iceY = 80;
+
+            // HP
+            g.DrawString("HP", _smFont, Brushes.White, x, hpY - 2);
+            g.FillRectangle(Brushes.DarkRed, x + 24, hpY, 150, 10);
+            using (var br = new SolidBrush(Color.LimeGreen))
+                g.FillRectangle(br, x + 24, hpY,
+                    (int)(150f * Math.Max(0f, Math.Min(1f, (float)player.Health / Math.Max(1, player.MaxHealth)))), 10);
+            g.DrawRectangle(Pens.DimGray, x + 24, hpY, 150, 10);
+
+            // ICE
+            g.DrawString("ICE", _smFont, Brushes.Cyan, x, iceY - 2);
+            g.FillRectangle(Brushes.DarkSlateBlue, x + 24, iceY, 150, 10);
+            using (var br = new SolidBrush(Color.FromArgb(180, 220, 255)))
+                g.FillRectangle(br, x + 24, iceY,
+                    (int)(150f * Math.Max(0f, Math.Min(1f, (float)player.IceReserve / Math.Max(1, player.MaxIceReserve)))), 10);
+            g.DrawRectangle(Pens.DimGray, x + 24, iceY, 150, 10);
+        }
+
+        /// <summary>
+        /// Draws quick-access inventory and medkit indicators in the top HUD.
+        /// </summary>
+        private static void DrawTopHudQuickAccess(Graphics g, int W)
+        {
+            _inventoryHudButton = new Rectangle(W - 390, 72, 86, 24);
+            _medkitHudButton    = new Rectangle(W - 296, 72, 114, 24);
+
+            using (var br = new SolidBrush(Color.FromArgb(170, 20, 20, 32)))
             {
-                // Ability cooldowns (Q/E/R) inside the top HUD band.
-                DrawAbilityCooldowns(g, player, W, H);
+                g.FillRectangle(br, _inventoryHudButton);
+                g.FillRectangle(br, _medkitHudButton);
+            }
+            g.DrawRectangle(Pens.Cyan, _inventoryHudButton);
+            g.DrawRectangle(Pens.LimeGreen, _medkitHudButton);
 
-                // Character portrait in top-left cluster.
-                DrawCharacterPortrait(g, 88);
+            using (var f = new Font("Courier New", 8, FontStyle.Bold))
+            {
+                g.DrawString("INV [I]", f, Brushes.Cyan, _inventoryHudButton.X + 8, _inventoryHudButton.Y + 6);
+                g.DrawString($"MED x{PowerUpInventory.HealthItemCount}", f, Brushes.LimeGreen, _medkitHudButton.X + 6, _medkitHudButton.Y + 6);
+            }
+        }
 
-                // P-Meter charge bar in top-left cluster.
-                DrawPMeter(g, player.PMeterCharge, 1.5f, 52, 66);
-
-                // Combo / stomp-chain counter and status icons in top band.
-                DrawComboCounter(g, player.StompChain, 6, 34);
-                DrawStatusIcons(g, player, 6, 62);
-
-                // Reserve item box near top-right.
-                DrawReserveItemBox(g, PowerUpState.PowerUp.None, W - 52, 44);
+        /// <summary>
+        /// Handles mouse clicks on top HUD quick actions.
+        /// Returns true if the click was consumed.
+        /// </summary>
+        public static bool HandleHudClick(Point p, Entities.Player player)
+        {
+            if (_inventoryHudButton.Contains(p))
+            {
+                Game.Instance.Scenes.Push(new Fridays_Adventure.Scenes.InventoryScene(player));
+                return true;
             }
 
-            // Toast notifications (bottom-centre).
-            DrawToast(g, W, H);
+            if (_medkitHudButton.Contains(p))
+            {
+                if (PowerUpInventory.UseHealthItem(player))
+                {
+                    Game.Instance.Audio.BeepHeal();
+                    ShowToast($"Used medkit. Remaining: {PowerUpInventory.HealthItemCount}");
+                }
+                else
+                {
+                    ShowToast("No medkit available (or HP is full).");
+                }
+                return true;
+            }
 
-            // Death fade (full-screen, always on top of HUD).
-            DrawDeathFade(g, W, H);
+            return false;
         }
 
         // ── Lives counter ─────────────────────────────────────────────────────
@@ -640,8 +691,8 @@ namespace Fridays_Adventure.Systems
             if (player == null) return;
 
             // Keep cooldown bars in the top HUD bar for map-to-map consistency.
-            int panelX = 360;
-            int panelY = 40;
+            int panelX = 200;
+            int panelY = 64;
             int barWidth = 44;
             int barHeight = 8;
             int slotWidth = barWidth + 28; // includes key/time gutter from DrawAbilityBar panel
@@ -710,6 +761,34 @@ namespace Fridays_Adventure.Systems
             }
         }
 
+        /// <summary>
+        /// Draws only shared overlay elements (GET READY, world label, boss bar,
+        /// level timer, toast, death fade) without re-filling the HUD band.
+        /// Call this in scenes that render their own primary HUD (e.g. IslandScene),
+        /// so the local HUD and the shared overlays do not fight each other.
+        /// Team 9 (UI Programmer) — shared overlay layer.
+        /// </summary>
+        /// <summary>
+        /// Draws temporal overlay elements only — GET READY, world-label slide-in,
+        /// toast notifications, and the death fade. Does NOT re-draw the HUD band.
+        /// Called by <see cref="GameHUD.Draw"/> at the end of every frame.
+        /// Team 9 (UI Programmer) — shared overlay layer.
+        /// </summary>
+        public static void DrawOverlays(Graphics g, int W, int H)
+        {
+            // World label slide-in (centre, temporary)
+            DrawWorldLabel(g, W, H);
+
+            // GET READY banner (centre screen, at level start)
+            DrawGetReady(g, W, H);
+
+            // Toast notification (bottom-centre)
+            DrawToast(g, W, H);
+
+            // Death fade overlay (full-screen, always on top)
+            DrawDeathFade(g, W, H);
+        }
+
         // ── Composite draw helper ──────────────────────────────────────────────
 
         /// <summary>
@@ -743,21 +822,24 @@ namespace Fridays_Adventure.Systems
 
             if (player != null)
             {
+                // Explicit player vitals in the top HUD bar.
+                DrawTopVitals(g, player);
+
                 // Ability cooldowns (Q/E/R) inside the top HUD band.
                 DrawAbilityCooldowns(g, player, W, H);
 
                 // Character portrait in top-left cluster.
-                DrawCharacterPortrait(g, 88);
+                DrawCharacterPortrait(g, 100);
 
                 // P-Meter charge bar in top-left cluster.
-                DrawPMeter(g, player.PMeterCharge, 1.5f, 52, 66);
+                DrawPMeter(g, player.PMeterCharge, 1.5f, 52, 50);
 
                 // Combo / stomp-chain counter and status icons in top band.
                 DrawComboCounter(g, player.StompChain, 6, 34);
-                DrawStatusIcons(g, player, 6, 62);
+                DrawStatusIcons(g, player, 6, 48);
 
                 // Reserve item box near top-right.
-                DrawReserveItemBox(g, PowerUpState.PowerUp.None, W - 52, 44);
+                DrawReserveItemBox(g, PowerUpState.PowerUp.None, W - 52, 38);
             }
 
             // Toast notifications (bottom-centre).

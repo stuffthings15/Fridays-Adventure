@@ -20,7 +20,6 @@ namespace Fridays_Adventure.Scenes
         private Enemy   _boss;
         private Bitmap  _bg;
         private Bitmap  _bossSprite;
-        private Bitmap  _playerSprite;
 
         private List<Rectangle>    _platforms;
         private List<Hazard>       _hazards;
@@ -67,7 +66,6 @@ namespace Fridays_Adventure.Scenes
         public override void OnEnter()
         {
             _bossSprite   = SpriteManager.GetScaled("boss_Garp.png", 160, 220);
-            _playerSprite = null;
 
             // Background — bg_Marine_Blockade.png lives in Assets\Sprites\
             _bg = SpriteManager.Get("bg_Marine_Blockade.png");
@@ -481,10 +479,10 @@ namespace Fridays_Adventure.Scenes
                     g.FillRectangle(br, _player.AttackHitbox);
             HudHelper.DrawBreakShockwave(g, _breakShockwaveTimer, _breakShockwaveWorldX, _breakShockwaveWorldY);
 
-            DrawBossHUD(g, W, H);
-            DrawPlayerHUD(g, W, H);
-            // SMB3 top-bar: lives, score, coin counter (complements the scene's own boss HP bar)
-            SMB3Hud.Draw(g, W, H);
+            // ── Unified HUD (single call, boss fight) ─────────────────────────
+            g.ResetTransform();
+            GameHUD.Draw(g, _player, W, H, _boss, "MARINE CAPTAIN");
+
             if (_telegraphTimer > 0) DrawTelegraph(g, W, H);
             if (_phaseTransition)    DrawPhaseTransition(g, W, H);
             if (_showRescue)         DrawRescuePrompt(g, W, H);

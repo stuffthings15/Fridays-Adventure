@@ -16,6 +16,7 @@ namespace Fridays_Adventure.Scenes
 {
     public sealed class IslandScene : Scene
     {
+        private const float LevelScale = 1.5f;
         private readonly string _islandId;
         private readonly string _islandName;
 
@@ -24,6 +25,7 @@ namespace Fridays_Adventure.Scenes
         private List<Rectangle>   _platforms;
         private List<Hazard>      _hazards;
         private List<IceWallInstance> _iceWalls;
+        private List<MovingPlatform>  _movingPlatforms;
         private ComboAssist       _combo = new ComboAssist();
 
         private float _cameraX;
@@ -65,12 +67,16 @@ namespace Fridays_Adventure.Scenes
             BuildLevel();
             LoadBackground();
             _uiPanel = SpriteManager.Get("ui_panel.png");
-            
-            // PHASE 2 - Team 1: Game Director
-            // Apply difficulty modifiers to all spawned enemies
+
+            // Apply difficulty modifiers to all spawned enemies.
             ApplyDifficultyModifiers();
-            
-            Game.Instance.Audio.ContinueOrPlay("island");  // Default island music
+
+            // SMB3-style level-start overlays: GET READY! banner + world/level label.
+            SMB3Hud.TriggerGetReady();
+            SMB3Hud.ShowWorldLabel(
+                $"WORLD {Game.Instance.WorldNumber}-{Game.Instance.LevelNumber}  {_islandName.ToUpper()}");
+
+            Game.Instance.Audio.ContinueOrPlay("island");
         }
 
         public override void OnExit()
@@ -104,11 +110,12 @@ namespace Fridays_Adventure.Scenes
 
         private void BuildLevel()
         {
-            _groundY   = 440;
-            _iceWalls  = new List<IceWallInstance>();
-            _platforms = new List<Rectangle>();
-            _hazards   = new List<Hazard>();
-            _enemies   = new List<Enemy>();
+            _groundY         = 440;
+            _iceWalls        = new List<IceWallInstance>();
+            _movingPlatforms = new List<MovingPlatform>();
+            _platforms       = new List<Rectangle>();
+            _hazards         = new List<Hazard>();
+            _enemies         = new List<Enemy>();
 
             switch (_islandId)
             {
@@ -131,6 +138,8 @@ namespace Fridays_Adventure.Scenes
             _healthPickups = new List<HealthPickup>();
             SpawnHealthPickups();
 
+            ApplyLevelScale();
+
             // Level-entry drop — all characters fall in from above the screen
             _introActive       = true;
             _player.Y          = -120f;
@@ -144,6 +153,58 @@ namespace Fridays_Adventure.Scenes
             }
         }
 
+                private void ApplyLevelScale()
+        {
+            Rectangle ScaleRect(Rectangle r) => new Rectangle(
+                (int)(r.X * LevelScale),
+                (int)(r.Y * LevelScale),
+                (int)(r.Width * LevelScale),
+                (int)(r.Height * LevelScale));
+
+            _groundY = (int)(_groundY * LevelScale);
+            _levelWidth = (int)(_levelWidth * LevelScale);
+
+            for (int i = 0; i < _platforms.Count; i++) _platforms[i] = ScaleRect(_platforms[i]);
+            _exitFlag = ScaleRect(_exitFlag);
+
+            foreach (var hz in _hazards)
+            {
+                hz.X *= LevelScale;
+                hz.Y *= LevelScale;
+                hz.Width = (int)(hz.Width * LevelScale);
+                hz.Height = (int)(hz.Height * LevelScale);
+            }
+
+            foreach (var e in _enemies)
+            {
+                e.X *= LevelScale;
+                e.Y *= LevelScale;
+                e.Width = (int)(e.Width * LevelScale);
+                e.Height = (int)(e.Height * LevelScale);
+            }
+
+            foreach (var b in _berries)
+            {
+                b.X *= LevelScale;
+                b.Y *= LevelScale;
+            }
+
+            foreach (var hp in _healthPickups)
+            {
+                hp.X *= LevelScale;
+                hp.Y *= LevelScale;
+            }
+
+            // Scale moving platform extents
+            foreach (var mp in _movingPlatforms)
+                mp.ApplyScale(LevelScale);
+
+            _player.X *= LevelScale;
+            _player.Y *= LevelScale;
+            _player.Width = (int)(_player.Width * LevelScale);
+            _player.Height = (int)(_player.Height * LevelScale);
+            _player.ApplySelectedSprite();
+        }
         private void BuildDinoIsland()
         {
             // Jungle survival — rivers (water pits), predator enemies, one SeaStone trap
@@ -171,6 +232,10 @@ namespace Fridays_Adventure.Scenes
             SpawnEnemy(2200, _groundY - 42, 1.00f, isBoss: true);
 
             _exitFlag  = new Rectangle(2720, _groundY - 52, 30, 52);
+
+            // Moving platforms — SMB3-style traversal challenge.
+            _movingPlatforms.Add(new MovingPlatform(350, _groundY - 130, 80, 350, 550, 70f));
+            _movingPlatforms.Add(new MovingPlatform(1050, _groundY - 110, 80, 1050, 1200, 60f));
         }
 
         private void BuildBladeNation()
@@ -203,6 +268,8 @@ namespace Fridays_Adventure.Scenes
             SpawnEnemy(2300, _groundY - 48, 1.5f,  hp: 150, isBoss: true);
 
             _exitFlag = new Rectangle(2520, _groundY - 52, 30, 52);
+
+            _movingPlatforms.Add(new MovingPlatform(300, _groundY - 155, 80, 300, 480, 65f));
         }
 
         private void BuildHarborTown()
@@ -232,6 +299,8 @@ namespace Fridays_Adventure.Scenes
             SpawnEnemy(1850, _groundY - 48, 1.2f, isBoss: true, hp: 140);
 
             _exitFlag = new Rectangle(2100, _groundY - 52, 30, 52);
+
+            _movingPlatforms.Add(new MovingPlatform(280, _groundY - 120, 80, 280, 460, 55f));
         }
 
         private void BuildCoralReef()
@@ -269,6 +338,9 @@ namespace Fridays_Adventure.Scenes
             SpawnEnemy(2550, _groundY - 48, 1.6f, isBoss: true, hp: 160);
 
             _exitFlag = new Rectangle(2900, _groundY - 52, 30, 52);
+
+            _movingPlatforms.Add(new MovingPlatform(320, _groundY - 120, 80, 320, 500, 58f));
+            _movingPlatforms.Add(new MovingPlatform(1460, _groundY - 162, 80, 1460, 1620, 72f));
         }
 
         private void BuildTundraPeak()
@@ -300,8 +372,9 @@ namespace Fridays_Adventure.Scenes
             SpawnEnemy(2300, _groundY - 48, 1.8f, isBoss: true, hp: 180);
 
             _exitFlag = new Rectangle(2520, _groundY - 52, 30, 52);
-        }
 
+            _movingPlatforms.Add(new MovingPlatform(260, _groundY - 160, 80, 260, 440, 60f));
+        }
 
         private void SpawnEnemy(float x, float groundTop, float difficulty,
                                bool isBoss = false, int hp = -1)
@@ -530,6 +603,11 @@ namespace Fridays_Adventure.Scenes
 
             IceSystem.Update(_iceWalls, _hazards, _player, dt);
             ThreatSystem.Tick(dt);
+
+            // Update moving platforms and carry the player when riding.
+            foreach (var mp in _movingPlatforms)
+                mp.Update(dt, _player);
+
             CheckWaterFall(dt, input);
             UpdateEnemies(dt);
             _combo.Update(dt, _player, _enemies);
@@ -797,7 +875,8 @@ namespace Fridays_Adventure.Scenes
                 hp.Update(dt);
                 if (hp.TryCollect(_player))
                 {
-                    _player.Health = Math.Min(_player.MaxHealth, _player.Health + 30);
+                    PowerUpInventory.AddHealthItem(1);
+                    Game.Instance.FloatingText.Spawn("+1 MEDKIT", hp.X, hp.Y - 16, Color.LimeGreen, large: false);
                     Game.Instance.Audio.BeepHeal();
                 }
             }
@@ -813,18 +892,32 @@ namespace Fridays_Adventure.Scenes
 
         private void BreakNearbyWalls()
         {
-            float range = 70f;
+            // Generous range: any wall within 200 px of the player's centre is destroyed.
+            // This ensures a freshly placed wall always breaks regardless of movement.
+            const float range = 200f;
+            int broke = 0;
             for (int i = _iceWalls.Count - 1; i >= 0; i--)
             {
                 var wall = _iceWalls[i];
                 if (!wall.IsAlive) continue;
                 float dx = _player.CenterX - (wall.X + wall.Width / 2f);
                 float dy = _player.CenterY - (wall.Y + wall.Height / 2f);
-                if (Math.Sqrt(dx * dx + dy * dy) <= range)
+                if ((float)Math.Sqrt(dx * dx + dy * dy) <= range)
+                {
                     wall.Health = 0;
+                    // Spawn a SMASH! text at the wall's world position so the player
+                    // gets clear visual feedback that the wall was destroyed.
+                    Game.Instance.FloatingText.Spawn(
+                        "SMASH!",
+                        (int)(wall.X + wall.Width / 2f),
+                        (int)wall.Y,
+                        Color.OrangeRed, large: true);
+                    broke++;
+                }
             }
+            // Shockwave damages nearby enemies regardless of wall count
             foreach (var e in _enemies)
-                if (e.IsAlive && _player.DistanceTo(e) <= 80f)
+                if (e.IsAlive && _player.DistanceTo(e) <= 120f)
                     e.TakeDamage(_player.BreakWallShockwaveDamage);
         }
 
@@ -909,6 +1002,7 @@ namespace Fridays_Adventure.Scenes
 
             DrawPlatforms(g, H);
             DrawLevelDecors(g);             // world-space props on/around platforms
+            foreach (var mp in _movingPlatforms) mp.Draw(g);
             foreach (var hz in _hazards)   hz.Draw(g);
             foreach (var w  in _iceWalls)  w.Draw(g);
             foreach (var e  in _enemies)   if (e.IsAlive) e.Draw(g);
@@ -925,8 +1019,10 @@ namespace Fridays_Adventure.Scenes
             DrawSnowfall(g, W, H);          // tundra: screen-space falling snow
             DrawBubbles(g, W, H);           // coral: screen-space rising bubbles
             DrawScreenFlashes(g, W, H);
-            // ── SMB3 HUD: All UI elements (lives, score, coin, abilities, P-meter) ──
-            SMB3Hud.DrawAll(g, _player, null, W, H);
+
+            // ── Unified HUD (single call) ─────────────────────────────────────
+            GameHUD.Draw(g, _player, W, H);
+
             if (_showRescue)    DrawRescuePrompt(g, W, H);
             if (_levelComplete) DrawComplete(g, W, H);
             DrawDevMenuButton(g);
@@ -1113,6 +1209,19 @@ namespace Fridays_Adventure.Scenes
             // ── Solid dark HUD bar ────────────────────────────────────────────
             g.FillRectangle(Brushes.Black, 0, 0, W, 84);
             g.DrawLine(Pens.DimGray, 0, 84, W, 84);
+
+            // ── Lives counter (♥ × N) ─────────────────────────────────────────
+            using (var br = new SolidBrush(Color.FromArgb(220, Color.Crimson)))
+                g.FillEllipse(br, 8, 58, 12, 12);
+            using (var f = _infoFont)
+                g.DrawString($"× {Game.Instance.CurrentLives}", f, Brushes.White, 24, 56);
+
+            // ── INV / MED quick-key hints ─────────────────────────────────────
+            using (var f = new Font("Courier New", 8, FontStyle.Bold))
+            {
+                g.DrawString("[I]INV", f, Brushes.Cyan,     8,  70);
+                g.DrawString($"[H]MED×{PowerUpInventory.HealthItemCount}", f, Brushes.LimeGreen, 62, 70);
+            }
 
             // ── Mega Man-style segmented HP bar ───────────────────────────────
             g.DrawString("HP", _hudFont, Brushes.White, 8, 6);
@@ -1609,3 +1718,5 @@ namespace Fridays_Adventure.Scenes
         }
     }
 }
+
+

@@ -23,6 +23,7 @@ namespace Fridays_Adventure.Scenes
     /// </summary>
     public sealed class UnderwaterScene : Scene
     {
+        private const float LevelScale = 1.5f;
         private Player _player;
         private List<Rectangle>  _platforms   = new List<Rectangle>();
         private List<Rectangle>  _coralHazards = new List<Rectangle>();
@@ -120,8 +121,37 @@ namespace Fridays_Adventure.Scenes
             AddJelly(780, H - 200, 0.7f, 50f);
 
             _exitZone = new Rectangle(W - 80, H - 340, 60, 60);
+
+            ApplyLevelScale();
         }
 
+                private void ApplyLevelScale()
+        {
+            Rectangle ScaleRect(Rectangle r) => new Rectangle(
+                (int)(r.X * LevelScale),
+                (int)(r.Y * LevelScale),
+                (int)(r.Width * LevelScale),
+                (int)(r.Height * LevelScale));
+
+            for (int i = 0; i < _platforms.Count; i++) _platforms[i] = ScaleRect(_platforms[i]);
+            for (int i = 0; i < _coralHazards.Count; i++) _coralHazards[i] = ScaleRect(_coralHazards[i]);
+            for (int i = 0; i < _currents.Count; i++) _currents[i] = ScaleRect(_currents[i]);
+            for (int i = 0; i < _bubbleStations.Count; i++) _bubbleStations[i] = ScaleRect(_bubbleStations[i]);
+            _exitZone = ScaleRect(_exitZone);
+
+            for (int i = 0; i < _jellies.Count; i++)
+            {
+                var j = _jellies[i];
+                j.X *= LevelScale; j.Y *= LevelScale; j.BaseY *= LevelScale; j.Range *= LevelScale;
+                _jellies[i] = j;
+            }
+
+            _player.X *= LevelScale;
+            _player.Y *= LevelScale;
+            _player.Width = (int)(_player.Width * LevelScale);
+            _player.Height = (int)(_player.Height * LevelScale);
+            _player.ApplySelectedSprite();
+        }
         private void AddJelly(float x, float y, float speed, float range)
         {
             _jellies.Add(new JellyFish { X = x, Y = y, VY = speed, Range = range, BaseY = y });
@@ -356,10 +386,11 @@ namespace Fridays_Adventure.Scenes
             // ── Player ────────────────────────────────────────────────────────
             _player.Draw(g);
 
-            // ── HUD ───────────────────────────────────────────────────────────
-            SMB3Hud.DrawAll(g, _player, null, W, H);
+            // ── HUD + oxygen bar ──────────────────────────────────────────────
+            g.ResetTransform();
+            GameHUD.Draw(g, _player, W, H);
 
-            // Oxygen bar.
+            // Oxygen bar drawn below HUD band
             float oxyPct = Math.Max(0f, _oxygenTimer / MaxOxygen);
             int oxyBarW = 200;
             int oxyBarX = W / 2 - oxyBarW / 2;
@@ -400,3 +431,5 @@ namespace Fridays_Adventure.Scenes
         }
     }
 }
+
+

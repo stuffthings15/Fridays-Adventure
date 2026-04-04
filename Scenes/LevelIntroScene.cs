@@ -85,13 +85,17 @@ namespace Fridays_Adventure.Scenes
             _hintsFont?.Dispose();
         }
 
+        private bool _nextSceneCalled;
+
         public override void Update(float dt)
         {
             _timer += dt;
 
             // Once the full animation has played, transition to the actual level.
-            if (_timer >= TotalDuration)
+            // Guard with a bool so the scene is replaced exactly once.
+            if (_timer >= TotalDuration && !_nextSceneCalled)
             {
+                _nextSceneCalled = true;
                 _nextScene?.Invoke();
             }
         }

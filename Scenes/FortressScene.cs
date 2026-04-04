@@ -25,6 +25,7 @@ namespace Fridays_Adventure.Scenes
     /// </summary>
     public sealed class FortressScene : Scene
     {
+        private const float LevelScale = 1.5f;
         // ── Player + entities ─────────────────────────────────────────────────
         private Player            _player;
         private List<Rectangle>   _platforms  = new List<Rectangle>();
@@ -110,8 +111,32 @@ namespace Fridays_Adventure.Scenes
 
             // ── Lava tide ─────────────────────────────────────────────────────
             _lavaY = H + 40;  // starts below screen
+
+            ApplyLevelScale();
         }
 
+                private void ApplyLevelScale()
+        {
+            Rectangle ScaleRect(Rectangle r) => new Rectangle(
+                (int)(r.X * LevelScale),
+                (int)(r.Y * LevelScale),
+                (int)(r.Width * LevelScale),
+                (int)(r.Height * LevelScale));
+
+            for (int i = 0; i < _platforms.Count; i++) _platforms[i] = ScaleRect(_platforms[i]);
+            for (int i = 0; i < _thwomps.Count; i++) _thwomps[i] = ScaleRect(_thwomps[i]);
+            for (int i = 0; i < _thwompY.Count; i++) _thwompY[i] *= LevelScale;
+
+            _gateRect = ScaleRect(_gateRect);
+            _exitDoor = ScaleRect(_exitDoor);
+            _lavaY *= LevelScale;
+
+            _player.X *= LevelScale;
+            _player.Y *= LevelScale;
+            _player.Width = (int)(_player.Width * LevelScale);
+            _player.Height = (int)(_player.Height * LevelScale);
+            _player.ApplySelectedSprite();
+        }
         private void AddThwomp(int x, int restY, int dropY)
         {
             _thwomps.Add(new Rectangle(x, (int)restY, 40, 40));
@@ -356,8 +381,9 @@ namespace Fridays_Adventure.Scenes
             foreach (var wall in _iceWalls)
                 if (wall.IsAlive) wall.Draw(g);
 
-            // ── HUD ───────────────────────────────────────────────────────────
-            SMB3Hud.DrawAll(g, _player, null, W, H);
+            // ── Unified HUD (single call) ─────────────────────────────────────
+            g.ResetTransform();
+            GameHUD.Draw(g, _player, W, H);
         }
 
         private static void DrawBrickBackground(Graphics g, int W, int H)
@@ -401,3 +427,7 @@ namespace Fridays_Adventure.Scenes
         }
     }
 }
+
+
+
+

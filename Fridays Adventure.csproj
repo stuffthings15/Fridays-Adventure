@@ -176,6 +176,7 @@
     <Compile Include="Systems\FloatingText.cs" />
     <Compile Include="Systems\GameConfig.cs" />
     <Compile Include="Systems\GameDirectorExtensions.cs" />
+    <Compile Include="Systems\GameHUD.cs" />
     <Compile Include="Systems\HudHelper.cs" />
     <Compile Include="Systems\LevelEventSystem.cs" />
     <Compile Include="Systems\NarrativeExtensions.cs" />

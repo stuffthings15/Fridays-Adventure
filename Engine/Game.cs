@@ -1,5 +1,6 @@
 using System;
 using System.Drawing;
+using System.Reflection;
 using System.Windows.Forms;
 using Fridays_Adventure.Audio;
 using Fridays_Adventure.Data;
@@ -323,6 +324,22 @@ namespace Fridays_Adventure.Engine
                 if (Input.IsPressed(Keys.F8))
                     TryFailSafeCompleteLevel();
 
+                // Global inventory hotkey during gameplay maps.
+                var scene = Scenes.Current;
+                if (scene != null && IsGameplayScene(scene) && Input.IsPressed(Keys.I))
+                    Scenes.Push(new InventoryScene(GetActiveScenePlayer()));
+
+                // Global medkit quick-use hotkey during gameplay maps.
+                if (scene != null && IsGameplayScene(scene) && Input.IsPressed(Keys.H))
+                {
+                    var player = GetActiveScenePlayer();
+                    if (PowerUpInventory.UseHealthItem(player))
+                    {
+                        Audio.BeepHeal();
+                        SMB3Hud.ShowToast($"Used medkit. Remaining: {PowerUpInventory.HealthItemCount}");
+                    }
+                }
+
                 Audio.Tick(dt);
                 Scenes.Current?.Update(dt);
                 ScreenShake.Update(dt);
@@ -377,7 +394,11 @@ namespace Fridays_Adventure.Engine
         {
             try
             {
-                g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.None;
+                // Crisp nearest-neighbour scaling — prevents sprite/background blurriness.
+                g.SmoothingMode       = System.Drawing.Drawing2D.SmoothingMode.None;
+                g.InterpolationMode   = System.Drawing.Drawing2D.InterpolationMode.NearestNeighbor;
+                g.PixelOffsetMode     = System.Drawing.Drawing2D.PixelOffsetMode.Half;
+                g.CompositingQuality  = System.Drawing.Drawing2D.CompositingQuality.AssumeLinear;
 
                 // Apply screen shake translation before drawing scene.
                 ScreenShake.ApplyTranslation(g);
@@ -524,6 +545,39 @@ namespace Fridays_Adventure.Engine
 
             // Return player to map so progression can continue.
             Scenes.Replace(new OverworldScene());
+        }
+
+        /// <summary>
+        /// Attempts to resolve the active scene's player field for shared UI actions.
+        /// </summary>
+        public Entities.Player GetActiveScenePlayer()
+        {
+            var scene = Scenes.Current;
+            if (scene == null) return null;
+
+            var fi = scene.GetType().GetField("_player", BindingFlags.Instance | BindingFlags.NonPublic);
+            return fi?.GetValue(scene) as Entities.Player;
+        }
+
+        /// <summary>
+        /// Returns true when the current scene is a gameplay map where HUD/inventory hotkeys are valid.
+        /// </summary>
+        private bool IsGameplayScene(Scene scene)
+        {
+            return scene is IslandScene || scene is SkyIslandScene || scene is StormScene ||
+                   scene is BossScene || scene is WarlordBossScene || scene is FortressScene ||
+                   scene is AirshipLevelScene || scene is UnderwaterScene;
+        }
+
+        /// <summary>
+        /// Handles top-HUD click actions (inventory / medkit) for gameplay scenes.
+        /// Returns true when the click is consumed.
+        /// </summary>
+        public bool TryHandleHudClick(Point p)
+        {
+            var scene = Scenes.Current;
+            if (scene == null || !IsGameplayScene(scene)) return false;
+            return SMB3Hud.HandleHudClick(p, GetActiveScenePlayer());
         }
     }
 }

@@ -132,7 +132,7 @@ namespace Fridays_Adventure.Entities
         /// Team 13 (Character Artist)    — archetype drives unique DrawPlaceholder visuals.
         /// </summary>
         public Player(float x, float y)
-            : base(x, y, 32, 54, 100)
+            : base(x, y, 48, 81, 100)
         {
             // Resolve archetype from game singleton; fall back to Miss Friday if unavailable.
             Archetype = Game.Instance?.SelectedCharacter ?? PlayableCharacter.MissFriday;
@@ -542,10 +542,10 @@ namespace Fridays_Adventure.Entities
         /// Also used by slide and dash for brief i-frames.
         /// Team 7 (Gameplay Programmer) — Idea 8.
         /// </summary>
-        public float InvincibilityTimer { get; private set; }
+        public new float InvincibilityTimer { get; private set; }
 
         /// <summary>True while InvincibilityTimer > 0.</summary>
-        public bool IsInvincible => InvincibilityTimer > 0f;
+        public new bool IsInvincible => InvincibilityTimer > 0f;
 
         // ── Team 7 — Idea 9: Combo timer / decay ─────────────────────────────
 
