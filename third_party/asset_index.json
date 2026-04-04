@@ -1,0 +1,116 @@
+{
+  "version": 1,
+  "generatedAt": "2026-04-04T18:25:41Z",
+  "engine": "custom",
+  "runtimeAssetRoot": "Assets/third_party",
+  "records": [
+    {
+      "id": "ambientcg:dirt",
+      "query": "dirt",
+      "assetId": "Ground103",
+      "sourcePage": "https://ambientcg.com/view?id=Ground103",
+      "download": "https://ambientcg.com/get?file=Ground103_1K-JPG.zip",
+      "license": "CC0",
+      "attribution": "ambientCG",
+      "localArchivePath": "third_party/archives/ambientcg/Ground103/Ground103_1K-JPG.zip",
+      "localExtractedPath": "third_party/archives/ambientcg/Ground103",
+      "localRuntimePath": "Assets/third_party/vendor/ambientcg/source-textures/dirt",
+      "runtimeFiles": [
+        "Assets/third_party/vendor/ambientcg/source-textures/dirt/Ground103_1K-JPG_Color.jpg"
+      ],
+      "fetchedAt": "2026-04-04T18:25:37Z"
+    },
+    {
+      "id": "ambientcg:grass",
+      "query": "grass",
+      "assetId": "Grass005",
+      "sourcePage": "https://ambientcg.com/view?id=Grass005",
+      "download": "https://ambientcg.com/get?file=Grass005_1K-JPG.zip",
+      "license": "CC0",
+      "attribution": "ambientCG",
+      "localArchivePath": "third_party/archives/ambientcg/Grass005/Grass005_1K-JPG.zip",
+      "localExtractedPath": "third_party/archives/ambientcg/Grass005",
+      "localRuntimePath": "Assets/third_party/vendor/ambientcg/source-textures/grass",
+      "runtimeFiles": [
+        "Assets/third_party/vendor/ambientcg/source-textures/grass/Grass005_1K-JPG_Color.jpg"
+      ],
+      "fetchedAt": "2026-04-04T18:25:38Z"
+    },
+    {
+      "id": "ambientcg:rock",
+      "query": "rock",
+      "assetId": "Rock063",
+      "sourcePage": "https://ambientcg.com/view?id=Rock063",
+      "download": "https://ambientcg.com/get?file=Rock063_1K-JPG.zip",
+      "license": "CC0",
+      "attribution": "ambientCG",
+      "localArchivePath": "third_party/archives/ambientcg/Rock063/Rock063_1K-JPG.zip",
+      "localExtractedPath": "third_party/archives/ambientcg/Rock063",
+      "localRuntimePath": "Assets/third_party/vendor/ambientcg/source-textures/rock",
+      "runtimeFiles": [
+        "Assets/third_party/vendor/ambientcg/source-textures/rock/Rock063_1K-JPG_Color.jpg"
+      ],
+      "fetchedAt": "2026-04-04T18:25:39Z"
+    },
+    {
+      "id": "ambientcg:wood",
+      "query": "wood",
+      "assetId": "Wood095",
+      "sourcePage": "https://ambientcg.com/view?id=Wood095",
+      "download": "https://ambientcg.com/get?file=Wood095_1K-JPG.zip",
+      "license": "CC0",
+      "attribution": "ambientCG",
+      "localArchivePath": "third_party/archives/ambientcg/Wood095/Wood095_1K-JPG.zip",
+      "localExtractedPath": "third_party/archives/ambientcg/Wood095",
+      "localRuntimePath": "Assets/third_party/vendor/ambientcg/source-textures/wood",
+      "runtimeFiles": [
+        "Assets/third_party/vendor/ambientcg/source-textures/wood/Wood095_1K-JPG_Color.jpg"
+      ],
+      "fetchedAt": "2026-04-04T18:25:41Z"
+    },
+    {
+      "id": "kenney-input-prompts-pixel-16",
+      "sourcePage": "https://opengameart.org/content/input-prompts-pixel-16%C3%97",
+      "download": "https://opengameart.org/sites/default/files/input-prompts-pixel-16.zip",
+      "license": "CC0",
+      "attribution": "Credit \"Kenney.nl\" or \"www.kenney.nl\", not mandatory.",
+      "localArchivePath": "third_party/archives/kenney-input-prompts-pixel-16/input-prompts-pixel-16.zip",
+      "localExtractedPath": "third_party/extracted/kenney-input-prompts-pixel-16",
+      "localRuntimePath": "Assets/third_party/vendor/kenney/input-prompts-pixel-16",
+      "fetchedAt": "2026-04-04T18:25:29Z"
+    },
+    {
+      "id": "kenney-pixel-platformer",
+      "sourcePage": "https://opengameart.org/content/pixel-platformer-0",
+      "download": "https://opengameart.org/sites/default/files/kenney_pixel-platformer.zip",
+      "license": "CC0",
+      "attribution": "Credit \"Kenney.nl\" or \"www.kenney.nl\", not mandatory.",
+      "localArchivePath": "third_party/archives/kenney-pixel-platformer/kenney_pixel-platformer.zip",
+      "localExtractedPath": "third_party/extracted/kenney-pixel-platformer",
+      "localRuntimePath": "Assets/third_party/vendor/kenney/pixel-platformer",
+      "fetchedAt": "2026-04-04T18:25:29Z"
+    },
+    {
+      "id": "kenney-pixel-platformer-blocks",
+      "sourcePage": "https://opengameart.org/content/pixel-platformer-blocks",
+      "download": "https://opengameart.org/sites/default/files/pixel_platformer_blocks.zip",
+      "license": "CC0",
+      "attribution": "Credit \"Kenney.nl\" or \"www.kenney.nl\", not mandatory.",
+      "localArchivePath": "third_party/archives/kenney-pixel-platformer-blocks/pixel_platformer_blocks.zip",
+      "localExtractedPath": "third_party/extracted/kenney-pixel-platformer-blocks",
+      "localRuntimePath": "Assets/third_party/vendor/kenney/pixel-platformer-blocks",
+      "fetchedAt": "2026-04-04T18:25:29Z"
+    },
+    {
+      "id": "kenney-pixel-ui-pack",
+      "sourcePage": "https://opengameart.org/content/pixel-ui-pack-750-assets",
+      "download": "https://opengameart.org/sites/default/files/PixelUIpack.zip",
+      "license": "CC0",
+      "attribution": "Credit \"Kenney.nl\" or \"www.kenney.nl\", not mandatory.",
+      "localArchivePath": "third_party/archives/kenney-pixel-ui-pack/PixelUIpack.zip",
+      "localExtractedPath": "third_party/extracted/kenney-pixel-ui-pack",
+      "localRuntimePath": "Assets/third_party/vendor/kenney/pixel-ui-pack",
+      "fetchedAt": "2026-04-04T18:25:29Z"
+    }
+  ]
+}

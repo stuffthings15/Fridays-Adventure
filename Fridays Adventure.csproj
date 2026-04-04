@@ -101,12 +101,16 @@
     <Compile Include="Entities\ComboAssist.cs" />
     <Compile Include="Entities\Enemy.cs" />
     <Compile Include="Entities\Entity.cs" />
+    <Compile Include="Entities\Fireball.cs" />
+    <Compile Include="Entities\HealthPickup.cs" />
     <Compile Include="Entities\Item.cs" />
     <Compile Include="Entities\LevelEntities.cs" />
     <Compile Include="Entities\MovingPlatform.cs" />
     <Compile Include="Entities\OrcaCompanion.cs" />
     <Compile Include="Entities\Player.cs" />
     <Compile Include="Entities\PowerUp.cs" />
+    <Compile Include="Entities\SMB3EnemyTypes.cs" />
+    <Compile Include="Entities\StarCoinPickup.cs" />
     <Compile Include="Entities\SwanCompanion.cs" />
     <Compile Include="Form1.cs">
       <SubType>Form</SubType>
@@ -131,6 +135,7 @@
     <Compile Include="Rules\RescueSystem.cs" />
     <Compile Include="Scenes\AchievementsScene.cs" />
     <Compile Include="Scenes\AirshipLevelScene.cs" />
+    <Compile Include="Scenes\BossRushScene.cs" />
     <Compile Include="Scenes\BossScene.cs" />
     <Compile Include="Scenes\CardMiniGameScene.cs" />
     <Compile Include="Scenes\CardRouletteScene.cs" />
@@ -153,14 +158,17 @@
     <Compile Include="Scenes\OptionsScene.cs" />
     <Compile Include="Scenes\PauseScene.cs" />
     <Compile Include="Scenes\QAReportScene.cs" />
+    <Compile Include="Scenes\SaveSlotScene.cs" />
     <Compile Include="Scenes\Scene.cs" />
     <Compile Include="Scenes\SettingsScene.cs" />
     <Compile Include="Scenes\SkyIslandScene.cs" />
     <Compile Include="Scenes\StormScene.cs" />
     <Compile Include="Scenes\TitleScene.cs" />
+    <Compile Include="Scenes\ToadHouseScene.cs" />
     <Compile Include="Scenes\UnderwaterScene.cs" />
     <Compile Include="Scenes\VictoryScene.cs" />
     <Compile Include="Scenes\WarlordBossScene.cs" />
+    <Compile Include="Scenes\WorldTitleScene.cs" />
     <Compile Include="Systems\AchievementSystem.cs" />
     <Compile Include="Systems\BuildEngineerExtensions.cs" />
     <Compile Include="Systems\BuildInfo.cs" />
@@ -177,6 +185,7 @@
     <Compile Include="Systems\GameConfig.cs" />
     <Compile Include="Systems\GameDirectorExtensions.cs" />
     <Compile Include="Systems\GameHUD.cs" />
+    <Compile Include="Systems\HammerBrosSystem.cs" />
     <Compile Include="Systems\HudHelper.cs" />
     <Compile Include="Systems\LevelEventSystem.cs" />
     <Compile Include="Systems\NarrativeExtensions.cs" />
@@ -192,6 +201,7 @@
     <Compile Include="Systems\SceneTransition.cs" />
     <Compile Include="Systems\ScreenShake.cs" />
     <Compile Include="Systems\SessionStats.cs" />
+    <Compile Include="Systems\SMB3BlockSystem.cs" />
     <Compile Include="Systems\SMB3Hud.cs" />
     <Compile Include="Systems\SMB3PhysicsExtensions.cs" />
     <Compile Include="Systems\SMB3SuitSystem.cs" />
@@ -220,6 +230,7 @@
     <None Include="docs\00_START_HERE_MASTER_INDEX.md" />
     <None Include="docs\ACCELERATED_COMPLETION_ROADMAP.md" />
     <None Include="docs\AI_DOCS.md" />
+    <None Include="docs\ART_ASSETS_NEEDED.md" />
     <None Include="docs\COMPREHENSIVE_TEAM_FEATURE_AUDIT.md" />
     <None Include="docs\DOCUMENTATION_INDEX.md" />
     <None Include="docs\FEATURE_COMPLETION_AUDIT.md" />
@@ -256,6 +267,10 @@
     <None Include="docs\SESSION_4_EXACT_CHANGES.md" />
     <None Include="docs\SESSION_4_FEATURE_VERIFICATION_REPORT.md" />
     <None Include="docs\SESSION_4_LEGAL_VERIFICATION.md" />
+    <None Include="docs\SESSION_5_FIXES_APPLIED.md" />
+    <None Include="docs\SESSION_6_FEATURES_IMPLEMENTED.md" />
+    <None Include="docs\SESSION_7_PROGRESS.md" />
+    <None Include="docs\THIRD_PARTY_ASSETS.md" />
     <None Include="docs\WEEK_10_LOG_TEMPLATE.md" />
     <None Include="Properties\Settings.settings">
       <Generator>SettingsSingleFileGenerator</Generator>
@@ -268,6 +283,10 @@
     </Compile>
     <None Include="FridaysAdventure.snk" />
     <None Include="README.md" />
+    <None Include="third_party\asset_index.json" />
+    <None Include="third_party\asset_manifest.json" />
+    <None Include="Tools\fetch_ambientcg_textures.py" />
+    <None Include="Tools\fetch_assets.py" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
@@ -553,7 +572,5 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
-  <ItemGroup>
-    <Folder Include="Tools\" />
-  </ItemGroup>
+  <ItemGroup />
 </Project>

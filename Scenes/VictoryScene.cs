@@ -22,6 +22,7 @@ namespace Fridays_Adventure.Scenes
         private float     _timer;
         private Rectangle _menuBtn;
         private Rectangle _continueBtn;
+        private Rectangle _newGamePlusBtn;
 
         private static readonly Font _titleFont = new Font("Courier New", 26, FontStyle.Bold);
         private static readonly Font _subFont   = new Font("Courier New", 12, FontStyle.Bold);
@@ -70,8 +71,10 @@ namespace Fridays_Adventure.Scenes
             if (HandleDevMenuClick(p)) return;
             if (_timer < 0.6f) return;
 
-            if (_continueBtn.Contains(p)) DoContinue();
-            if (_menuBtn.Contains(p))     GoToMenu();
+            if (_continueBtn.Contains(p))     DoContinue();
+            if (_menuBtn.Contains(p))         GoToMenu();
+            if (_newGamePlusBtn != default &&
+                _newGamePlusBtn.Contains(p))  DoNewGamePlus();
         }
 
         /// <summary>Proceeds to the next scene (overworld, credits, etc.).</summary>
@@ -87,6 +90,22 @@ namespace Fridays_Adventure.Scenes
         private void GoToMenu()
         {
             Game.Instance.Scenes.Replace(new TitleScene());
+        }
+
+        /// <summary>
+        /// Starts a New Game+ run: preserves character rank, enables the NG+ difficulty flag,
+        /// resets world progress, then goes back to CharacterSelect.
+        /// Phase 3 — Team 1 (Game Director) Idea 1: New Game+ Mode.
+        /// </summary>
+        private void DoNewGamePlus()
+        {
+            Game.Instance.NewGamePlus   = true;
+            Game.Instance.CurrentLevel  = 0;
+            Game.Instance.WorldNumber   = 1;
+            Game.Instance.LevelNumber   = 1;
+            Game.Instance.LevelElapsedSeconds = 0f;
+            // Keep bounty, berries, and crew bonds — they carry over in NG+
+            Game.Instance.Scenes.Replace(new CharacterSelectScene());
         }
 
         // ── Draw ─────────────────────────────────────────────────────────────
@@ -145,6 +164,21 @@ namespace Fridays_Adventure.Scenes
             DrawButton(g, _continueBtn, "CONTINUE", Color.FromArgb(30, 120, 30));
             // Menu button (red-ish)
             DrawButton(g, _menuBtn, "MAIN MENU", Color.FromArgb(120, 30, 30));
+
+            // ── New Game+ button (only after full game completion) ────────────
+            bool isFullClear = _title.Contains("CONQUERED") || _title.Contains("COMPLETE");
+            if (isFullClear)
+            {
+                var ngpBtn = new Rectangle(W / 2 - btnW / 2, btnY + btnH + 12, btnW, btnH);
+                DrawButton(g, ngpBtn, "NEW GAME+", Color.FromArgb(80, 0, 130));
+                // Store rect so HandleClick can detect it
+                _newGamePlusBtn = ngpBtn;
+                SizeF ngsz = g.MeasureString("Harder enemies, keep your rank!", _bodyFont);
+                using (var br = new SolidBrush(Color.MediumPurple))
+                    g.DrawString("Harder enemies, keep your rank!",
+                        _bodyFont, br,
+                        (W - ngsz.Width) / 2f, btnY + btnH * 2 + 22);
+            }
 
             // ── Control hints ────────────────────────────────────────────────
             if (_timer > 0.6f)

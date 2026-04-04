@@ -64,10 +64,14 @@ namespace Fridays_Adventure.Scenes
             _rows.Add(new Row { Type = RowType.MusicVol, Label = "Music Volume" });
             _rows.Add(new Row { Type = RowType.SfxVol,   Label = "SFX Volume"   });
             _rows.Add(new Row { Type = RowType.HowToPlayBtn, Label = "How To Play / Controls" });
-            
+
             // PHASE 2 - Team 9: UI Programmer — Settings Menu Integration
             _rows.Add(new Row { Type = RowType.ToolAction, Label = "Game Settings", ToolAction = OpenSettings });
-            
+
+            // PHASE 2 - Team 12: Art Director — CRT scanline filter toggle
+            string crtLabel = Game.Instance.CrtFilterEnabled ? "CRT Filter: ON  [Toggle]" : "CRT Filter: OFF [Toggle]";
+            _rows.Add(new Row { Type = RowType.ToolAction, Label = crtLabel, ToolAction = ToggleCrtFilter });
+
             _rows.Add(new Row { Type = RowType.Header,   Label = "PLAYLISTS" });
             foreach (string mood in new[] { "overworld", "combat", "island", "boss" })
             {
@@ -87,6 +91,12 @@ namespace Fridays_Adventure.Scenes
 
             _rows.Add(new Row { Type = RowType.BackBtn, Label = "Back" });
             _sel = Math.Max(0, Math.Min(_sel, _rows.Count - 1));
+        }
+
+        private static void ToggleCrtFilter()
+        {
+            Game.Instance.CrtFilterEnabled = !Game.Instance.CrtFilterEnabled;
+            SMB3Hud.ShowToast(Game.Instance.CrtFilterEnabled ? "CRT Filter: ON" : "CRT Filter: OFF");
         }
 
         private List<string> ScanTracks(string mood)

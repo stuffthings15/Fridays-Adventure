@@ -119,7 +119,72 @@ namespace Fridays_Adventure.Systems
             DrawScore(g);
             DrawCoinCounter(g, W);
 
+            // PHASE 3 additions
+            DrawActiveSuitIcon(g, W);    // Team 9 — active power-up suit icon
+            DrawStarCoins(g, W);         // Team 9 — 3 star coins per level
+
             DrawTopHudQuickAccess(g, W);
+        }
+
+        // ── PHASE 3: Active suit icon (Team 9 — UI Programmer) ───────────────
+        /// <summary>
+        /// Draws the current power-up suit as a small icon in the top HUD.
+        /// Team 9 (UI Programmer) — Phase 3, Idea 2.
+        /// </summary>
+        private static void DrawActiveSuitIcon(Graphics g, int W)
+        {
+            var suit = PowerUpInventory.ActiveSuit;
+            if (suit == SuitType.None) return;
+
+            int ix = W - 200;
+            int iy = 6;
+
+            // Background pip
+            using (var br = new SolidBrush(Color.FromArgb(180, 20, 20, 40)))
+                g.FillRectangle(br, ix - 4, iy - 2, 90, 22);
+
+            Color suitColor;
+            string suitLabel;
+            switch (suit)
+            {
+                case SuitType.Mushroom:   suitColor = Color.FromArgb(220, 60, 60);    suitLabel = "♥ SUPER";   break;
+                case SuitType.FireFlower: suitColor = Color.OrangeRed;                suitLabel = "★ FIRE";    break;
+                case SuitType.Leaf:       suitColor = Color.FromArgb(60, 200, 60);    suitLabel = "✦ LEAF";    break;
+                case SuitType.Star:       suitColor = Color.Gold;                     suitLabel = "★ STAR";    break;
+                default:                  suitColor = Color.White;                    suitLabel = suit.ToString().ToUpper(); break;
+            }
+
+            using (var f = new Font("Courier New", 9, FontStyle.Bold))
+            using (var br = new SolidBrush(suitColor))
+                g.DrawString(suitLabel, f, br, ix, iy + 2);
+        }
+
+        // ── PHASE 3: Star coins (Team 9 — UI Programmer) ─────────────────────
+        /// <summary>
+        /// Draws 3 star coin indicators (filled/empty) in the top HUD.
+        /// Team 9 (UI Programmer) — Phase 3, Idea 1.
+        /// </summary>
+        private static void DrawStarCoins(Graphics g, int W)
+        {
+            int total = Game.Instance.StarCoinsThisLevel;
+            int cx = W / 2 + 80;
+            int cy = 8;
+
+            using (var f = new Font("Courier New", 8, FontStyle.Bold))
+                g.DrawString("★", f, Brushes.DimGray, cx - 18, cy);
+
+            for (int i = 0; i < 3; i++)
+            {
+                bool have = total > i;
+                int sx = cx + i * 20;
+                // Star outline
+                using (var pen = new Pen(Color.FromArgb(180, Color.Gold), 1))
+                    g.DrawEllipse(pen, sx, cy, 14, 14);
+                // Fill if collected
+                if (have)
+                    using (var br = new SolidBrush(Color.Gold))
+                        g.FillEllipse(br, sx + 2, cy + 2, 10, 10);
+            }
         }
 
         /// <summary>

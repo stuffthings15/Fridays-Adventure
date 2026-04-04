@@ -50,10 +50,31 @@ namespace Fridays_Adventure.Scenes
             string path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory,
                                        "Assets", "Sprites", "bg_overworld.png");
             if (File.Exists(path)) _bg = new Bitmap(path);
+
+            // Phase 3 — Hammer Bros patrol spawns (two per chapter style).
+            HammerBrosSystem.Spawn("sky", "harbor");
+
             Game.Instance.Audio.ContinueOrPlay("overworld");
         }
 
         public override void OnExit()   { _bg?.Dispose(); _bg = null; }
+
+        // World names for the SMB3 WorldTitleScene card (1-indexed by world number)
+        private static readonly string[] WorldNames =
+        {
+            "",                     // [0] unused
+            "Dinosaur Shores",      // World 1
+            "The Grand Line",       // World 2
+            "Tide of the Lost",     // World 3
+        };
+
+        // Island IDs that count as regular island nodes for Toad House eligibility
+        private static readonly System.Collections.Generic.HashSet<string> IslandNodeIds =
+            new System.Collections.Generic.HashSet<string>
+            { "dino","sky","wano","harbor","coral","tundra","dive_gate","sunken_gate","kelp","boiling_vent","abyss" };
+
+        private static readonly Random _rng = new Random();
+
         public override void OnResume()
         {
             Game.Instance.Audio.ContinueOrPlay("overworld");
@@ -72,18 +93,44 @@ namespace Fridays_Adventure.Scenes
                 }
 
                 // Increment the campaign level counter for main-content nodes.
-                // Bosses and training scenes also count as campaign progress.
                 if (_pendingNode.Type != NodeType.Start)
                     Game.Instance.CurrentLevel++;
 
-                // ── END CONDITION: Game ends after completing ALL ISLANDS ──
-                // Check if all islands have been visited and completed.
+                // ── END CONDITION ─────────────────────────────────────────────
                 if (AllIslandsCompleted())
                 {
                     Game.Instance.Scenes.Replace(new VictoryScene(
                         "ALL ISLANDS CONQUERED!",
                         $"All 11 Islands Explored   Score: {Game.Instance.PlayerBounty:N0}",
                         () => Game.Instance.Scenes.Replace(new CreditsScene())));
+                    return;
+                }
+
+                // ── Achievement: first island complete ────────────────────────
+                AchievementSystem.Grant("ach_first_step");
+
+                // ── World-title card when entering a new world (every 3 islands) ─
+                int lvl = Game.Instance.CurrentLevel;
+                if (lvl > 1 && (lvl - 1) % 3 == 0)
+                {
+                    int worldNum  = (lvl - 1) / 3 + 1;
+                    string wName  = worldNum < WorldNames.Length ? WorldNames[worldNum] : $"World {worldNum}";
+                    Game.Instance.WorldNumber = worldNum;
+                    Game.Instance.LevelNumber = 1;
+                    Game.Instance.Scenes.Push(new WorldTitleScene(worldNum, wName, () =>
+                    {
+                        Game.Instance.Scenes.Pop();  // pop WorldTitleScene → back to overworld
+                        Game.Instance.Audio.ContinueOrPlay("overworld");
+                    }));
+                    _pendingNode = null;
+                    return;
+                }
+
+                // ── Toad House: 30 % chance after completing any island node ──
+                if (IslandNodeIds.Contains(_pendingNode.Id) && _rng.NextDouble() < 0.30)
+                {
+                    Game.Instance.Scenes.Push(new ToadHouseScene());
+                    _pendingNode = null;
                     return;
                 }
 
@@ -200,16 +247,43 @@ namespace Fridays_Adventure.Scenes
         {
             _anim += dt;
 
-            // Team 1 (Game Director) — Idea 7: N-Spade mini-game entry.
-            // If the player has enough coins and hasn't seen the hint this world,
-            // allow quick access to the card mini-game with N.
+            // ── Hammer Bros patrol (Phase 3 — Team 1 Ideas 8–10) ──────────────
+            HammerBrosSystem.Update(
+                dt,
+                _current?.Id,
+                nodeId =>
+                {
+                    var n = Find(nodeId);
+                    return (IReadOnlyList<string>)n?.Links;
+                });
+
+            if (!string.IsNullOrEmpty(HammerBrosSystem.PendingEncounterNodeId))
+            {
+                var encounterNodeId = HammerBrosSystem.PendingEncounterNodeId;
+                HammerBrosSystem.PendingEncounterNodeId = null;
+
+                var hbNode = Find(encounterNodeId) ?? _current ?? _nodes[0];
+                _pendingNode = hbNode;
+
+                // Reuse island pipeline for an encounter (intro card + return flow)
+                LaunchLevel(hbNode, () => new IslandScene("hammer_bros", "Hammer Bros!"));
+                return;
+            }
+
+            // ── N-Spade mini-game auto-trigger after 80+ berries ─────────────
+            // Team 1 (Game Director) — Idea 7: N-Spade card entry.
+            bool enoughBerries = Game.Instance.TotalBerriesCollected >= 80;
             if (Game.Instance.Input.IsPressed(System.Windows.Forms.Keys.N)
-                && GameDirector.Instance.ShouldShowNSpadeHint())
+                && enoughBerries && !GameDirector.Instance.NSpadeHintShown)
             {
                 GameDirector.Instance.NSpadeHintShown = true;
                 _status = "N-SPADE! Match cards to win items.";
                 Game.Instance.Scenes.Push(new CardMiniGameScene());
                 return;
+            }
+            else if (enoughBerries && !GameDirector.Instance.NSpadeHintShown)
+            {
+                _status = "You have 80+ berries! Press N for N-Spade card game!";
             }
 
             if (Game.Instance.Input.PausePressed)
@@ -235,27 +309,27 @@ namespace Fridays_Adventure.Scenes
 
             if (node.Id == "storm1")
             {
-                Game.Instance.Scenes.Push(new StormScene());
+                LaunchLevel(node, () => new StormScene());
             }
             else if (node.Id == "blockade")
             {
                 // Team 5 (Level Designer) — Fortress level integration.
-                Game.Instance.Scenes.Push(new FortressScene());
+                LaunchLevel(node, () => new FortressScene());
             }
             else if (node.Id == "warlord1")
             {
                 TriggerDialogueThen(Dialogues.MarineEncounter(), () =>
-                    Game.Instance.Scenes.Push(new WarlordBossScene(WarlordConfig.FireLordSudo())));
+                    LaunchLevel(node, () => new WarlordBossScene(WarlordConfig.FireLordSudo())));
             }
             else if (node.Id == "centipede_final")
             {
                 TriggerDialogueThen(Dialogues.MarineEncounter(), () =>
-                    Game.Instance.Scenes.Push(new WarlordBossScene(WarlordConfig.CentipedeOfTheDeep())));
+                    LaunchLevel(node, () => new WarlordBossScene(WarlordConfig.CentipedeOfTheDeep())));
             }
             else if (node.Id == "dive_gate")
             {
                 // Team 5 (Level Designer) — underwater chapter entry point.
-                Game.Instance.Scenes.Push(new UnderwaterScene());
+                LaunchLevel(node, () => new UnderwaterScene());
             }
             else if (node.Id == "sunken_gate")
             {
@@ -263,19 +337,19 @@ namespace Fridays_Adventure.Scenes
                 Game.Instance.Save.SetFlag(NarrativeFlags.SunkenGateVisited);
                 if (firstVisit)
                     TriggerDialogueThen(Dialogues.OrcaJoinsCrew(), () =>
-                        Game.Instance.Scenes.Push(new UnderwaterScene()));
+                        LaunchLevel(node, () => new UnderwaterScene()));
                 else
-                    Game.Instance.Scenes.Push(new UnderwaterScene());
+                    LaunchLevel(node, () => new UnderwaterScene());
             }
             else if (node.Id == "kelp")
             {
                 Game.Instance.Save.SetFlag(NarrativeFlags.KelpVisited);
-                Game.Instance.Scenes.Push(new UnderwaterScene());
+                LaunchLevel(node, () => new UnderwaterScene());
             }
             else if (node.Id == "boiling_vent")
             {
                 Game.Instance.Save.SetFlag(NarrativeFlags.BoilingVentVisited);
-                Game.Instance.Scenes.Push(new UnderwaterScene());
+                LaunchLevel(node, () => new UnderwaterScene());
             }
             else if (node.Id == "abyss")
             {
@@ -283,14 +357,14 @@ namespace Fridays_Adventure.Scenes
                 Game.Instance.Save.SetFlag(NarrativeFlags.AbyssVisited);
                 if (firstVisit)
                     TriggerDialogueThen(Dialogues.SwanJoinsCrew(), () =>
-                        Game.Instance.Scenes.Push(new UnderwaterScene()));
+                        LaunchLevel(node, () => new UnderwaterScene()));
                 else
-                    Game.Instance.Scenes.Push(new UnderwaterScene());
+                    LaunchLevel(node, () => new UnderwaterScene());
             }
             else if (node.Type == NodeType.Boss)
             {
                 TriggerDialogueThen(Dialogues.MarineEncounter(), () =>
-                    Game.Instance.Scenes.Push(new BossScene()));
+                    LaunchLevel(node, () => new BossScene()));
             }
             else if (node.Id == "sky")
             {
@@ -298,9 +372,9 @@ namespace Fridays_Adventure.Scenes
                 Game.Instance.Save.SetFlag("sky_visited");
                 if (firstVisit)
                     TriggerDialogueThen(Dialogues.MeetAmelia(), () =>
-                        Game.Instance.Scenes.Push(new SkyIslandScene()));
+                        LaunchLevel(node, () => new SkyIslandScene()));
                 else
-                    Game.Instance.Scenes.Push(new SkyIslandScene());
+                    LaunchLevel(node, () => new SkyIslandScene());
             }
             else if (node.Id == "wano")
             {
@@ -308,9 +382,9 @@ namespace Fridays_Adventure.Scenes
                 Game.Instance.Save.SetFlag("wano_visited");
                 if (firstVisit)
                     TriggerDialogueThen(Dialogues.BladeSamuriGate(), () =>
-                        Game.Instance.Scenes.Push(new IslandScene(node.Id, node.Name)));
+                        LaunchLevel(node, () => new IslandScene(node.Id, node.Name)));
                 else
-                    Game.Instance.Scenes.Push(new IslandScene(node.Id, node.Name));
+                    LaunchLevel(node, () => new IslandScene(node.Id, node.Name));
             }
             else if (node.Id == "harbor")
             {
@@ -318,9 +392,9 @@ namespace Fridays_Adventure.Scenes
                 Game.Instance.Save.SetFlag(NarrativeFlags.HarborVisited);
                 if (firstVisit)
                     TriggerDialogueThen(Dialogues.MeetOrca(), () =>
-                        Game.Instance.Scenes.Push(new IslandScene(node.Id, node.Name)));
+                        LaunchLevel(node, () => new IslandScene(node.Id, node.Name)));
                 else
-                    Game.Instance.Scenes.Push(new IslandScene(node.Id, node.Name));
+                    LaunchLevel(node, () => new IslandScene(node.Id, node.Name));
             }
             else if (node.Id == "coral")
             {
@@ -328,24 +402,24 @@ namespace Fridays_Adventure.Scenes
                 Game.Instance.Save.SetFlag(NarrativeFlags.CoralVisited);
                 if (firstVisit)
                     TriggerDialogueThen(Dialogues.MeetSwan(), () =>
-                        Game.Instance.Scenes.Push(new IslandScene(node.Id, node.Name)));
+                        LaunchLevel(node, () => new IslandScene(node.Id, node.Name)));
                 else
-                    Game.Instance.Scenes.Push(new IslandScene(node.Id, node.Name));
+                    LaunchLevel(node, () => new IslandScene(node.Id, node.Name));
             }
             else if (node.Id == "tundra")
             {
                 Game.Instance.Save.SetFlag(NarrativeFlags.TundraVisited);
-                Game.Instance.Scenes.Push(new IslandScene(node.Id, node.Name));
+                LaunchLevel(node, () => new IslandScene(node.Id, node.Name));
             }
             else if (node.Id == "storm2")
             {
                 // Team 5 (Level Designer) — Airship level integration.
-                Game.Instance.Scenes.Push(new AirshipLevelScene());
+                LaunchLevel(node, () => new AirshipLevelScene(), isAirship: true);
             }
             else if (node.Id == "warlord2")
             {
                 TriggerDialogueThen(Dialogues.MarineEncounter(), () =>
-                    Game.Instance.Scenes.Push(new WarlordBossScene(WarlordConfig.StormLordVanta())));
+                    LaunchLevel(node, () => new WarlordBossScene(WarlordConfig.StormLordVanta())));
             }
             else if (node.Id == "dino")
             {
@@ -353,12 +427,12 @@ namespace Fridays_Adventure.Scenes
                 Game.Instance.Save.SetFlag("dino_visited");
                 if (firstVisit)
                     TriggerDialogueThen(Dialogues.MeetFinn(), () =>
-                        Game.Instance.Scenes.Push(new IslandScene(node.Id, node.Name)));
+                        LaunchLevel(node, () => new IslandScene(node.Id, node.Name)));
                 else
-                    Game.Instance.Scenes.Push(new IslandScene(node.Id, node.Name));
+                    LaunchLevel(node, () => new IslandScene(node.Id, node.Name));
             }
             else if (node.Type == NodeType.Island)
-                Game.Instance.Scenes.Push(new IslandScene(node.Id, node.Name));
+                LaunchLevel(node, () => new IslandScene(node.Id, node.Name));
         }
 
         private void TriggerDialogueThen(DialogueSequence seq, Action then)
@@ -367,14 +441,33 @@ namespace Fridays_Adventure.Scenes
             var nodeToCredit = _current;
             seq.OnDone = _ =>
             {
-                // Set _pendingNode just before the gameplay scene is pushed so that
-                // OnResume (which fires when dialogue pops) still sees false while the
-                // callback hasn't run yet.  By the time the gameplay scene eventually
-                // pops and triggers OnResume, _pendingNode will be set.
                 _pendingNode = nodeToCredit;
                 then?.Invoke();
             };
             Game.Instance.Scenes.Push(new DialogueScene(seq));
+        }
+
+        /// <summary>
+        /// Wraps a level-scene factory in an SMB3-style LevelIntroScene card,
+        /// then replaces it with the actual level. Handles WorldNumber/LevelNumber
+        /// label update for the HUD automatically.
+        /// </summary>
+        private void LaunchLevel(OverworldNode node, Func<Scene> factory,
+                                 bool isAirship = false, bool isToadHouse = false)
+        {
+            // Advance the in-level counter so the HUD reads e.g. "WORLD 1-3"
+            Game.Instance.LevelNumber = Game.Instance.CurrentLevel;
+            Game.Instance.LevelElapsedSeconds = 0f;
+
+            var intro = new LevelIntroScene(
+                Game.Instance.WorldNumber,
+                Game.Instance.LevelNumber,
+                node.Name,
+                nextScene: () => Game.Instance.Scenes.Replace(factory()),
+                isAirship:  isAirship,
+                isToadHouse: isToadHouse);
+
+            Game.Instance.Scenes.Push(intro);
         }
 
         public override void Draw(Graphics g)
@@ -384,6 +477,16 @@ namespace Fridays_Adventure.Scenes
             DrawOcean(g, W, H);
             DrawLinks(g);
             DrawNodes(g);
+
+            // Draw Hammer Bros patrol icons on top of the map nodes.
+            HammerBrosSystem.Draw(g,
+        nodeId =>
+        {
+            var n = Find(nodeId);
+            return n == null ? (Point?)null : n.Pos;
+        },
+        _anim);
+
             DrawShip(g);
             DrawIslandChecklist(g, W, H);  // ── Island completion checklist
             DrawHUD(g, W, H);

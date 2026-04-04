@@ -17,6 +17,14 @@ namespace Fridays_Adventure.Entities
         public bool IsSuppressed  => HasEffect(StatusEffect.Suppressed);
         public float MeltRisk     { get; set; }
 
+        // ── Phase 2: Team 4 — Stamina system ──────────────────────────────────
+        /// <summary>Current sprint stamina value [0..MaxStamina].</summary>
+        public float Stamina { get; private set; } = 100f;
+        /// <summary>Maximum stamina for sprinting.</summary>
+        public float MaxStamina { get; } = 100f;
+        /// <summary>True while sprint is actively consuming stamina this frame.</summary>
+        public bool IsSprinting { get; private set; }
+
         /// <summary>Maximum number of jumps before landing (2 = double jump).</summary>
         public int MaxJumps       { get; set; } = 2;
 
@@ -26,16 +34,35 @@ namespace Fridays_Adventure.Entities
         private readonly IceWall     _iceWall   = new IceWall();
         private readonly FlashFreeze _flash     = new FlashFreeze();
         private readonly BreakWall   _breakWall = new BreakWall();
+        // Character-unique E-key abilities (null for MissFriday who uses FlashFreeze)
+        private readonly TidalSlam   _tidalSlam = new TidalSlam();
+        private readonly WingDash    _wingDash  = new WingDash();
 
         public float IceWallCooldownProgress     => _iceWall.Progress;
-        public float FlashFreezeCooldownProgress => _flash.Progress;
+        public float FlashFreezeCooldownProgress =>
+            Archetype == PlayableCharacter.Orca  ? _tidalSlam.Progress :
+            Archetype == PlayableCharacter.Swan  ? _wingDash.Progress  :
+            _flash.Progress;
         public float BreakWallCooldownProgress   => _breakWall.Progress;
         public float IceWallCooldownRemaining     => _iceWall.Cooldown;
-        public float FlashFreezeCooldownRemaining => _flash.Cooldown;
+        public float FlashFreezeCooldownRemaining =>
+            Archetype == PlayableCharacter.Orca  ? _tidalSlam.Cooldown :
+            Archetype == PlayableCharacter.Swan  ? _wingDash.Cooldown  :
+            _flash.Cooldown;
         public float BreakWallCooldownRemaining   => _breakWall.Cooldown;
         public bool  IceWallReady    => _iceWall.IsReady;
-        public bool  FlashFreezeReady => _flash.IsReady;
+        public bool  FlashFreezeReady =>
+            Archetype == PlayableCharacter.Orca  ? _tidalSlam.IsReady :
+            Archetype == PlayableCharacter.Swan  ? _wingDash.IsReady  :
+            _flash.IsReady;
         public bool  BreakWallReady  => _breakWall.IsReady;
+
+        /// <summary>Radius of Orca's Tidal Slam AOE.</summary>
+        public float TidalSlamRadius => _tidalSlam.Radius;
+        /// <summary>Damage dealt by Orca's Tidal Slam.</summary>
+        public int   TidalSlamDamage => _tidalSlam.SlamDamage;
+        /// <summary>Horizontal speed of Swan's Wing Dash.</summary>
+        public float WingDashSpeed   => _wingDash.DashSpeed;
 
         // ── Team 7: Wall Jump ─────────────────────────────────────────────────
         /// <summary>True when the player is pressing against a left wall this frame.</summary>
@@ -62,6 +89,31 @@ namespace Fridays_Adventure.Entities
         // ── Team 7: Combo tracking ────────────────────────────────────────────
         /// <summary>How many enemies have been stomped in the current unbroken chain.</summary>
         public int StompChain { get; set; }
+
+        /// <summary>
+        /// Seconds remaining before the stomp chain decays back to zero.
+        /// Phase 2 — Team 4 (Lead Game Designer) Idea 2: combo multiplier decay.
+        /// </summary>
+        public float StompChainTimer { get; private set; }
+        private const float StompChainWindow = 2.5f;
+
+        /// <summary>
+        /// Registers a stomp in the combo chain and refreshes the decay timer.
+        /// </summary>
+        public void RegisterStompChain()
+        {
+            StompChain++;
+            StompChainTimer = StompChainWindow;
+        }
+
+        /// <summary>
+        /// Resets the stomp chain and timer.
+        /// </summary>
+        public void ResetStompChain()
+        {
+            StompChain = 0;
+            StompChainTimer = 0f;
+        }
 
         // ── Team 4: Lead Game Designer — character passive flags ──────────────
         /// <summary>
@@ -161,11 +213,17 @@ namespace Fridays_Adventure.Entities
 
             ApplySelectedSprite();
 
-            // Register core abilities with Character.Abilities so base cooldown ticking works.
-            // Without this, Q/E/R abilities can be used once and never recover.
+            // Register core abilities — all characters tick cooldowns for IceWall + BreakWall.
             Abilities.Add(_iceWall);
-            Abilities.Add(_flash);
             Abilities.Add(_breakWall);
+
+            // E-key ability differs per archetype: Orca=TidalSlam, Swan=WingDash, Friday=FlashFreeze.
+            switch (Archetype)
+            {
+                case PlayableCharacter.Orca: Abilities.Add(_tidalSlam); break;
+                case PlayableCharacter.Swan: Abilities.Add(_wingDash);  break;
+                default:                     Abilities.Add(_flash);     break;
+            }
         }
 
         // ── AttackHitbox (Gameplay Programmer — compile fix + combat system) ──
@@ -201,22 +259,45 @@ namespace Fridays_Adventure.Entities
         /// </summary>
         public void ApplySelectedSprite()
         {
-            string fileName;
+            // Prefer model art first so gameplay matches the intended character models.
+            // SpriteManager resolves both Assets\Sprites\<file> and Assets\<file>.
+            string[] candidates;
             switch (Archetype)
             {
-                // All character images are in Assets\Sprites\ with player_ prefix
                 case PlayableCharacter.Orca:
-                    fileName = "player_Orca.png";
+                    candidates = new[]
+                    {
+                        "Models/Orca/Orca.png",
+                        "Character Models/Boy Orca/Orca.png",
+                        "player_Orca.png",
+                    };
                     break;
+
                 case PlayableCharacter.Swan:
-                    fileName = "player_Swan.png";
+                    candidates = new[]
+                    {
+                        "Models/Swan/Swan.png",
+                        "Character Models/Girl Swan/Swan.png",
+                        "player_Swan.png",
+                    };
                     break;
+
                 default:
-                    fileName = "player_Miss_Friday.png";
+                    candidates = new[]
+                    {
+                        "player_Miss_Friday.png",
+                        "player_missfriday.png",
+                    };
                     break;
             }
-            // Scale to player dimensions once; SpriteManager caches the result.
-            Sprite = SpriteManager.GetScaled(fileName, Width, Height);
+
+            Bitmap sprite = null;
+            foreach (var file in candidates)
+            {
+                sprite = SpriteManager.GetScaled(file, Width, Height);
+                if (sprite != null) break;
+            }
+            Sprite = sprite;
         }
 
         /// <summary>
@@ -234,10 +315,16 @@ namespace Fridays_Adventure.Entities
             wall = null;
             if (IsSuppressed || !_iceWall.IsReady) return false;
             _iceWall.TryUse(this);
+
             float wx = FacingRight ? X + Width + 4 : X - 24;
+
             // Orca's Ice Wall is 40 px wide for better zoning (Lead Game Designer — idea 6).
             int wallW = OrcaWideWall ? 40 : 20;
-            wall = new IceWallInstance(wx, Y - 32, wallW);
+
+            // Anchor wall base to player's feet so it does not appear floating in the air.
+            wall = new IceWallInstance(wx, 0f, wallW);
+            wall.Y = (Y + Height) - wall.Height;
+
             AbilityCastGlowTimer = 0.3f;  // trigger cast glow (VFX Artist)
             return true;
         }
@@ -248,6 +335,61 @@ namespace Fridays_Adventure.Entities
             _flash.TryUse(this);
             AbilityCastGlowTimer = 0.3f;  // trigger cast glow (VFX Artist)
             return true;
+        }
+
+        /// <summary>
+        /// PHASE 2 — E-key ability dispatcher.
+        /// Orca  → TidalSlam (ground-pound AOE; scene handles damage radius).
+        /// Swan  → WingDash  (directional burst + i-frames).
+        /// Friday → FlashFreeze (standard freeze).
+        /// Returns true if the ability activated successfully.
+        /// </summary>
+        public bool UseCharacterAbility()
+        {
+            AbilityCastGlowTimer = 0.3f;
+            switch (Archetype)
+            {
+                case PlayableCharacter.Orca:
+                    if (!_tidalSlam.IsReady) return false;
+                    _tidalSlam.TryUse(this);
+                    return true;
+                case PlayableCharacter.Swan:
+                    if (!_wingDash.IsReady) return false;
+                    _wingDash.TryUse(this);
+                    return true;
+                default:
+                    return UseFlashFreeze();
+            }
+        }
+
+        /// <summary>
+        /// Wall-jump: launches the player away from the wall and sets the jump lock timer.
+        /// Team 7 (Gameplay Programmer).
+        /// </summary>
+        public void DoWallJump(bool wallOnRight)
+        {
+            // Push away from the wall with horizontal kick
+            VelocityX      = wallOnRight ? -MoveSpeed * 1.4f : MoveSpeed * 1.4f;
+            VelocityY      = JumpForce * 0.90f;
+            IsGrounded     = false;
+            JumpsRemaining = 0;  // consumed — no further jumps until landing
+            IsWallJumping  = true;
+            _wallJumpTimer = WallJumpDuration;
+            IsOnLeftWall   = false;
+            IsOnRightWall  = false;
+        }
+
+        /// <summary>
+        /// Ground-pound: slam straight down at high speed.
+        /// Team 7 (Gameplay Programmer).
+        /// </summary>
+        public void StartGroundPound()
+        {
+            if (IsGrounded || IsGroundPounding) return;
+            IsGroundPounding  = true;
+            VelocityY         = 700f;   // fast downward slam
+            VelocityX         = 0f;
+            _groundPoundTimer = GroundPoundCooldown;
         }
 
         /// <summary>
@@ -284,6 +426,20 @@ namespace Fridays_Adventure.Entities
                 DamageFlashTimer = 0.12f;
                 GrantIFrames(1.4f);   // 1.4 s i-frames after a hit (SMB3-style flash window)
             }
+        }
+
+        /// <summary>
+        /// Applies stamina drain/regen for sprinting.
+        /// Phase 2 — Team 4 (Lead Game Designer) Idea 8: stamina system.
+        /// </summary>
+        public void TickStamina(bool wantsSprint, float dt)
+        {
+            IsSprinting = wantsSprint && Stamina > 0.01f;
+            if (IsSprinting)
+                Stamina = Math.Max(0f, Stamina - 28f * dt);
+
+            if (Stamina <= 0.01f)
+                IsSprinting = false;
         }
 
         public override void Update(float dt)
@@ -357,6 +513,18 @@ namespace Fridays_Adventure.Entities
             else
                 MeltRisk = Math.Max(0f, MeltRisk - dt * 0.1f);
             
+            // Stamina passively recovers if not sprinting this frame.
+            if (!IsSprinting)
+                Stamina = Math.Min(MaxStamina, Stamina + 10f * dt);
+
+            // ── Combo multiplier decay (Phase 2 — Team 4 Idea 2) ───────────────
+            if (StompChainTimer > 0f)
+            {
+                StompChainTimer -= dt;
+                if (StompChainTimer <= 0f)
+                    ResetStompChain();
+            }
+
             UpdateGameplayTeam7(dt);
         }
 

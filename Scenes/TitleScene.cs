@@ -99,8 +99,10 @@ namespace Fridays_Adventure.Scenes
             }
 
             // ── Regular navigation ────────────────────────────────────────────
+            // Route through Save Slot selection before starting the game so the
+            // player can pick/continue a save file (SMB3 file select style).
             if (input.InteractPressed || input.AttackPressed || input.JumpPressed)
-                Game.Instance.Scenes.Replace(new CharacterSelectScene());
+                Game.Instance.Scenes.Replace(new SaveSlotScene());
 
             // Main-menu save/load shortcuts
             if (input.IsPressed(System.Windows.Forms.Keys.F5)) SaveGameJson();

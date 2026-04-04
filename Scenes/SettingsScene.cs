@@ -60,15 +60,25 @@ namespace Fridays_Adventure.Scenes
         }
 
         /// <summary>
-        /// Saves current settings to Game configuration
+        /// Saves current settings to the AudioManager and persists them to SaveData
+        /// so they survive a game restart.
+        /// Master volume is applied as a multiplier over both music and SFX.
         /// </summary>
         private void SaveSettings()
         {
-            // Apply audio settings immediately via AudioManager
-            if (Game.Instance.Audio != null)
+            if (Game.Instance.Audio == null) return;
+
+            // Master volume scales both channels proportionally (0–1 × 0–1 × 100 = final %)
+            Game.Instance.Audio.SetMusicVolume((int)(_musicVolume * _masterVolume * 100));
+            Game.Instance.Audio.SetSfxVolume((int)(_sfxVolume   * _masterVolume * 100));
+
+            // Persist to SaveData so volumes survive a restart
+            var save = Game.Instance.Save;
+            if (save != null)
             {
-                Game.Instance.Audio.SetMusicVolume((int)(_musicVolume * 100));
-                Game.Instance.Audio.SetSfxVolume((int)(_sfxVolume * 100));
+                save.MusicVolume = Game.Instance.Audio.MusicVolume;
+                save.SfxVolume   = Game.Instance.Audio.SfxVolume;
+                save.Save();
             }
         }
 

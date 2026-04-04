@@ -332,6 +332,8 @@ namespace Fridays_Adventure.Audio
         public void BeepSeaStone()       => Beep(ProceduralSfx.SeaStone);
         public void PlayVictoryFanfare() => Beep(ProceduralSfx.VictoryFanfare);
         public void PlayIntroAmbient()   => Beep(ProceduralSfx.IntroAmbient);
+        /// <summary>Plays SMB3-style fireball launch with a fallback attack click layer.</summary>
+        public void BeepFireball()       { Beep(ProceduralSfx.FireballShot); Beep(ProceduralSfx.Attack); }
 
         // ── SMB3 / Mega Man style SFX helpers ────────────────────────────────
         /// <summary>Plays the Mega Man-style boss intro sting.</summary>
@@ -344,7 +346,7 @@ namespace Fridays_Adventure.Audio
         public void BeepPowerup()    => Beep(ProceduralSfx.Powerup);
         /// <summary>
         /// Plays the SMB3-style world-entry jingle when the level intro card appears.
-        /// Team 1 (Game Director) — Idea 1: level intro card with audio sting.
+        /// Team 1 (Game Director) — Idea 1: level entry card with audio sting.
         /// </summary>
         public void BeepLevelIntro() => Beep(ProceduralSfx.LevelIntro);
     }

@@ -19,6 +19,7 @@ namespace Fridays_Adventure.Engine
         public bool RightHeld       => IsHeld(Keys.Right) || IsHeld(Keys.D);
         public bool UpHeld          => IsHeld(Keys.Up)    || IsHeld(Keys.W);
         public bool DownHeld        => IsHeld(Keys.Down)  || IsHeld(Keys.S);
+        public bool SprintHeld      => IsHeld(Keys.ShiftKey) || IsHeld(Keys.LShiftKey) || IsHeld(Keys.RShiftKey);
         public bool JumpPressed     => IsPressed(Keys.Space) || IsPressed(Keys.Up) || IsPressed(Keys.W);
         public bool JumpHeld        => IsHeld(Keys.Space)    || IsHeld(Keys.Up)    || IsHeld(Keys.W);
         public bool AttackPressed   => IsPressed(Keys.Z) || IsPressed(Keys.J);

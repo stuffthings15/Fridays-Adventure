@@ -15,6 +15,13 @@ namespace Fridays_Adventure.Scenes
     {
         private Bitmap _conceptArt;    // Orca + Swan concept sheet
         private Bitmap _fridaySprite;  // player_missfriday.png
+        private Bitmap _orcaSprite;    // player_Orca.png
+        private Bitmap _swanSprite;    // player_Swan.png
+
+        // QA source labels for loaded portrait files.
+        private string _fridaySpriteSource = "(missing)";
+        private string _orcaSpriteSource   = "(missing)";
+        private string _swanSpriteSource   = "(missing)";
 
         private readonly OrcaCompanion _orca = new OrcaCompanion(0, 0);
         private readonly SwanCompanion _swan = new SwanCompanion(0, 0);
@@ -41,15 +48,38 @@ namespace Fridays_Adventure.Scenes
                 _conceptArt = new Bitmap(conceptPath);
 
             // Miss Friday sprite
-            string fridayPath = Path.Combine(spritesDir, "player_missfriday.png");
+            string fridayPath = Path.Combine(spritesDir, "player_Miss_Friday.png");
+            if (!File.Exists(fridayPath))
+                fridayPath = Path.Combine(spritesDir, "player_missfriday.png");
             if (File.Exists(fridayPath))
+            {
                 _fridaySprite = new Bitmap(fridayPath);
+                _fridaySpriteSource = fridayPath;
+            }
+
+            // Orca sprite
+            string orcaPath = Path.Combine(spritesDir, "player_Orca.png");
+            if (File.Exists(orcaPath))
+            {
+                _orcaSprite = new Bitmap(orcaPath);
+                _orcaSpriteSource = orcaPath;
+            }
+
+            // Swan sprite
+            string swanPath = Path.Combine(spritesDir, "player_Swan.png");
+            if (File.Exists(swanPath))
+            {
+                _swanSprite = new Bitmap(swanPath);
+                _swanSpriteSource = swanPath;
+            }
         }
 
         public override void OnExit()
         {
             _conceptArt?.Dispose();   _conceptArt   = null;
             _fridaySprite?.Dispose(); _fridaySprite = null;
+            _orcaSprite?.Dispose();   _orcaSprite   = null;
+            _swanSprite?.Dispose();   _swanSprite   = null;
         }
 
         public override void Update(float dt)
@@ -165,6 +195,7 @@ namespace Fridays_Adventure.Scenes
             g.DrawString("R Break Wall  (ice powers)", _bodyFont, Brushes.White, x + 4, y + 234);
             g.DrawString("Water danger: Cannot swim", _bodyFont,
                 Brushes.OrangeRed, x + 4, y + 254);
+            g.DrawString("SRC: " + Path.GetFileName(_fridaySpriteSource), _labelFont, Brushes.Gray, x + 4, y + h - 22);
         }
 
         private void DrawOrcaPanel(Graphics g, int x, int y, int w, int h)
@@ -172,8 +203,13 @@ namespace Fridays_Adventure.Scenes
             DrawPanelBg(g, x, y, w, h, Color.FromArgb(24, 44, 82));
             if (Game.Instance.SelectedCharacter == PlayableCharacter.Orca)
                 using (var pen = new Pen(Color.Gold, 3)) g.DrawRectangle(pen, x + 1, y + 1, w - 2, h - 2);
-            DrawPlaceholderPortrait(g, x + w / 2 - 28, y + 12, 56, 84,
-                Color.FromArgb(24, 44, 82), Color.WhiteSmoke);
+
+            // Portrait
+            if (_orcaSprite != null)
+                g.DrawImage(_orcaSprite, x + w / 2 - 28, y + 12, 56, 84);
+            else
+                DrawPlaceholderPortrait(g, x + w / 2 - 28, y + 12, 56, 84,
+                    Color.FromArgb(24, 44, 82), Color.WhiteSmoke);
 
             bool unlocked = Game.Instance.Save.GetFlag(Data.NarrativeFlags.OrcaJoinedCrew);
             g.DrawString("ORCA", _headerFont, Brushes.LightBlue, x + 4, y + 104);
@@ -196,6 +232,8 @@ namespace Fridays_Adventure.Scenes
             {
                 DrawLockedOverlay(g, x + 4, y + 144, w - 8);
             }
+
+            g.DrawString("SRC: " + Path.GetFileName(_orcaSpriteSource), _labelFont, Brushes.Gray, x + 4, y + h - 22);
         }
 
         private void DrawSwanPanel(Graphics g, int x, int y, int w, int h)
@@ -203,8 +241,13 @@ namespace Fridays_Adventure.Scenes
             DrawPanelBg(g, x, y, w, h, Color.FromArgb(60, 40, 60));
             if (Game.Instance.SelectedCharacter == PlayableCharacter.Swan)
                 using (var pen = new Pen(Color.Gold, 3)) g.DrawRectangle(pen, x + 1, y + 1, w - 2, h - 2);
-            DrawPlaceholderPortrait(g, x + w / 2 - 28, y + 12, 56, 84,
-                Color.White, Color.FromArgb(232, 103, 138));
+
+            // Portrait
+            if (_swanSprite != null)
+                g.DrawImage(_swanSprite, x + w / 2 - 28, y + 12, 56, 84);
+            else
+                DrawPlaceholderPortrait(g, x + w / 2 - 28, y + 12, 56, 84,
+                    Color.White, Color.FromArgb(232, 103, 138));
 
             bool unlocked = Game.Instance.Save.GetFlag(Data.NarrativeFlags.SwanJoinedCrew);
             g.DrawString("SWAN", _headerFont, Brushes.Pink, x + 4, y + 104);
@@ -226,6 +269,8 @@ namespace Fridays_Adventure.Scenes
             {
                 DrawLockedOverlay(g, x + 4, y + 144, w - 8);
             }
+
+            g.DrawString("SRC: " + Path.GetFileName(_swanSpriteSource), _labelFont, Brushes.Gray, x + 4, y + h - 22);
         }
 
         // ── Helpers ──────────────────────────────────────────────────────────

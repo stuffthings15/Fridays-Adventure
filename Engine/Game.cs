@@ -186,6 +186,48 @@ namespace Fridays_Adventure.Engine
         /// </summary>
         public bool IsAirshipLevel { get; set; }
 
+        // ── PHASE 3: Team 1 (Game Director) — New SMB3 systems ────────────────
+
+        /// <summary>
+        /// Number of Warp Whistles held. Using one opens the World Warp panel.
+        /// Team 1 (Game Director) — Phase 3.
+        /// </summary>
+        public int WarpWhistleCount { get; set; }
+
+        /// <summary>
+        /// Total star coins collected across all levels.
+        /// Team 4 (Lead Game Designer) — Phase 3.
+        /// </summary>
+        public int StarCoinsTotal { get; set; }
+
+        /// <summary>
+        /// Star coins collected in the current level session (reset on level enter).
+        /// Team 4 (Lead Game Designer) — Phase 3.
+        /// </summary>
+        public int StarCoinsThisLevel { get; set; }
+
+        /// <summary>
+        /// When true, the Overworld will push a ToadHouseScene on the next resume.
+        /// Team 1 (Game Director) — Phase 3. (See also Idea 5 above.)
+        /// </summary>
+        // NOTE: PendingToadHouse is defined above (Idea 5). This duplicate is removed.
+
+        /// <summary>
+        /// Uses one Warp Whistle to advance to the given world number.
+        /// Returns false if no whistles remain.
+        /// Team 1 (Game Director) — Phase 3.
+        /// </summary>
+        public bool UseWarpWhistle(int targetWorld)
+        {
+            if (WarpWhistleCount <= 0) return false;
+            WarpWhistleCount--;
+            WorldNumber = Math.Max(1, targetWorld);
+            LevelNumber = 1;
+            LevelJustCompleted = false;
+            DebugLogger.LogInfo("Game.UseWarpWhistle", $"Warped to World {WorldNumber}.");
+            return true;
+        }
+
         // ── Team 1 (Game Director) — World chapter clear detection ────────────
         // Idea 8: Game tracks whether ALL levels in a world have been cleared.
 
@@ -204,6 +246,26 @@ namespace Fridays_Adventure.Engine
 
         public int CanvasWidth  { get; private set; } = 900;
         public int CanvasHeight { get; private set; } = 600;
+
+        /// <summary>
+        /// Elapsed seconds in the current level — set by IslandScene each frame.
+        /// Read by GameHUD to display the speed-run clock.
+        /// Team 1 (Game Director) — Phase 2 Idea 3: Speed Run Timer.
+        /// </summary>
+        public float LevelElapsedSeconds { get; set; }
+
+        /// <summary>
+        /// True on the second playthrough (New Game+ mode).
+        /// Enemies receive a 1.5× HP bonus and drop better items.
+        /// Team 1 (Game Director) — Phase 3 Idea 1: New Game+ Mode.
+        /// </summary>
+        public bool NewGamePlus { get; set; }
+
+        /// <summary>
+        /// When true, a CRT scanline overlay is drawn over the final frame.
+        /// Team 12 (Art Director) — Phase 2 Wave 2 Idea 5: CRT scanline filter.
+        /// </summary>
+        public bool CrtFilterEnabled { get; set; }
 
         private readonly GameCanvas _canvas;
         private readonly Timer      _timer;
@@ -342,6 +404,12 @@ namespace Fridays_Adventure.Engine
 
                 Audio.Tick(dt);
                 Scenes.Current?.Update(dt);
+
+                // Advance global curtain-wipe transitions.
+                // Without this, SceneTransition.Begin(...) callbacks never fire,
+                // which can stall level-complete flow on a black screen.
+                SceneTransition.Update(dt);
+
                 ScreenShake.Update(dt);
                 FloatingText.Update(dt);
                 SessionStats.Instance.Tick(dt);
@@ -415,6 +483,10 @@ namespace Fridays_Adventure.Engine
                 if (_achievementBannerTimer > 0f)
                     DrawAchievementBanner(g);
 
+                // CRT scanline overlay (Phase 2 — Team 12 Art Director).
+                if (CrtFilterEnabled)
+                    DrawCrtOverlay(g);
+
                 // Visual debugger overlay (F10 toggle).
                 VisualDebugger.DrawOverlay(g, CanvasWidth, CanvasHeight);
             }
@@ -422,6 +494,32 @@ namespace Fridays_Adventure.Engine
             {
                 // Error debugger entry for render-loop failures.
                 DebugLogger.LogError("Game.OnRender", ex);
+            }
+        }
+
+        /// <summary>
+        /// CRT scanline filter — draws semi-transparent horizontal lines across the entire
+        /// canvas to simulate an old CRT monitor. Toggled via Options menu.
+        /// Phase 2 — Team 12 (Art Director) Wave 2 Idea 5.
+        /// </summary>
+        private void DrawCrtOverlay(System.Drawing.Graphics g)
+        {
+            using (var pen = new System.Drawing.Pen(
+                System.Drawing.Color.FromArgb(28, 0, 0, 0), 1f))
+            {
+                for (int y = 0; y < CanvasHeight; y += 2)
+                    g.DrawLine(pen, 0, y, CanvasWidth, y);
+            }
+            // Subtle vignette — darken the corners
+            using (var vgPath = new System.Drawing.Drawing2D.GraphicsPath())
+            {
+                vgPath.AddEllipse(-100, -100, CanvasWidth + 200, CanvasHeight + 200);
+                using (var pgb = new System.Drawing.Drawing2D.PathGradientBrush(vgPath))
+                {
+                    pgb.CenterColor    = System.Drawing.Color.Transparent;
+                    pgb.SurroundColors = new[] { System.Drawing.Color.FromArgb(80, 0, 0, 0) };
+                    g.FillRectangle(pgb, 0, 0, CanvasWidth, CanvasHeight);
+                }
             }
         }
 

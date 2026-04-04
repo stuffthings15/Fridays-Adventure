@@ -68,11 +68,12 @@ namespace Fridays_Adventure.Scenes
                 _selectedIndex = (_selectedIndex + 1) % _difficulties.Length;
             }
 
-            // Confirm selection
+            // Confirm selection — replace this scene with the overworld so
+            // CharacterSelectScene stays on the stack below for a clean back-nav.
             if (Game.Instance.Input.InteractPressed)
             {
                 DifficultyModifiers.CurrentDifficulty = _difficulties[_selectedIndex];
-                Game.Instance.Scenes.Pop();
+                Game.Instance.Scenes.Replace(new OverworldScene());
             }
 
             // Cancel

@@ -150,16 +150,19 @@ namespace Fridays_Adventure.Entities
                 case PowerUpType.Mushroom:
                     // Restore 25% HP — SMB3 Super Mushroom equivalent.
                     player.Health = Math.Min(player.MaxHealth, player.Health + player.MaxHealth / 4);
+                    PowerUpInventory.ApplySuit(SuitType.Mushroom);
                     break;
 
                 case PowerUpType.FireFlower:
-                    // Temporarily boost attack damage.
+                    // Fire Flower enables SMB3 fireball mode.
                     player.AttackDamage += 2;
+                    PowerUpInventory.ApplySuit(SuitType.FireFlower);
                     break;
 
                 case PowerUpType.Star:
                     // Grant invincibility via public method (InvincibilityTimer has protected set).
                     player.GrantInvincibility(StarDuration);
+                    PowerUpInventory.ApplySuit(SuitType.Star);
                     break;
 
                 case PowerUpType.SeaStar:

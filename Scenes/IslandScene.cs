@@ -44,6 +44,23 @@ namespace Fridays_Adventure.Scenes
         private List<HealthPickup>  _healthPickups;
         private int                 _berriesCollected;
 
+        // ── PHASE 3: SMB3 interactive entities ────────────────────────────────
+        // Team 4 (Lead Game Designer) — question blocks, brick blocks, new enemies
+        private List<Fireball>         _fireballs        = new List<Fireball>();
+        private List<GoombaEnemy>      _goombas          = new List<GoombaEnemy>();
+        private List<KoopaEnemy>       _koopas           = new List<KoopaEnemy>();
+        private List<PiranhaPlant>     _piranhaPlants    = new List<PiranhaPlant>();
+        private List<Thwomp>           _thwomps          = new List<Thwomp>();
+        private List<HammerBroEnemy>   _hammerBros       = new List<HammerBroEnemy>();
+        // Star coins — 3 per level (Team 4 — Phase 3)
+        private List<StarCoinPickup>   _starCoins        = new List<StarCoinPickup>();
+        // Power-up drops — enemies randomly drop items (Team 4 — Phase 2)
+        private List<PowerUp>          _powerUps         = new List<PowerUp>();
+        private static readonly Random _dropRng          = new Random();
+
+        // SMB3 Fire Flower projectile cadence.
+        private float _fireballShotCooldown;
+
         private bool  _introActive;
         private bool  _wasInSeaStone;
         private float _seaStoneFlashAlpha;
@@ -53,8 +70,19 @@ namespace Fridays_Adventure.Scenes
         private float _breakShockwaveWorldY;
         private float _iceFlashTimer;
 
+        // ── Speed-run timer (Team 1 — Phase 2 Idea 3) ─────────────────────────
+        /// <summary>Elapsed seconds since level start — displayed as a speedrun clock.</summary>
+        private float _speedRunTimer;
+
+        // ── Death counter (used by CourseClearScene grade) ────────────────────
+        private int _deathCount;
+
         /// <summary>Running clock that drives animated environmental effects (snow, bubbles, torch flicker).</summary>
         private float _levelAnim;
+
+        // ── Parallax background (Phase 2 — Team 14: Environment Artist) ──────
+        /// <summary>Multi-layer parallax system built per island in LoadBackground().</summary>
+        private ParallaxBackground _parallax;
 
         private Bitmap _bg;
         private Bitmap _uiPanel;
@@ -64,12 +92,17 @@ namespace Fridays_Adventure.Scenes
 
         public override void OnEnter()
         {
+            BlockManager.Reset();   // Phase 3: clear any previous level's blocks
+            Game.Instance.StarCoinsThisLevel = 0;  // Phase 3: reset star coin counter
             BuildLevel();
             LoadBackground();
             _uiPanel = SpriteManager.Get("ui_panel.png");
 
             // Apply difficulty modifiers to all spawned enemies.
             ApplyDifficultyModifiers();
+
+            // PHASE 2 — Team 14: Wire WeatherSystem based on island theme.
+            WeatherSystem.Set(GetIslandWeather(_islandId));
 
             // SMB3-style level-start overlays: GET READY! banner + world/level label.
             SMB3Hud.TriggerGetReady();
@@ -81,32 +114,155 @@ namespace Fridays_Adventure.Scenes
 
         public override void OnExit()
         {
+            WeatherSystem.Set(WeatherSystem.Mode.None);  // clear weather on exit
             _bg?.Dispose(); _bg = null;
         }
 
         /// <summary>
+        /// PHASE 2 — Team 14: Maps an island ID to its weather mode.
+        /// </summary>
+        private static WeatherSystem.Mode GetIslandWeather(string id)
+        {
+            switch (id)
+            {
+                case "tundra":      return WeatherSystem.Mode.Snow;
+                case "harbor":      return WeatherSystem.Mode.Rain;
+                case "coral":       return WeatherSystem.Mode.Underwater;
+                case "dive_gate":
+                case "sunken_gate":
+                case "kelp":        return WeatherSystem.Mode.Underwater;
+                case "boiling_vent":return WeatherSystem.Mode.Embers;
+                case "abyss":       return WeatherSystem.Mode.Embers;
+                default:            return WeatherSystem.Mode.None;
+            }
+        }
+
+        /// <summary>
         /// PHASE 2 - Team 1: Game Director
-        /// Apply difficulty modifiers to all enemies in the level
+        /// Apply difficulty modifiers to all enemies and the player on level entry.
+        /// Hard mode: enemies have 2× HP.
+        /// Challenge mode: enemies have normal HP but player is reduced to 30 HP.
         /// </summary>
         private void ApplyDifficultyModifiers()
         {
             float healthMult = DifficultyModifiers.GetEnemyHealthMultiplier();
-            
-            // Only apply if not normal difficulty
+
+            // Scale enemy HP (Hard mode: 2×; Challenge/Normal: 1×)
             if (Math.Abs(healthMult - 1.0f) > 0.001f)
             {
                 foreach (var enemy in _enemies)
                 {
-                    // Apply health multiplier to enemies
                     int newMaxHp = (int)(enemy.MaxHealth * healthMult);
                     enemy.MaxHealth = newMaxHp;
-                    // Reset health to new max
-                    enemy.Health = newMaxHp;
+                    enemy.Health    = newMaxHp;
                 }
+            }
+
+            // Challenge mode — cap player HP to 30 for near-1-hit-KO tension
+            int playerMaxHp = DifficultyModifiers.GetPlayerMaxHealth();
+            if (playerMaxHp != _player.MaxHealth)
+            {
+                _player.MaxHealth = playerMaxHp;
+                _player.Health    = Math.Min(_player.Health, playerMaxHp);
+            }
+
+            // New Game+ — additional 1.5× enemy HP and +20 % speed bonus
+            if (Game.Instance.NewGamePlus)
+            {
+                foreach (var enemy in _enemies)
+                {
+                    int ngpHp = (int)(enemy.MaxHealth * 1.5f);
+                    enemy.MaxHealth = ngpHp;
+                    enemy.Health    = ngpHp;
+                    enemy.MoveSpeed *= 1.2f;
+                }
+                SMB3Hud.ShowToast("⚔ NEW GAME+ ACTIVE");
             }
         }
 
         // ── Level construction ──────────────────────────────────────────────
+
+        /// <summary>
+        /// PHASE 2 — Applies island-specific enemy archetypes after the base level is built.
+        /// Each island has a themed enemy type with unique HP, speed, and score value.
+        /// Keeps level layout code clean while giving every island a distinct feel.
+        /// </summary>
+        private void ApplyIslandEnemyVariants()
+        {
+            foreach (var e in _enemies)
+            {
+                switch (_islandId)
+                {
+                    case "wano":
+                        // Blade Nation — armored samurai marines, high HP, slow
+                        e.EnemyType  = "Armored";
+                        e.MaxHealth  = e.Health = 60;
+                        e.MoveSpeed  = 80f;
+                        e.ScoreValue = 25;
+                        e.AttackDamage = 14;
+                        break;
+
+                    case "sky":
+                        // Sky Island — winged scout marines, fast and fragile
+                        e.EnemyType  = "Marine";
+                        e.MaxHealth  = e.Health = 28;
+                        e.MoveSpeed  = 160f;
+                        e.ScoreValue = 18;
+                        e.AttackDamage = 8;
+                        break;
+
+                    case "coral":
+                    case "dive_gate":
+                    case "sunken_gate":
+                        // Underwater — diver marines, normal HP but poison on contact
+                        e.EnemyType  = "Marine";
+                        e.MaxHealth  = e.Health = 40;
+                        e.MoveSpeed  = 95f;
+                        e.ScoreValue = 20;
+                        e.AttackDamage = 12;
+                        break;
+
+                    case "kelp":
+                    case "boiling_vent":
+                        // Deep-sea — heavy armoured divers, very high HP
+                        e.EnemyType  = "Armored";
+                        e.MaxHealth  = e.Health = 80;
+                        e.MoveSpeed  = 70f;
+                        e.ScoreValue = 35;
+                        e.AttackDamage = 18;
+                        break;
+
+                    case "abyss":
+                        // Abyss — boss-tier grunt, extremely tough
+                        e.EnemyType  = "Boss";
+                        e.MaxHealth  = e.Health = 110;
+                        e.MoveSpeed  = 65f;
+                        e.ScoreValue = 50;
+                        e.AttackDamage = 22;
+                        break;
+
+                    case "tundra":
+                        // Tundra — cold-weather marines, normal stats
+                        e.EnemyType  = "Marine";
+                        e.MaxHealth  = e.Health = 35;
+                        e.MoveSpeed  = 100f;
+                        e.ScoreValue = 15;
+                        e.AttackDamage = 10;
+                        break;
+
+                    case "harbor":
+                        // Harbor — naval soldiers, slightly tougher than basics
+                        e.EnemyType  = "Marine";
+                        e.MaxHealth  = e.Health = 45;
+                        e.MoveSpeed  = 110f;
+                        e.ScoreValue = 20;
+                        e.AttackDamage = 12;
+                        break;
+
+                    // dino + default: baseline patrol marine (values from Enemy ctor)
+                }
+            }
+        }
 
         private void BuildLevel()
         {
@@ -117,14 +273,27 @@ namespace Fridays_Adventure.Scenes
             _hazards         = new List<Hazard>();
             _enemies         = new List<Enemy>();
 
+            // Phase 3 entities are per-level; always reset on build.
+            _fireballs       = new List<Fireball>();
+            _starCoins       = new List<StarCoinPickup>();
+
             switch (_islandId)
             {
-                case "wano":   BuildBladeNation(); break;
-                case "harbor": BuildHarborTown();  break;
-                case "coral":  BuildCoralReef();   break;
-                case "tundra": BuildTundraPeak();  break;
-                default:       BuildDinoIsland();  break;
+                case "wano":        BuildBladeNation(); break;
+                case "harbor":      BuildHarborTown();  break;
+                case "coral":       BuildCoralReef();   break;
+                case "tundra":      BuildTundraPeak();  break;
+                case "sky":         BuildDinoIsland();  break;  // sky uses dino layout, different enemies
+                case "sunken_gate": BuildDinoIsland();  break;
+                case "kelp":        BuildDinoIsland();  break;
+                case "boiling_vent":BuildDinoIsland();  break;
+                case "abyss":       BuildDinoIsland();  break;
+                case "dive_gate":   BuildDinoIsland();  break;
+                default:            BuildDinoIsland();  break;
             }
+
+            // Overlay island-specific enemy types after the base layout is built
+            ApplyIslandEnemyVariants();
 
             // Player (selected from Crew screen)
             _player = new Player(50, _groundY - 56);
@@ -137,6 +306,9 @@ namespace Fridays_Adventure.Scenes
             // Health pickups — red cross items scattered through the level
             _healthPickups = new List<HealthPickup>();
             SpawnHealthPickups();
+
+            // Phase 3 — hidden star coins (3 per level like SMB3)
+            SpawnStarCoins();
 
             ApplyLevelScale();
 
@@ -236,6 +408,47 @@ namespace Fridays_Adventure.Scenes
             // Moving platforms — SMB3-style traversal challenge.
             _movingPlatforms.Add(new MovingPlatform(350, _groundY - 130, 80, 350, 550, 70f));
             _movingPlatforms.Add(new MovingPlatform(1050, _groundY - 110, 80, 1050, 1200, 60f));
+
+            // ── PHASE 3: SMB3 interactive blocks & new enemy types ─────────────
+            // Team 4 (Lead Game Designer) — Question blocks with coin/item contents
+            BlockManager.QuestionBlocks.Add(new QuestionBlock(380, _groundY - 148, BlockContent.Coin));
+            BlockManager.QuestionBlocks.Add(new QuestionBlock(420, _groundY - 148, BlockContent.Mushroom));
+            BlockManager.QuestionBlocks.Add(new QuestionBlock(460, _groundY - 148, BlockContent.Coin));
+            BlockManager.QuestionBlocks.Add(new QuestionBlock(1080, _groundY - 120, BlockContent.FireFlower));
+            BlockManager.QuestionBlocks.Add(new QuestionBlock(1120, _groundY - 120, BlockContent.MultiCoin));
+            BlockManager.QuestionBlocks.Add(new QuestionBlock(1720, _groundY - 152, BlockContent.Leaf));
+            BlockManager.QuestionBlocks.Add(new QuestionBlock(2320, _groundY - 174, BlockContent.Star));
+
+            // Brick blocks (Team 4 — Idea 2)
+            BlockManager.BrickBlocks.Add(new BrickBlock(400, _groundY - 148));
+            BlockManager.BrickBlocks.Add(new BrickBlock(440, _groundY - 148));
+            BlockManager.BrickBlocks.Add(new BrickBlock(1100, _groundY - 120));
+            BlockManager.BrickBlocks.Add(new BrickBlock(1740, _groundY - 152));
+            BlockManager.BrickBlocks.Add(new BrickBlock(2340, _groundY - 174));
+
+            // Goomba enemies (Team 4 — Idea 9)
+            _goombas.Add(new GoombaEnemy(160,  _groundY - 28, 100,  400));
+            _goombas.Add(new GoombaEnemy(860,  _groundY - 28, 800,  1100));
+            _goombas.Add(new GoombaEnemy(1520, _groundY - 28, 1440, 1720));
+
+            // Koopa enemies (Team 4 — Idea 10)
+            _koopas.Add(new KoopaEnemy(480, _groundY - 40, 350, 700));
+            _koopas.Add(new KoopaEnemy(1300, _groundY - 40, 1100, 1440));
+
+            // Piranha Plant in a pipe (Team 4 — Idea 11)
+            _piranhaPlants.Add(new PiranhaPlant(860,  _groundY - 10));
+            _piranhaPlants.Add(new PiranhaPlant(1960, _groundY - 10));
+
+            // Thwomp (Team 4 — Idea 12)
+            _thwomps.Add(new Thwomp(1580, _groundY - 260));
+
+            // Hammer Bro encounter (Team 4 — Idea 13)
+            _hammerBros.Add(new HammerBroEnemy(2100, _groundY - 44, 2050, 2300));
+
+            // Star coins — 3 hidden collectibles per level (Team 4 — Idea 6)
+            _starCoins.Add(new StarCoinPickup(350 + 50, _groundY - 200));
+            _starCoins.Add(new StarCoinPickup(1050 + 70, _groundY - 160));
+            _starCoins.Add(new StarCoinPickup(2300 + 80, _groundY - 240));
         }
 
         private void BuildBladeNation()
@@ -531,9 +744,104 @@ namespace Fridays_Adventure.Scenes
             _healthPickups.Add(new HealthPickup(1940, _groundY - 212));
         }
 
+        /// <summary>
+        /// Phase 3 (SMB3 style): place 3 hidden star coins per level.
+        /// </summary>
+        private void SpawnStarCoins()
+        {
+            switch (_islandId)
+            {
+                case "wano":
+                    _starCoins.Add(new StarCoinPickup(360,  _groundY - 180));
+                    _starCoins.Add(new StarCoinPickup(1440, _groundY - 200));
+                    _starCoins.Add(new StarCoinPickup(2220, _groundY - 220));
+                    break;
+
+                case "harbor":
+                    _starCoins.Add(new StarCoinPickup(320,  _groundY - 150));
+                    _starCoins.Add(new StarCoinPickup(920,  _groundY - 170));
+                    _starCoins.Add(new StarCoinPickup(1820, _groundY - 190));
+                    break;
+
+                case "coral":
+                case "dive_gate":
+                case "sunken_gate":
+                case "kelp":
+                case "boiling_vent":
+                case "abyss":
+                    _starCoins.Add(new StarCoinPickup(420,  _groundY - 160));
+                    _starCoins.Add(new StarCoinPickup(1540, _groundY - 210));
+                    _starCoins.Add(new StarCoinPickup(2440, _groundY - 240));
+                    break;
+
+                case "tundra":
+                    _starCoins.Add(new StarCoinPickup(300,  _groundY - 200));
+                    _starCoins.Add(new StarCoinPickup(980,  _groundY - 230));
+                    _starCoins.Add(new StarCoinPickup(2060, _groundY - 260));
+                    break;
+
+                case "sky":
+                    _starCoins.Add(new StarCoinPickup(420,  _groundY - 220));
+                    _starCoins.Add(new StarCoinPickup(1200, _groundY - 250));
+                    _starCoins.Add(new StarCoinPickup(2200, _groundY - 280));
+                    break;
+
+                default:
+                    _starCoins.Add(new StarCoinPickup(420,  _groundY - 170));
+                    _starCoins.Add(new StarCoinPickup(1320, _groundY - 200));
+                    _starCoins.Add(new StarCoinPickup(2320, _groundY - 230));
+                    break;
+            }
+        }
+
         private void LoadBackground()
         {
             _bg = LoadBackgroundForIsland(_islandId);
+            BuildParallax();
+        }
+
+        /// <summary>
+        /// PHASE 2 — Team 14: Environment Artist.
+        /// Builds a multi-layer parallax stack tuned to the current island's theme.
+        /// Sky + mountain + cloud layers are always present; underwater islands use
+        /// a dark deep-sea colour scheme instead.
+        /// </summary>
+        private void BuildParallax()
+        {
+            _parallax = new ParallaxBackground();
+
+            bool isUnderwater = _islandId == "dive_gate" || _islandId == "sunken_gate" ||
+                                _islandId == "kelp"      || _islandId == "boiling_vent" ||
+                                _islandId == "abyss";
+
+            if (isUnderwater)
+            {
+                // Deep-sea: dark teal sky, no clouds
+                _parallax.AddLayer(new ParallaxBackground.SkyLayer
+                {
+                    TopColor    = Color.FromArgb(8,  28,  60),
+                    BottomColor = Color.FromArgb(12, 55, 100)
+                });
+                _parallax.AddLayer(new ParallaxBackground.StarLayer()); // bioluminescence
+            }
+            else if (_islandId == "tundra")
+            {
+                // Ice world: pale sky, snowy mountains
+                _parallax.AddLayer(new ParallaxBackground.SkyLayer
+                {
+                    TopColor    = Color.FromArgb(180, 210, 240),
+                    BottomColor = Color.FromArgb(220, 235, 255)
+                });
+                _parallax.AddLayer(new ParallaxBackground.MountainLayer());
+                _parallax.AddLayer(new ParallaxBackground.CloudLayer());
+            }
+            else
+            {
+                // Default tropical / adventure sky
+                _parallax.AddLayer(new ParallaxBackground.SkyLayer());
+                _parallax.AddLayer(new ParallaxBackground.MountainLayer());
+                _parallax.AddLayer(new ParallaxBackground.CloudLayer());
+            }
         }
 
         /// <summary>
@@ -581,6 +889,10 @@ namespace Fridays_Adventure.Scenes
             if (_introActive)   { UpdateIntro(dt); return; }
             if (_levelComplete) { UpdateComplete(dt); return; }
 
+            // Advance speed-run timer while playing
+            _speedRunTimer += dt;
+            Game.Instance.LevelElapsedSeconds = _speedRunTimer;
+
             var input = Game.Instance.Input;
 
             HandleInput(input, dt);
@@ -600,6 +912,7 @@ namespace Fridays_Adventure.Scenes
             if (_freezeFlashTimer    > 0f) { _freezeFlashTimer    += dt; if (_freezeFlashTimer    >= 0.45f) _freezeFlashTimer    = 0f; }
             if (_breakShockwaveTimer > 0f) { _breakShockwaveTimer += dt; if (_breakShockwaveTimer >= 0.40f) _breakShockwaveTimer = 0f; }
             if (_iceFlashTimer       > 0f) { _iceFlashTimer       += dt; if (_iceFlashTimer       >= 0.30f) _iceFlashTimer       = 0f; }
+            if (_fireballShotCooldown > 0f) _fireballShotCooldown = Math.Max(0f, _fireballShotCooldown - dt);
 
             IceSystem.Update(_iceWalls, _hazards, _player, dt);
             ThreatSystem.Tick(dt);
@@ -610,40 +923,119 @@ namespace Fridays_Adventure.Scenes
 
             CheckWaterFall(dt, input);
             UpdateEnemies(dt);
+
+            // ── PHASE 3: Update new SMB3 entity types ─────────────────────────
+            BlockManager.Update(dt, _player);
+            UpdateSMB3Enemies(dt);
+            UpdateFireballs(dt);
+            UpdateStarCoins(dt);
+
             _combo.Update(dt, _player, _enemies);
             CheckCombat();
             UpdateBerries(dt);
             UpdateHealthPickups(dt);
+            UpdatePowerUps(dt);
+            WeatherSystem.Update(dt);  // Phase 2 — Team 14: weather particle simulation
             CheckExit();
             UpdateCamera();
         }
 
         private void HandleInput(Engine.InputManager input, float dt)
         {
-            if (!_player.HasEffect(StatusEffect.Sinking) &&
-                !_player.HasEffect(StatusEffect.Stunned))
-            {
-                if (input.LeftHeld)  { _player.VelocityX = -_player.MoveSpeed; _player.FacingRight = false; }
-                else if (input.RightHeld) { _player.VelocityX = _player.MoveSpeed; _player.FacingRight = true; }
-                else _player.VelocityX = 0;
+            if (_player.HasEffect(StatusEffect.Sinking) || _player.HasEffect(StatusEffect.Stunned))
+                goto abilities;   // skip movement but still allow ability input below
 
-                if (input.JumpPressed && _player.JumpsRemaining > 0)
+            // ── Horizontal movement + P-Meter + stamina sprint ───────────────────
+            bool movingHoriz = input.LeftHeld || input.RightHeld;
+            bool wantsSprint = input.SprintHeld && movingHoriz && _player.IsGrounded;
+            _player.TickStamina(wantsSprint, dt);
+
+            float sprintMult = _player.IsSprinting ? 1.35f : 1.0f;
+            float moveSpd = _player.MoveSpeed * (_player.PMeterActive ? 1.4f : 1.0f) * sprintMult;
+
+            if (input.LeftHeld)
+            {
+                if (!_player.IsWallJumping) { _player.VelocityX = -moveSpd; _player.FacingRight = false; }
+            }
+            else if (input.RightHeld)
+            {
+                if (!_player.IsWallJumping) { _player.VelocityX = moveSpd; _player.FacingRight = true; }
+            }
+            else
+            {
+                if (!_player.IsWallJumping) _player.VelocityX = 0;
+            }
+
+            // ── Jump logic: regular, coyote-time, wall-jump ───────────────────
+            if (input.JumpPressed)
+            {
+                // Wall jump (Team 7) — takes priority; player must be against a wall
+                if (!_player.IsGrounded && (_player.IsOnLeftWall || _player.IsOnRightWall))
                 {
-                    _player.VelocityY  = _player.JumpForce;
-                    _player.IsGrounded = false;
-                    _player.JumpsRemaining--;
+                    _player.DoWallJump(wallOnRight: _player.IsOnRightWall);
+                    Game.Instance.Audio.BeepJump();
+                    AchievementSystem.Grant("ach_wall_jump");  // achievement trigger
+                }
+                // Standard / coyote jump
+                else if (_player.JumpsRemaining > 0 ||
+                         _player.CoyoteTimeRemaining > 0f)
+                {
+                    _player.VelocityY      = _player.JumpForce;
+                    _player.IsGrounded     = false;
+                    _player.JumpsRemaining = Math.Max(0, _player.JumpsRemaining - 1);
                     Game.Instance.Audio.BeepJump();
                 }
-                // Variable jump height — release early for short hop (SMB3-style)
-                if (!input.JumpHeld && _player.VelocityY < -120f)
-                    _player.VelocityY = -120f;
-                if (input.DodgePressed) _player.TryDodge();
-                if (input.AttackPressed)
+            }
+
+            // Variable jump height — release early for short hop (SMB3-style)
+            if (!input.JumpHeld && _player.VelocityY < -120f)
+                _player.VelocityY = -120f;
+
+            // ── Ground pound (Team 7) — Down + Attack while airborne ──────────
+            if (!_player.IsGrounded && input.DownHeld && input.AttackPressed)
+                _player.StartGroundPound();
+
+            // ── Swan glide (Team 7 / Gameplay Programmer — Idea 2) ───────────
+            // Holding jump while airborne as Swan reduces gravity (gentle fall).
+            if (_player.Archetype == PlayableCharacter.Swan &&
+                !_player.IsGrounded && input.JumpHeld && _player.VelocityY > 0f)
+            {
+                _player.IsGliding  = true;
+                // Dampen downward velocity to create a float/glide feel
+                _player.VelocityY  = Math.Min(_player.VelocityY, 80f);
+            }
+            else if (!input.JumpHeld)
+            {
+                _player.IsGliding = false;
+            }
+
+            // ── Dodge ─────────────────────────────────────────────────────────
+            if (input.DodgePressed) _player.TryDodge();
+
+            // ── Melee attack / Fire Flower projectile ─────────────────────────
+            if (input.AttackPressed && !input.DownHeld)
+            {
+                bool fired = false;
+
+                // SMB3 style: Fire Flower converts attack button into fireball shot.
+                if (PowerUpInventory.ActiveSuit == SuitType.FireFlower && _fireballShotCooldown <= 0f)
+                {
+                    float fx = _player.FacingRight ? _player.X + _player.Width + 4 : _player.X - 18;
+                    float fy = _player.Y + _player.Height * 0.55f;
+                    _fireballs.Add(new Fireball(fx, fy, _player.FacingRight));
+                    _fireballShotCooldown = 0.28f;
+                    Game.Instance.Audio.BeepFireball();
+                    fired = true;
+                }
+
+                if (!fired)
                 {
                     if (_player.TryAttack()) Game.Instance.Audio.BeepAttack();
                 }
             }
 
+            abilities:
+            // ── Q — Ice Wall (all characters, Orca wider) ────────────────────
             if (input.Ability1Pressed)
             {
                 if (_player.UseIceWall(out IceWallInstance wall))
@@ -653,15 +1045,36 @@ namespace Fridays_Adventure.Scenes
                     _iceFlashTimer = 0.001f;
                 }
             }
+
+            // ── E — Character-unique ability ──────────────────────────────────
+            // Orca → Tidal Slam (AOE shockwave), Swan → Wing Dash, Friday → Freeze Flash
             if (input.Ability2Pressed)
             {
-                if (_player.UseFlashFreeze())
+                if (_player.UseCharacterAbility())
                 {
-                    FreezeNearbyEnemies();
-                    Game.Instance.Audio.BeepFreeze();
-                    _freezeFlashTimer = 0.001f;
+                    switch (_player.Archetype)
+                    {
+                        case PlayableCharacter.Orca:
+                            // Apply AOE slam damage to all nearby enemies
+                            TidalSlamAttack();
+                            Game.Instance.Audio.BeepAttack();
+                            Game.Instance.ScreenShake.Trigger(0.6f);
+                            break;
+                        case PlayableCharacter.Swan:
+                            // Wing Dash already applied velocity inside WingDash.OnUse
+                            Game.Instance.Audio.BeepJump();
+                            break;
+                        default:
+                            // MissFriday — Flash Freeze
+                            FreezeNearbyEnemies();
+                            Game.Instance.Audio.BeepFreeze();
+                            _freezeFlashTimer = 0.001f;
+                            break;
+                    }
                 }
             }
+
+            // ── R — Break Wall ────────────────────────────────────────────────
             if (input.Ability3Pressed)
             {
                 if (_player.UseBreakWall())
@@ -673,8 +1086,95 @@ namespace Fridays_Adventure.Scenes
                     _breakShockwaveWorldY = _player.CenterY;
                 }
             }
+
             if (input.PausePressed)
                 Game.Instance.Scenes.Push(new PauseScene());
+
+            // ── PHASE 3: Warp Whistle use (Tab key) ──────────────────────────
+            if (input.IsPressed(System.Windows.Forms.Keys.Tab) && Game.Instance.WarpWhistleCount > 0)
+            {
+                if (Game.Instance.UseWarpWhistle(Game.Instance.WorldNumber + 1))
+                {
+                    Game.Instance.LevelJustCompleted = true;
+                    Game.Instance.Scenes.Pop();
+                }
+            }
+        }
+
+        /// <summary>
+        /// PHASE 2 — Team 4: Lead Game Designer.
+        /// 15 % chance to drop a random power-up at the given world position.
+        /// Heavier weight toward Mushroom to keep pacing fair.
+        /// </summary>
+        private void TryDropPowerUp(float cx, float cy)
+        {
+            if (_dropRng.NextDouble() > 0.15) return;
+            PowerUp.PowerUpType[] pool =
+            {
+                PowerUp.PowerUpType.Mushroom,
+                PowerUp.PowerUpType.Mushroom,
+                PowerUp.PowerUpType.FireFlower,
+                PowerUp.PowerUpType.SeaStar,
+                PowerUp.PowerUpType.Star,
+            };
+            var type = pool[_dropRng.Next(pool.Length)];
+            // PowerUp(x, y, type) — item pops up from drop position
+            _powerUps.Add(new PowerUp(cx - 14, cy - 16, type));
+        }
+
+        /// <summary>Updates active power-ups and handles player collection.</summary>
+        private void UpdatePowerUps(float dt)
+        {
+            for (int i = _powerUps.Count - 1; i >= 0; i--)
+            {
+                var pu = _powerUps[i];
+                pu.Update(dt);
+                if (pu.TryCollect(_player))
+                {
+                    // Map PowerUp.PowerUpType → SuitType and apply via PowerUpInventory
+                    SuitType suit;
+                    if (pu.Type == PowerUp.PowerUpType.FireFlower) suit = SuitType.FireFlower;
+                    else if (pu.Type == PowerUp.PowerUpType.Star)  suit = SuitType.Star;
+                    else                                           suit = SuitType.Mushroom;
+                    PowerUpInventory.ApplySuit(suit);
+                    // Mushroom / SeaStar also restore 25% HP
+                    if (pu.Type == PowerUp.PowerUpType.Mushroom ||
+                        pu.Type == PowerUp.PowerUpType.SeaStar)
+                        _player.Health = Math.Min(_player.MaxHealth,
+                                                  _player.Health + _player.MaxHealth / 4);
+                    Game.Instance.Audio.BeepBerry();
+                    _powerUps.RemoveAt(i);
+                }
+                else if (pu.IsExpired || pu.IsCollected)
+                {
+                    _powerUps.RemoveAt(i);
+                }
+            }
+        }
+
+        /// <summary>
+        /// PHASE 2 — Orca Tidal Slam: damages all enemies within TidalSlamRadius.
+        /// Triggered by the E-key ability when playing as Orca.
+        /// </summary>
+        private void TidalSlamAttack()
+        {
+            float radius = _player.TidalSlamRadius;
+            int   damage = _player.TidalSlamDamage;
+            ParticleSystem.SpawnBurst(_player.CenterX, _player.CenterY, 16,
+                Color.DeepSkyBlue, 40f, 200f, 0.5f, 1.2f);
+            foreach (var e in _enemies)
+            {
+                if (!e.IsAlive) continue;
+                float dx = e.CenterX - _player.CenterX;
+                float dy = e.CenterY - _player.CenterY;
+                if ((float)Math.Sqrt(dx * dx + dy * dy) <= radius)
+                {
+                    e.TakeDamage(damage);
+                    // Knock enemies outward from the slam epicentre
+                    e.VelocityX = dx > 0 ? 220f : -220f;
+                    e.VelocityY = -180f;
+                }
+            }
         }
 
         private void MoveAndCollide(Character c, float dt)
@@ -690,11 +1190,27 @@ namespace Fridays_Adventure.Scenes
 
         private void ResolveHorizontal(Character c)
         {
+            // Reset wall-contact flags on the player each horizontal-resolve pass
+            var player = c as Player;
+            if (player != null)
+            {
+                player.IsOnLeftWall  = false;
+                player.IsOnRightWall = false;
+            }
+
             foreach (var plat in _platforms)
                 if (c.Hitbox.IntersectsWith(plat))
                 {
-                    if (c.VelocityX > 0) c.X = plat.Left - c.Width;
-                    else if (c.VelocityX < 0) c.X = plat.Right;
+                    if (c.VelocityX > 0)
+                    {
+                        c.X = plat.Left - c.Width;
+                        if (player != null && !c.IsGrounded) player.IsOnRightWall = true;
+                    }
+                    else if (c.VelocityX < 0)
+                    {
+                        c.X = plat.Right;
+                        if (player != null && !c.IsGrounded) player.IsOnLeftWall = true;
+                    }
                     c.VelocityX = 0;
                 }
             foreach (var wall in _iceWalls)
@@ -824,6 +1340,10 @@ namespace Fridays_Adventure.Scenes
                         Game.Instance.Audio.BeepStomp();
                         BountySystem.Award(e.ScoreValue);
                         Game.Instance.TotalBerriesCollected += 10;
+                        _player.RegisterStompChain();
+                        AchievementSystem.CheckCombo(_player.StompChain);
+                        if (_player.IsGroundPounding)
+                            AchievementSystem.Grant("ach_ground_pound");
                         stomped = true;
                     }
                 }
@@ -837,6 +1357,8 @@ namespace Fridays_Adventure.Scenes
                     {
                         BountySystem.Award(e.ScoreValue);
                         Game.Instance.TotalBerriesCollected += 10;
+                        // 15 % chance to drop a power-up on melee kill
+                        TryDropPowerUp(e.CenterX, e.Y);
                     }
                 }
 
@@ -846,7 +1368,11 @@ namespace Fridays_Adventure.Scenes
                 {
                     int healthBefore = _player.Health;
                     _player.TakeDamage(_player.MaxHealth / 10);
-                    if (_player.Health < healthBefore) Game.Instance.Audio.BeepHurt();
+                    if (_player.Health < healthBefore)
+                    {
+                        Game.Instance.Audio.BeepHurt();
+                        _player.ResetStompChain();
+                    }
                 }
             }
             if (!_player.IsAlive) GameOver();
@@ -932,19 +1458,44 @@ namespace Fridays_Adventure.Scenes
                 Game.Instance.CrewBonds++;
                 Game.Instance.Save.SetFlag(_islandId + "_complete");
                 Game.Instance.Save.Save();
-                // SMB3-style level-clear chime — fire once on goal touch
                 Game.Instance.Audio.BeepLevelClear();
+
+                // Achievement: no-death run
+                if (_deathCount == 0)
+                    AchievementSystem.Grant("ach_no_death");
+
+                // Achievement: berry milestone (session berries vs total)
+                AchievementSystem.CheckBerryMilestones(
+                    _berriesCollected, Game.Instance.TotalBerriesCollected);
             }
         }
 
         private void UpdateComplete(float dt)
         {
             _completeTimer += dt;
-            if (_completeTimer >= 3.5f)
+            // At 1.2 s: push the SMB3 card-roulette mini-game first, then course clear.
+            // Flow: IslandScene → CardRouletteScene → CourseClearScene → Overworld
+            if (_completeTimer >= 1.2f && _completeTimer - dt < 1.2f)
             {
-                // Signal that this level was cleared so the overworld can advance CurrentLevel
-                Game.Instance.LevelJustCompleted = true;
-                Game.Instance.Scenes.Pop();
+                string  id   = _islandId;
+                string  name = _islandName;
+                int     time = (int)_speedRunTimer;
+                int     dead = _deathCount;
+
+                // The card roulette runs first; when it finishes it pushes CourseClearScene.
+                Game.Instance.Scenes.Push(new CardRouletteScene(onContinue: () =>
+                {
+                    // Pop CardRoulette, then push CourseClear on top of IslandScene
+                    Game.Instance.Scenes.Pop();
+                    Game.Instance.Scenes.Push(new CourseClearScene(
+                        name, time, dead,
+                        onContinue: () =>
+                        {
+                            Game.Instance.LevelJustCompleted = true;
+                            Game.Instance.Scenes.Pop();  // pop CourseClear
+                            Game.Instance.Scenes.Pop();  // pop IslandScene → Overworld
+                        }));
+                }));
             }
         }
 
@@ -968,6 +1519,7 @@ namespace Fridays_Adventure.Scenes
 
         private void GameOver()
         {
+            _deathCount++;  // track deaths for CourseClearScene grade
             // Pass a retry factory so the defeat screen can offer "Try Again"
             string id = _islandId, name = _islandName;
             Game.Instance.Scenes.Replace(new GameOverScene(() => new IslandScene(id, name)));
@@ -1008,8 +1560,10 @@ namespace Fridays_Adventure.Scenes
             foreach (var e  in _enemies)   if (e.IsAlive) e.Draw(g);
             foreach (var b  in _berries)   b.Draw(g);
             foreach (var hp in _healthPickups) hp.Draw(g);
+            foreach (var pu in _powerUps)  pu.Draw(g);
+            foreach (var sc in _starCoins) sc.Draw(g, _cameraX);
+            foreach (var fb in _fireballs) fb.Draw(g);
             _combo.Draw(g);
-            DrawExitFlag(g);
             _player.Draw(g);
             if (_player.IsAttacking) DrawAttackArc(g);
             if (_breakShockwaveTimer > 0f) DrawBreakShockwave(g);
@@ -1018,6 +1572,7 @@ namespace Fridays_Adventure.Scenes
 
             DrawSnowfall(g, W, H);          // tundra: screen-space falling snow
             DrawBubbles(g, W, H);           // coral: screen-space rising bubbles
+            WeatherSystem.Draw(g, W, H);    // Phase 2 — Team 14: unified weather overlay
             DrawScreenFlashes(g, W, H);
 
             // ── Unified HUD (single call) ─────────────────────────────────────
@@ -1030,24 +1585,28 @@ namespace Fridays_Adventure.Scenes
 
         private void DrawBackground(Graphics g, int W, int H)
         {
-            if (_bg != null) { g.DrawImage(_bg, 0, 0, W, H); return; }
-
-            // SMB3-style sky blue gradient fallback — bright and readable
-            using (var br = new LinearGradientBrush(new Rectangle(0, 0, W, H),
-                Color.FromArgb(92, 148, 252),   // SMB3 sky blue top
-                Color.FromArgb(180, 210, 255),  // lighter horizon
-                90f))
-                g.FillRectangle(br, 0, 0, W, H);
-
-            // Distant cloud bands (SMB3 background clouds are simple white ellipses)
-            using (var br = new SolidBrush(Color.FromArgb(100, 255, 255, 255)))
+            if (_bg != null)
             {
-                g.FillEllipse(br, W * 0.05f, H * 0.35f, 180, 50);
-                g.FillEllipse(br, W * 0.30f, H * 0.25f, 220, 55);
-                g.FillEllipse(br, W * 0.58f, H * 0.32f, 200, 48);
-                g.FillEllipse(br, W * 0.78f, H * 0.20f, 160, 44);
+                // Painted background image available — draw it, then overlay parallax clouds on top
+                g.DrawImage(_bg, 0, 0, W, H);
+                _parallax?.Scroll(_cameraX, 0);
+                _parallax?.Draw(g, W, H);
+                return;
             }
-        }
+
+            // No image — use the parallax stack as the full background (fallback)
+            _parallax?.Scroll(_cameraX, 0);
+            _parallax?.Draw(g, W, H);
+
+            // If parallax also not ready, fall back to solid SMB3 sky gradient
+            if (_parallax == null)
+            {
+                using (var br = new LinearGradientBrush(new Rectangle(0, 0, W, H),
+                    Color.FromArgb(92, 148, 252),
+                    Color.FromArgb(180, 210, 255), 90f))
+                    g.FillRectangle(br, 0, 0, W, H);
+            }
+       }
 
         private void DrawPlatforms(Graphics g, int H)
         {
@@ -1654,7 +2213,7 @@ namespace Fridays_Adventure.Scenes
                 {
                     // Deterministic animated positions: each snowflake has its own drift speed
                     float fx = (float)((i * 139.7f + _levelAnim * 22f * (0.5f + (i % 5) * 0.1f)) % W);
-                    float fy = (float)((_levelAnim * 38f * (0.4f + (i % 7) * 0.09f) + i * H / 55f) % H);
+                    float fy = (float)((_levelAnim * 38f * (0.4f + i * 0.09f) + i * H / 55f) % H);
                     fx += (float)Math.Sin(_levelAnim * 0.7f + i * 0.8f) * 12f;  // gentle horizontal sway
                     int sz = 2 + (i % 3);
                     g.FillEllipse(br, fx, fy, sz, sz);
@@ -1682,38 +2241,97 @@ namespace Fridays_Adventure.Scenes
             }
         }
 
-        private sealed class HealthPickup
+        // ── PHASE 3: SMB3 entity update helpers ───────────────────────────────
+
+        /// <summary>
+        /// PHASE 3 - Team 4: Lead Game Designer
+        /// Updates all Phase 3 SMB3 enemy types each frame.
+        /// Goombas and Koopas patrol platforms; Piranha Plants cycle in/out;
+        /// Thwomps fall on the player; Hammer Bros patrol and throw hammers.
+        /// </summary>
+        private void UpdateSMB3Enemies(float dt)
         {
-            public float X, Y;
-            public bool  Active = true;
-            private float _bob;
-
-            public HealthPickup(float x, float y) { X = x; Y = y; }
-
-            public void Update(float dt) { _bob += dt; }
-
-            public bool TryCollect(Player player)
+            // Goombas — simple patrol with stomp kill
+            foreach (var g in _goombas)
             {
-                if (!Active) return false;
-                var area = new Rectangle((int)X - 12, (int)Y - 12, 24, 24);
-                if (!area.IntersectsWith(player.Hitbox)) return false;
-                Active = false;
-                return true;
+                g.UpdateEnemy(dt, _platforms, _groundY);
+                if (g.CheckPlayerInteraction(_player))
+                {
+                    // Bounce the player on successful stomp
+                    _player.VelocityY = _player.JumpForce * 0.45f;
+                    BountySystem.Award(GoombaEnemy.Score);
+                }
             }
 
-            public void Draw(Graphics g)
+            // Koopas — stomp turns them into a kickable shell
+            foreach (var k in _koopas)
             {
-                if (!Active) return;
-                float yOff = (float)Math.Sin(_bob * 3.5) * 2f;
-                using (var br = new SolidBrush(Color.FromArgb(220, 220, 55, 55)))
-                    g.FillEllipse(br, X - 11, Y - 11 + yOff, 22, 22);
-                using (var pen = new Pen(Color.White, 1.5f))
-                    g.DrawEllipse(pen, X - 11, Y - 11 + yOff, 22, 22);
-                using (var pen = new Pen(Color.White, 3))
+                k.UpdateEnemy(dt, _platforms, _groundY, _goombas);
+                if (k.CheckPlayerInteraction(_player))
+                    _player.VelocityY = _player.JumpForce * 0.45f;
+            }
+
+            // Piranha Plants — cycle in and out of pipes
+            foreach (var pp in _piranhaPlants)
+            {
+                pp.UpdatePlant(dt);
+                pp.CheckPlayerContact(_player);
+            }
+
+            // Thwomps — fall when player is below, handled entirely in UpdateThwomp
+            foreach (var t in _thwomps)
+                t.UpdateThwomp(dt, _player, _groundY);
+
+            // Hammer Bros — patrol, hop, and throw hammers
+            foreach (var hb in _hammerBros)
+            {
+                hb.UpdateEnemy(dt, _platforms, _groundY, _player);
+                if (hb.CheckPlayerInteraction(_player))
+                    _player.VelocityY = _player.JumpForce * 0.45f;
+            }
+        }
+
+        /// <summary>
+        /// Updates active fireballs and applies enemy hit checks.
+        /// </summary>
+        private void UpdateFireballs(float dt)
+        {
+            for (int i = _fireballs.Count - 1; i >= 0; i--)
+            {
+                var fb = _fireballs[i];
+                if (!fb.IsActive)
                 {
-                    g.DrawLine(pen, X - 6, Y + yOff, X + 6, Y + yOff);
-                    g.DrawLine(pen, X, Y - 6 + yOff, X, Y + 6 + yOff);
+                    _fireballs.RemoveAt(i);
+                    continue;
                 }
+
+                fb.UpdateProjectile(dt, _groundY, _levelWidth, _platforms);
+                fb.CheckEnemyHit(_enemies, _player.AttackDamage);
+
+                if (!fb.IsActive)
+                    _fireballs.RemoveAt(i);
+            }
+        }
+
+        /// <summary>
+        /// Updates hidden star coins and awards a completion bonus when all three are collected.
+        /// </summary>
+        private void UpdateStarCoins(float dt)
+        {
+            int collected = 0;
+            foreach (var c in _starCoins)
+            {
+                if (c.Update(dt, _player))
+                    Game.Instance.Audio.BeepBerry();
+                if (c.Collected) collected++;
+            }
+
+            if (collected >= 3 && !Game.Instance.Save.GetFlag($"{_islandId}_starcoins_complete"))
+            {
+                Game.Instance.Save.SetFlag($"{_islandId}_starcoins_complete");
+                Game.Instance.PlayerBounty += 2000;
+                Game.Instance.FloatingText.Spawn("ALL STAR COINS! +2000",
+                    (int)_player.CenterX, (int)_player.Y - 24, Color.Gold, large: true);
             }
         }
     }

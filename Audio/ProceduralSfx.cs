@@ -28,6 +28,8 @@ namespace Fridays_Adventure.Audio
         public const string Heal           = "heal";
         public const string IntroAmbient   = "introambient";
         public const string VictoryFanfare = "victoryfanfare";
+        /// <summary>SMB3-style fireball launch shot.</summary>
+        public const string FireballShot   = "fireball";
 
         // ── SMB3 / Mega Man style SFX constants ──────────────────────────────
         /// <summary>Short sting played when a boss arena intro card slides in (Mega Man style).</summary>
@@ -72,9 +74,9 @@ namespace Fridays_Adventure.Audio
             // Core gameplay SFX
             string[] all = { Jump, Berry, Coin, Stomp, Attack, Ice, Freeze,
                              BreakWall, Hurt, SeaStone, Sink, Heal,
-                             IntroAmbient, VictoryFanfare,
+                             IntroAmbient, VictoryFanfare, FireballShot,
                              // SMB3/Mega Man style SFX (graceful fallback if files are absent)
-                             BossIntro, BossDefeat, LevelClear, Powerup };
+                             BossIntro, BossDefeat, LevelClear, Powerup, LevelIntro };
             foreach (string name in all)
                 EnsureLoaded(name);
         }

@@ -65,6 +65,10 @@ namespace Fridays_Adventure.Scenes
                 new LevelEntry { Label = "[NEW] Airship Stage (SMB3)",         Create = () => new AirshipLevelScene() },
                 new LevelEntry { Label = "[NEW] Underwater Stage (SMB3)",      Create = () => new UnderwaterScene() },
                 new LevelEntry { Label = "[NEW] N-Spade Card Mini-Game",       Create = () => new CardMiniGameScene() },
+                new LevelEntry { Label = "[NEW] Card Roulette (post-level)",   Create = () => new CardRouletteScene(() => Game.Instance.Scenes.Pop()) },
+                new LevelEntry { Label = "[NEW] Toad House Bonus Room",        Create = () => new ToadHouseScene() },
+                new LevelEntry { Label = "[NEW] BOSS RUSH MODE",               Create = () => new BossRushScene() },
+                new LevelEntry { Label = "[NEW] Save Slot Select",             Create = () => new SaveSlotScene() },
 
                 // ── Underwater chapter ────────────────────────────────────
                 new LevelEntry { Label = "Sunken Gate",                     Create = () => new IslandScene("sunken_gate",  "Sunken Gate") },

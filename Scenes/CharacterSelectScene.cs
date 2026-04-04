@@ -20,6 +20,11 @@ namespace Fridays_Adventure.Scenes
         private Bitmap _orcaSprite;     // Orca.png (optional)
         private Bitmap _swanSprite;     // Swan.png (optional)
 
+        // Loaded-source debug labels (QA verification)
+        private string _fridaySpriteSource = "(missing)";
+        private string _orcaSpriteSource   = "(missing)";
+        private string _swanSpriteSource   = "(missing)";
+
         // ── Panel hit-areas (computed each frame in Draw) ────────────────────
         private Rectangle _fridayPanel;
         private Rectangle _orcaPanel;
@@ -64,33 +69,49 @@ namespace Fridays_Adventure.Scenes
         /// </summary>
         private void LoadPortraits()
         {
-            string spritesDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "Sprites");
+            string assetsDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets");
 
-            // All character images are in Assets\Sprites\ — load directly.
-            _fridaySprite = TryLoadBitmap(Path.Combine(spritesDir, "player_Miss_Friday.png"));
-            _orcaSprite   = TryLoadBitmap(Path.Combine(spritesDir, "player_Orca.png"));
-            _swanSprite   = TryLoadBitmap(Path.Combine(spritesDir, "player_Swan.png"));
+            // Miss Friday uses the canonical player sprite (with legacy fallback name).
+            _fridaySprite = TryLoadBitmap(out _fridaySpriteSource,
+                Path.Combine(assetsDir, "Sprites", "player_Miss_Friday.png"),
+                Path.Combine(assetsDir, "Sprites", "player_missfriday.png"));
+
+            // Orca: prefer model art first, then legacy/player sprite fallback.
+            _orcaSprite = TryLoadBitmap(out _orcaSpriteSource,
+                Path.Combine(assetsDir, "Models", "Orca", "Orca.png"),
+                Path.Combine(assetsDir, "Character Models", "Boy Orca", "Orca.png"),
+                Path.Combine(assetsDir, "Sprites", "player_Orca.png"));
+
+            // Swan: prefer model art first, then legacy/player sprite fallback.
+            _swanSprite = TryLoadBitmap(out _swanSpriteSource,
+                Path.Combine(assetsDir, "Models", "Swan", "Swan.png"),
+                Path.Combine(assetsDir, "Character Models", "Girl Swan", "Swan.png"),
+                Path.Combine(assetsDir, "Sprites", "player_Swan.png"));
         }
 
         /// <summary>
-        /// Returns the first successfully loaded bitmap from the provided candidate paths.
-        /// Returns null if none exist or loading fails.
+        /// Returns the first successfully loaded bitmap from candidate paths and
+        /// reports the source path for QA verification.
         /// </summary>
-        private static Bitmap TryLoadBitmap(params string[] candidatePaths)
+        private static Bitmap TryLoadBitmap(out string loadedPath, params string[] candidatePaths)
         {
+            loadedPath = "(missing)";
             if (candidatePaths == null) return null;
+
             foreach (string p in candidatePaths)
             {
                 if (string.IsNullOrWhiteSpace(p) || !File.Exists(p)) continue;
-                try 
-                { 
+                try
+                {
+                    loadedPath = p;
                     return new Bitmap(p);
                 }
-                catch 
-                { 
+                catch
+                {
                     // Continue to next path on error
                 }
             }
+
             return null;
         }
 
@@ -130,14 +151,13 @@ namespace Fridays_Adventure.Scenes
 
         /// <summary>
         /// PHASE 2 - Team 1: Game Director
-        /// Locks in the current selection and transitions to difficulty selection, then overworld.
+        /// Locks in the current selection and transitions to difficulty selection.
+        /// DifficultySelectScene will push OverworldScene once a difficulty is confirmed.
         /// </summary>
         private void ConfirmAndProceed()
         {
-            // Push difficulty selection scene on top
+            // Push difficulty selection — it will Replace itself with OverworldScene on confirm
             Game.Instance.Scenes.Push(new DifficultySelectScene());
-            // After difficulty is selected and popped, the overworld will be pushed
-            Game.Instance.Scenes.Push(new OverworldScene());
         }
 
         // ── Draw ─────────────────────────────────────────────────────────────
@@ -293,6 +313,13 @@ namespace Fridays_Adventure.Scenes
             g.DrawString(trait, _bodyFont,
                 character == PlayableCharacter.MissFriday ? Brushes.OrangeRed : Brushes.SkyBlue,
                 x + 6, textY);
+
+            // Small source-file label for verification (truncated to file name)
+            string src = character == PlayableCharacter.MissFriday ? _fridaySpriteSource
+                       : character == PlayableCharacter.Orca       ? _orcaSpriteSource
+                       : _swanSpriteSource;
+            string srcLabel = "SRC: " + (src == "(missing)" ? "(missing)" : Path.GetFileName(src));
+            g.DrawString(srcLabel, _labelFont, Brushes.Gray, x + 6, y + h - 38);
 
             // "SELECTED" label at the bottom of the active panel
             if (selected)

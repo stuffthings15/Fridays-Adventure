@@ -529,3 +529,25 @@ Boss encounters are optional bonus challenges.
 ---
 
 *Last updated: Session 5 — All 19 teams Wave 2 (190 features) + Error/Visual Debugger wiring.*
+
+---
+
+## Third-Party Asset Pipeline (Legally Clean)
+
+This repo includes a repeatable third-party import pipeline under `third_party/` and `tools/`.
+It imports approved non-Nintendo assets only and keeps source archives in-repo.
+
+- Manifest: `third_party/asset_manifest.json`
+- Asset index: `third_party/asset_index.json`
+- Archive cache: `third_party/archives/`
+- Extracted cache: `third_party/extracted/`
+- Runtime import root: `Assets/third_party/vendor/`
+
+Run:
+
+```bash
+python tools/fetch_assets.py --preset pixel
+python tools/fetch_ambientcg_textures.py
+```
+
+See `docs/THIRD_PARTY_ASSETS.md` for source links, licenses, attribution, and rerun commands.

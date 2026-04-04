@@ -199,9 +199,12 @@ namespace Fridays_Adventure.Systems
 
         // ── Internal helpers ──────────────────────────────────────────────────
 
-        private static void SpawnBurst(float x, float y, int count,
+        /// <summary>
+        /// General-purpose burst spawn used internally and by Phase 3 entities.
+        /// </summary>
+        internal static void SpawnBurst(float x, float y, int count,
             Color color, float minSpeed, float maxSpeed,
-            float minDecay, float maxDecay, bool glow)
+            float minDecay, float maxDecay, bool glow = false)
         {
             for (int i = 0; i < count && _count < MaxParticles; i++)
             {

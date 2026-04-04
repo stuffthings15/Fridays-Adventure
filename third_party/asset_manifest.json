@@ -1,0 +1,123 @@
+{
+  "version": 1,
+  "defaultPreset": "pixel",
+  "packs": [
+    {
+      "id": "kenney-pixel-platformer",
+      "preset": ["pixel"],
+      "enabled": true,
+      "styleFamily": "kenney-pixel",
+      "download": "https://opengameart.org/sites/default/files/kenney_pixel-platformer.zip",
+      "sourcePage": "https://opengameart.org/content/pixel-platformer-0",
+      "license": "CC0",
+      "attribution": "Credit \"Kenney.nl\" or \"www.kenney.nl\", not mandatory.",
+      "runtimeSubdir": "vendor/kenney/pixel-platformer"
+    },
+    {
+      "id": "kenney-pixel-platformer-blocks",
+      "preset": ["pixel"],
+      "enabled": true,
+      "styleFamily": "kenney-pixel",
+      "download": "https://opengameart.org/sites/default/files/pixel_platformer_blocks.zip",
+      "sourcePage": "https://opengameart.org/content/pixel-platformer-blocks",
+      "license": "CC0",
+      "attribution": "Credit \"Kenney.nl\" or \"www.kenney.nl\", not mandatory.",
+      "runtimeSubdir": "vendor/kenney/pixel-platformer-blocks"
+    },
+    {
+      "id": "kenney-pixel-ui-pack",
+      "preset": ["pixel"],
+      "enabled": true,
+      "styleFamily": "kenney-pixel",
+      "download": "https://opengameart.org/sites/default/files/PixelUIpack.zip",
+      "sourcePage": "https://opengameart.org/content/pixel-ui-pack-750-assets",
+      "license": "CC0",
+      "attribution": "Credit \"Kenney.nl\" or \"www.kenney.nl\", not mandatory.",
+      "runtimeSubdir": "vendor/kenney/pixel-ui-pack"
+    },
+    {
+      "id": "kenney-input-prompts-pixel-16",
+      "preset": ["pixel"],
+      "enabled": true,
+      "styleFamily": "kenney-pixel",
+      "download": "https://opengameart.org/sites/default/files/input-prompts-pixel-16.zip",
+      "sourcePage": "https://opengameart.org/content/input-prompts-pixel-16%C3%97",
+      "license": "CC0",
+      "attribution": "Credit \"Kenney.nl\" or \"www.kenney.nl\", not mandatory.",
+      "runtimeSubdir": "vendor/kenney/input-prompts-pixel-16"
+    },
+    {
+      "id": "mattbas-platformer-pack",
+      "preset": ["pixel", "supplemental"],
+      "enabled": false,
+      "styleFamily": "mattbas",
+      "download": "https://opengameart.org/sites/default/files/glax-old-platformer-assets.zip",
+      "sourcePage": "https://opengameart.org/content/pixel-art-platformer-asset-pack",
+      "license": "CC0",
+      "attribution": "Glax / MattBas",
+      "runtimeSubdir": "vendor/mattbas/platformer-pack"
+    },
+    {
+      "id": "ansimuz-platform-pixel-assets",
+      "preset": ["pixel", "supplemental"],
+      "enabled": false,
+      "styleFamily": "ansimuz",
+      "download": "https://opengameart.org/sites/default/files/grotto_escape_pack.zip",
+      "sourcePage": "https://opengameart.org/content/platform-pixel-art-assets",
+      "license": "CC0",
+      "attribution": "Ansimuz",
+      "runtimeSubdir": "vendor/ansimuz/platform-pixel-assets"
+    },
+    {
+      "id": "kenney-background-elements-redux",
+      "preset": ["pixel", "clean", "backgrounds"],
+      "enabled": false,
+      "styleFamily": "kenney",
+      "download": "https://opengameart.org/sites/default/files/Background%20Elements%20Redux.zip",
+      "sourcePage": "https://opengameart.org/content/background-elements-redux",
+      "license": "CC0",
+      "attribution": "Credit \"Kenney.nl\" or \"www.kenney.nl\", not mandatory.",
+      "runtimeSubdir": "vendor/kenney/background-elements-redux"
+    },
+    {
+      "id": "kenney-new-platformer-pack",
+      "preset": ["clean"],
+      "enabled": false,
+      "styleFamily": "kenney-clean",
+      "download": "https://opengameart.org/sites/default/files/kenney_new-platformer-pack-1.0.zip",
+      "sourcePage": "https://opengameart.org/content/new-platformer-pack",
+      "license": "CC0",
+      "attribution": "Credit \"Kenney.nl\" or \"www.kenney.nl\", not mandatory.",
+      "runtimeSubdir": "vendor/kenney/new-platformer-pack"
+    },
+    {
+      "id": "kenney-ui-pack",
+      "preset": ["clean"],
+      "enabled": false,
+      "styleFamily": "kenney-clean",
+      "download": "https://opengameart.org/sites/default/files/kenney_ui-pack.zip",
+      "sourcePage": "https://opengameart.org/content/ui-pack",
+      "license": "CC0",
+      "attribution": "Credit \"Kenney.nl\" or \"www.kenney.nl\", not mandatory.",
+      "runtimeSubdir": "vendor/kenney/ui-pack"
+    },
+    {
+      "id": "kenney-platformer-kit-3d",
+      "preset": ["optional-3d"],
+      "enabled": false,
+      "styleFamily": "kenney-3d",
+      "download": "https://opengameart.org/sites/default/files/kenney_platformer-kit_4.1.zip",
+      "sourcePage": "https://opengameart.org/content/platformer-kit-0",
+      "license": "CC0",
+      "attribution": "Credit \"Kenney.nl\" or \"www.kenney.nl\", not mandatory.",
+      "runtimeSubdir": "vendor/kenney/platformer-kit-3d"
+    }
+  ],
+  "ambientcg": {
+    "enabled": true,
+    "queries": ["dirt", "grass", "rock", "wood"],
+    "type": "Material",
+    "targetResolution": "1K",
+    "runtimeSubdir": "vendor/ambientcg/source-textures"
+  }
+}

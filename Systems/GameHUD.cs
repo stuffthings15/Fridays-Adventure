@@ -74,10 +74,11 @@ namespace Fridays_Adventure.Systems
             // ── 2. Left column: player vitals ─────────────────────────────────
             if (player != null)
             {
-                try { DrawHP(g, player); }          catch { /* section guarded */ }
-                try { DrawIce(g, player); }          catch { /* section guarded */ }
-                try { DrawLivesRow(g, player); }     catch { /* section guarded */ }
-                try { DrawQuickButtons(g, W); }      catch { /* section guarded */ }
+                try { DrawHP(g, player); }          catch { }
+                try { DrawIce(g, player); }         catch { }
+                try { DrawStamina(g, player); }     catch { }
+                try { DrawLivesRow(g, player); }    catch { }
+                try { DrawQuickButtons(g, W); }     catch { /* section guarded */ }
             }
 
             // ── 3. Center: score, world, ability cooldowns ────────────────────
@@ -162,17 +163,34 @@ namespace Fridays_Adventure.Systems
                 g.DrawString(val, _f8, br, barX + segs * 10 + 3, barY);
         }
 
+        // ── STAMINA bar (Phase 2 — Team 4 Idea 8) ─────────────────────────────
+        private static void DrawStamina(Graphics g, Player player)
+        {
+            g.DrawString("STM", _f9, Brushes.Orange, LeftX, 46);
+
+            const int barX = 32, barY = 46, segs = 20;
+            DrawSegBar(g,
+                (int)player.Stamina,
+                (int)Math.Max(1f, player.MaxStamina),
+                barX, barY, segs,
+                Color.Gold, Color.OrangeRed);
+
+            string val = $"{(int)player.Stamina}/{(int)player.MaxStamina}";
+            using (var br = new SolidBrush(Color.FromArgb(220, 255, 220, 140)))
+                g.DrawString(val, _f8, br, barX + segs * 10 + 3, barY);
+        }
+
         // ── Row 3: Lives / P-Meter / Status tags ──────────────────────────────
         private static void DrawLivesRow(Graphics g, Player player)
         {
             int lives = Game.Instance?.CurrentLives ?? 3;
 
             // Heart
-            g.DrawString("♥", _f9, Brushes.Crimson, LeftX, 54);
-            g.DrawString($"×{lives}", _f9, Brushes.White, LeftX + 14, 54);
+            g.DrawString("♥", _f9, Brushes.Crimson, LeftX, 62);
+            g.DrawString($"×{lives}", _f9, Brushes.White, LeftX + 14, 62);
 
             // P-Meter
-            const int pmX = 68, pmY = 57, pmW = 56, pmH = 8;
+            const int pmX = 68, pmY = 65, pmW = 56, pmH = 8;
             float fill = Math.Min(1f, (player.PMeterCharge) / 1.5f);
             using (var br = new SolidBrush(Color.FromArgb(50, 40, 40, 60)))
                 g.FillRectangle(br, pmX, pmY, pmW, pmH);
@@ -190,9 +208,9 @@ namespace Fridays_Adventure.Systems
             void Tag(string lbl, Color col)
             {
                 using (var br = new SolidBrush(Color.FromArgb(200, col)))
-                    g.FillRectangle(br, tx, 54, 26, 14);
+                    g.FillRectangle(br, tx, 62, 26, 14);
                 using (var f = new Font("Courier New", 6, FontStyle.Bold))
-                    g.DrawString(lbl, f, Brushes.Black, tx + 1, 55);
+                    g.DrawString(lbl, f, Brushes.Black, tx + 1, 63);
                 tx += 28;
             }
             if (player.HasEffect(StatusEffect.Suppressed)) Tag("SUP", Color.Purple);
@@ -249,10 +267,14 @@ namespace Fridays_Adventure.Systems
             int startX = W / 2 - totalW / 2;
             int y = 42;
 
+            // E-key label changes per character: Orca=SLAM, Swan=DASH, Friday=FREEZE
+            string eLabel = "E:FREEZE";
+            if (player.Archetype == Engine.PlayableCharacter.Orca) eLabel = "E:SLAM";
+            else if (player.Archetype == Engine.PlayableCharacter.Swan) eLabel = "E:DASH";
             DrawAbilitySlot(g, "Q:WALL",    player.IceWallCooldownProgress,
                             player.IceWallCooldownRemaining,   player.IceWallReady,
                             startX,          y);
-            DrawAbilitySlot(g, "E:FREEZE",  player.FlashFreezeCooldownProgress,
+            DrawAbilitySlot(g, eLabel,      player.FlashFreezeCooldownProgress,
                             player.FlashFreezeCooldownRemaining, player.FlashFreezeReady,
                             startX + 98,     y);
             DrawAbilitySlot(g, "R:BREAK",   player.BreakWallCooldownProgress,
@@ -309,17 +331,13 @@ namespace Fridays_Adventure.Systems
             int berries = Game.Instance?.TotalBerriesCollected ?? 0;
             g.DrawString($"Berries: {berries}", _f9, Brushes.Gold, rx + 6, 26);
 
-            // Level timer — centre of right column, shown only when active
-            if (PowerUpInventory.TimerActive)
-            {
-                float t = PowerUpInventory.TimeRemaining;
-                bool warn = PowerUpInventory.TimerUrgent;
-                bool blink = warn && (int)(Environment.TickCount / 200) % 2 == 0;
-                Color tc = blink ? Color.Red : (warn ? Color.OrangeRed : Color.White);
-                g.DrawString("TIME", _f8, Brushes.LightGray, rx + 6, 46);
-                using (var br = new SolidBrush(tc))
-                    g.DrawString($"{(int)t,4}", _f9, br, rx + 50, 45);
-            }
+            // ── Speed-run clock (Phase 2 — Team 1 Idea 3) ────────────────────
+            // Reads elapsed level time from Game singleton (set by IslandScene).
+            float elapsed = Game.Instance?.LevelElapsedSeconds ?? 0f;
+            int   mins    = (int)(elapsed / 60f);
+            int   secs    = (int)(elapsed % 60f);
+            g.DrawString("TIME",              _f8, Brushes.LightGray, rx + 6,  46);
+            g.DrawString($"{mins}:{secs:D2}", _f9, Brushes.White,     rx + 50, 45);
 
             // Lives
             int lives = Game.Instance?.CurrentLives ?? 3;
