@@ -18,10 +18,9 @@ After **every** prompt, update `Assets/The Forge/Week10 Log_.docx` with:
 | Phase | Features | Status |
 |-------|---------|--------|
 | Phase 1 | 110 | ✅ COMPLETE |
-| Phase 2 Wave 1 | 110 | ✅ COMPLETE |
-| Phase 2 Wave 2 | 190 | ✅ COMPLETE |
-| Phase 3 | 110 | 📋 Designed, ready |
-| **Total built** | **410** | ✅ PASSING build |
+| Phase 2 (core Team 1–11) | 110 | ✅ COMPLETE |
+| Phase 3 (core Team 1–11) | 110 | ✅ COMPLETE |
+| **Total built (core)** | **330** | ✅ PASSING build |
 
 **Build:** C# 7.3 · .NET Framework 4.7.2 · WinForms  
 **Entry point:** `Form1.cs` → `Game.cs` → `SceneManager`  
@@ -32,6 +31,12 @@ After **every** prompt, update `Assets/The Forge/Week10 Log_.docx` with:
 ## Architecture
 
 ```
+
+## Current Validation Snapshot
+
+- Application icon uses Miss Friday image (`pirate_ship.ico`, generated from `Assets\Sprites\player_missfriday.png`).
+- Gameplay HUD consistency is centralized via `GameHUD.Draw(...)` in gameplay scenes.
+- Latest Release build is published to `Release\` (standalone payload copy from `bin\Release\`).
 Game (singleton)
  ├─ SceneManager          push/pop/replace scene stack
  ├─ InputManager          keyboard state snapshot

@@ -128,6 +128,9 @@ namespace Fridays_Adventure.Systems
             Directory.CreateDirectory(LogDir);
             Directory.CreateDirectory(CrashDir);
 
+            // Team 11 (Build Engineer) — Idea 2: daily/old-log rotation hygiene on startup.
+            CleanOldLogs(7);
+
             // Team 11 — Idea 2: assembly version; Idea 3: platform / OS info.
             _envHeader = BuildEnvironmentHeader();
             AppendText(LogLevel.Info, $"=== SESSION OPEN === {_envHeader}");
@@ -516,7 +519,10 @@ namespace Fridays_Adventure.Systems
                 string path = CurrentLogFile;
                 if (File.Exists(path) && new FileInfo(path).Length > 4 * 1024 * 1024)
                 {
-                    string rolled = path.Replace(".log", "_rolled.log");
+                    string rolled = Path.Combine(
+                        Path.GetDirectoryName(path) ?? LogDir,
+                        $"debug-{DateTime.Now:yyyy-MM-dd}_{DateTime.Now:HHmmss}_rolled.log");
+                    if (File.Exists(rolled)) File.Delete(rolled);
                     File.Move(path, rolled);
                 }
                 File.AppendAllText(path,

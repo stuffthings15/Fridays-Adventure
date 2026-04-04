@@ -87,6 +87,26 @@ namespace Fridays_Adventure.Scenes
                 // ── QA / Reporting scenes ─────────────────────────────────
                 new LevelEntry { Label = "[QA] Visual Debugger Report",     Create = () => new QAReportScene() },
                 new LevelEntry { Label = "[QA] Achievements Browser",       Create = () => new AchievementsScene() },
+                new LevelEntry { Label = "[PH3] Producer Dashboard",        Create = () => new Phase3ProducerDashboardScene() },
+                new LevelEntry { Label = "[PH3] Systems Hub",               Create = () => new Phase3SystemsHubScene() },
+                new LevelEntry { Label = "[PH3] Tech Lead Ops",             Create = () => new Phase3TechLeadOpsScene() },
+                new LevelEntry { Label = "[PH3] Director Ops",              Create = () => new Phase3DirectorOpsScene() },
+                new LevelEntry { Label = "[PH3] Engine Ops",                Create = () => new Phase3EngineOpsScene() },
+                new LevelEntry { Label = "[PH3] Design Ops",                Create = () => new Phase3DesignOpsScene() },
+                new LevelEntry { Label = "[PH3] Level Designer Ops",        Create = () => new Phase3LevelDesignerOpsScene() },
+                new LevelEntry { Label = "[PH3] Narrative Ops",             Create = () => new Phase3NarrativeOpsScene() },
+                new LevelEntry { Label = "[PH3] Gameplay Ops",              Create = () => new Phase3GameplayOpsScene() },
+                new LevelEntry { Label = "[PH2] Producer Dashboard",        Create = () => new Phase2ProducerDashboardScene() },
+                new LevelEntry { Label = "[PH2] Tech Lead Ops",             Create = () => new Phase2TechLeadOpsScene() },
+                new LevelEntry { Label = "[PH2] Design Ops",                Create = () => new Phase2DesignOpsScene() },
+                new LevelEntry { Label = "[PH2] Level Designer Ops",        Create = () => new Phase2LevelDesignerOpsScene() },
+                new LevelEntry { Label = "[PH2] Narrative Ops",             Create = () => new Phase2NarrativeOpsScene() },
+                new LevelEntry { Label = "[PH2] Gameplay Ops",              Create = () => new Phase2GameplayOpsScene() },
+                new LevelEntry { Label = "[PH2] Systems Ops",               Create = () => new Phase2SystemsOpsScene() },
+                new LevelEntry { Label = "[PH2] UI Ops",                    Create = () => new Phase2UiOpsScene() },
+                new LevelEntry { Label = "[PH2] Engine Ops",                Create = () => new Phase2EngineOpsScene() },
+                new LevelEntry { Label = "[PH2] Build Ops",                 Create = () => new Phase2BuildOpsScene() },
+                new LevelEntry { Label = "[PH2] Director Ops",              Create = () => new Phase2DirectorOpsScene() },
             };
 
             // Prime the summary panel immediately when opening dev menu.

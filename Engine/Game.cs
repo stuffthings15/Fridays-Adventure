@@ -311,6 +311,7 @@ namespace Fridays_Adventure.Engine
         public string AchievementBannerText  { get; set; } = null;
         public Color  AchievementBannerColor { get; set; } = Color.Gold;
         private float _achievementBannerTimer = 0f;
+        private float _producerReminderToastCooldown;
 
         public Game(GameCanvas canvas)
         {
@@ -338,6 +339,10 @@ namespace Fridays_Adventure.Engine
 
             // Subscribe achievement notification banner to EventBus.
             EventBus.Subscribe<AchievementEarnedEvent>(OnAchievementEarned);
+
+            // Team 2 (Producer) — runtime production system events.
+            EventBus.Subscribe<SprintIntervalEvent>(OnSprintInterval);
+            EventBus.Subscribe<PlaytimeLimitEvent>(OnPlaytimeLimit);
         }
 
         public void Start()
@@ -346,6 +351,18 @@ namespace Fridays_Adventure.Engine
             // Team 2 (Producer) — Idea 1: feature flags; Idea 4: accessibility.
             FeatureFlags.Load();
             AccessibilityOptions.SyncFromFlags();
+            ABVariants.Set("HUD_LAYOUT", "smb3_classic");
+
+            // Phase 3 (Team 8) — achievement unlock analytics logger subscription.
+            AchievementUnlockLogger.EnsureSubscribed();
+
+            // Team 2 (Producer) — Idea 6: playtime limit warning system.
+            PlaytimeLimit.SetLimit(Save.GetInt("runtime.playtimeLimitMinutes", 0));
+
+            // Team 2 (Producer) — Idea 7: local update checker stub.
+            string updateNotice = UpdateChecker.CheckForUpdate();
+            if (!string.IsNullOrWhiteSpace(updateNotice))
+                SMB3Hud.ShowToast(updateNotice);
 
             // ── Write build manifest and clean old logs ────────────────────────
             // Team 11 (Build Engineer) — Idea 1: manifest; Team 8: log cleanup.
@@ -364,6 +381,9 @@ namespace Fridays_Adventure.Engine
             Audio.SetSfxVolume(sfxVol);
             Audio.ApplySavedPlaylists(Save.PlaylistData);
             Audio.Prewarm();             // open first track on background thread
+
+            // Team 3 (Technical Lead) — Idea 4: external config hot-reload watcher.
+            HotReloadConfig.StartWatching();
             
             // PHASE 2 - Team 1: Game Director
             // Initialize difficulty modifiers from saved config
@@ -377,6 +397,9 @@ namespace Fridays_Adventure.Engine
         {
             _timer.Stop();
             Audio.StopMusic();
+
+            // Team 3 (Technical Lead) — cleanly stop config watcher on shutdown.
+            HotReloadConfig.Stop();
 
             SyncRuntimeToSaveData();
             Save.Save();
@@ -414,6 +437,9 @@ namespace Fridays_Adventure.Engine
                 Audio.Tick(dt);
                 Scenes.Current?.Update(dt);
 
+                // Team 3 (Technical Lead) — process deferred config reload events.
+                HotReloadConfig.Tick();
+
                 // Advance global curtain-wipe transitions.
                 // Without this, SceneTransition.Begin(...) callbacks never fire,
                 // which can stall level-complete flow on a black screen.
@@ -446,11 +472,26 @@ namespace Fridays_Adventure.Engine
                 AnimationFeatures.Update(dt);
                 // Team 17 (VFX Artist)      — particle lifetimes
                 VFXFeatures.Update(dt);
+                // Phase 3 (Team 3) — advanced replay frame capture.
+                ReplaySystemAdvanced.CaptureFrame(dt);
                 // Team 9  (UI Programmer)   — coin spin, cursor blink
                 UIFeatures.UpdateCoinSpin(dt);
                 UIArtFeatures.UpdateCursor(dt);
+
+                // Team 2 (Producer) — Ideas 2/5/6 runtime producers.
+                SprintTimer.Tick(dt);
+                AutoSaveReminder.Tick(dt);
+                PlaytimeLimit.Tick(dt);
+                _producerReminderToastCooldown = Math.Max(0f, _producerReminderToastCooldown - dt);
+                if (AutoSaveReminder.ShouldRemind && _producerReminderToastCooldown <= 0f)
+                {
+                    SMB3Hud.ShowToast("Reminder: Save your progress.");
+                    _producerReminderToastCooldown = 30f;
+                }
+
                 // Tech Lead (Team 3)        — frame-time histogram
                 TechLeadFeatures.RecordFrameTime(dt);
+                FrameTimeHistogram.RecordFrame(dt);
                 // QA (Team 19)              — frame spike detection
                 QAFeatures.CheckFrameSpike(dt);
 
@@ -498,12 +539,39 @@ namespace Fridays_Adventure.Engine
 
                 // Visual debugger overlay (F10 toggle).
                 VisualDebugger.DrawOverlay(g, CanvasWidth, CanvasHeight);
+
+                // Team 10 (Engine Programmer) — frame-time histogram overlay.
+                // Shown in GodMode for dev/QA visibility.
+                if (GodMode)
+                    DrawPerfHistogramOverlay(g);
             }
             catch (Exception ex)
             {
                 // Error debugger entry for render-loop failures.
                 DebugLogger.LogError("Game.OnRender", ex);
             }
+        }
+
+        /// <summary>
+        /// Draws a compact performance overlay with live frame graph + histogram summary.
+        /// Team 10 (Engine Programmer) — Phase 2 Idea 4: Frame Time Histogram.
+        /// </summary>
+        private void DrawPerfHistogramOverlay(System.Drawing.Graphics g)
+        {
+            const int x = 8;
+            const int y = 56;
+            const int w = 230;
+            const int h = 70;
+
+            TechLeadFeatures.DrawFrameGraph(g, x, y, w, h);
+
+            string summary = FrameTimeHistogram.GetSummary();
+            int nl = summary.IndexOf('\n');
+            if (nl > 0) summary = summary.Substring(0, nl);
+
+            using (var f = new System.Drawing.Font("Courier New", 7, System.Drawing.FontStyle.Bold))
+            using (var br = new System.Drawing.SolidBrush(System.Drawing.Color.Cyan))
+                g.DrawString(summary, f, br, x + 2, y + h + 2);
         }
 
         /// <summary>
@@ -566,6 +634,24 @@ namespace Fridays_Adventure.Engine
             _achievementBannerTimer = 3.0f;
         }
 
+        private void OnSprintInterval(SprintIntervalEvent evt)
+        {
+            SMB3Hud.ShowToast($"Sprint checkpoint: {SessionStats.Instance.PlayTimeFormatted}");
+        }
+
+        private void OnPlaytimeLimit(PlaytimeLimitEvent evt)
+        {
+            if (evt.IsHardLimit)
+            {
+                SMB3Hud.ShowToast("Playtime limit reached. Consider taking a break.");
+                DebugLogger.LogWarning("Game.PlaytimeLimit", "Hard playtime limit reached.");
+            }
+            else
+            {
+                SMB3Hud.ShowToast("Playtime warning: approaching session limit.");
+            }
+        }
+
         /// <summary>
         /// Applies a loaded SaveData object to the game runtime state.
         /// </summary>
@@ -610,6 +696,8 @@ namespace Fridays_Adventure.Engine
         /// <remarks>PHASE 2 - Team 8: JSON export support.</remarks>
         public void SyncRuntimeToSaveData()
         {
+            AutoSaveReminder.NotifySaved();
+
             Save.PlayerBounty  = PlayerBounty;
             Save.ThreatLevel   = ThreatLevel;
             Save.CrewBonds     = CrewBonds;

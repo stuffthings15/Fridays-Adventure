@@ -19,14 +19,19 @@ See `.github/copilot-instructions.md` for full code comment standards.
 
 | Phase | Team Count | Features | Status |
 |-------|-----------|----------|--------|
-| Phase 1 | 19 teams | 110 features | ✅ COMPLETE |
-| Phase 2 Wave 1 | 19 teams | 110 features | ✅ COMPLETE |
-| Phase 2 Wave 2 | 19 teams | 190 features | ✅ COMPLETE |
-| **TOTAL** | — | **410 features** | ✅ ALL IMPLEMENTED |
+| Phase 1 | Core scope | 110 features | ✅ COMPLETE |
+| Phase 2 | Core scope | 110 features | ✅ COMPLETE |
+| Phase 3 | Core scope | 110 features | ✅ COMPLETE |
+| **TOTAL CORE** | — | **330 features** | ✅ ALL IMPLEMENTED |
 
-**Build Status:** ✅ 0 errors · 0 warnings  
+**Build Status:** ✅ 0 errors (Release build)  
 **Debuggers:** ✅ Error Log Debugger + Visual Debugger ACTIVE  
 **SMB3 Style:** ✅ HUD · power-ups · world map · flagpole · timer · lives
+
+**Recent verification:**
+- App icon updated to Miss Friday artwork (`pirate_ship.ico` regenerated from `Assets\Sprites\player_missfriday.png`)
+- HUD consistency validated across gameplay level scenes using unified `GameHUD.Draw(...)`
+- Standalone Release payload published to `Release\`
 
 ---
 

@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <PropertyGroup>
@@ -157,11 +157,32 @@
     <Compile Include="Scenes\OverworldScene.cs" />
     <Compile Include="Scenes\OptionsScene.cs" />
     <Compile Include="Scenes\PauseScene.cs" />
+    <Compile Include="Scenes\Phase2BuildOpsScene.cs" />
+    <Compile Include="Scenes\Phase2DesignOpsScene.cs" />
+    <Compile Include="Scenes\Phase2DirectorOpsScene.cs" />
+    <Compile Include="Scenes\Phase2EngineOpsScene.cs" />
+    <Compile Include="Scenes\Phase2GameplayOpsScene.cs" />
+    <Compile Include="Scenes\Phase2LevelDesignerOpsScene.cs" />
+    <Compile Include="Scenes\Phase2NarrativeOpsScene.cs" />
+    <Compile Include="Scenes\Phase2ProducerDashboardScene.cs" />
+    <Compile Include="Scenes\Phase2SystemsOpsScene.cs" />
+    <Compile Include="Scenes\Phase2TechLeadOpsScene.cs" />
+    <Compile Include="Scenes\Phase2UiOpsScene.cs" />
+    <Compile Include="Scenes\Phase3DesignOpsScene.cs" />
+    <Compile Include="Scenes\Phase3DirectorOpsScene.cs" />
+    <Compile Include="Scenes\Phase3EngineOpsScene.cs" />
+    <Compile Include="Scenes\Phase3GameplayOpsScene.cs" />
+    <Compile Include="Scenes\Phase3LevelDesignerOpsScene.cs" />
+    <Compile Include="Scenes\Phase3NarrativeOpsScene.cs" />
+    <Compile Include="Scenes\Phase3ProducerDashboardScene.cs" />
+    <Compile Include="Scenes\Phase3SystemsHubScene.cs" />
+    <Compile Include="Scenes\Phase3TechLeadOpsScene.cs" />
     <Compile Include="Scenes\QAReportScene.cs" />
     <Compile Include="Scenes\SaveSlotScene.cs" />
     <Compile Include="Scenes\Scene.cs" />
     <Compile Include="Scenes\SettingsScene.cs" />
     <Compile Include="Scenes\SkyIslandScene.cs" />
+    <Compile Include="Scenes\StatisticsDashboardScene.cs" />
     <Compile Include="Scenes\StormScene.cs" />
     <Compile Include="Scenes\TitleScene.cs" />
     <Compile Include="Scenes\ToadHouseScene.cs" />
@@ -194,6 +215,27 @@
     <Compile Include="Systems\ParallaxBackground.cs" />
     <Compile Include="Systems\ParticleSystem.cs" />
     <Compile Include="Systems\PerformanceProfiler.cs" />
+    <Compile Include="Systems\Phase2BuildEngineerSystems.cs" />
+    <Compile Include="Systems\Phase2DesignSystems.cs" />
+    <Compile Include="Systems\Phase2EngineSystems.cs" />
+    <Compile Include="Systems\Phase2GameDirectorSystems.cs" />
+    <Compile Include="Systems\Phase2GameplaySystems.cs" />
+    <Compile Include="Systems\Phase2LevelDesignerSystems.cs" />
+    <Compile Include="Systems\Phase2NarrativeSystems.cs" />
+    <Compile Include="Systems\Phase2ProducerSystems.cs" />
+    <Compile Include="Systems\Phase2SystemsProgrammerSystems.cs" />
+    <Compile Include="Systems\Phase2TechLeadSystems.cs" />
+    <Compile Include="Systems\Phase2UISystems.cs" />
+    <Compile Include="Systems\Phase3BuildEngineerOps.cs" />
+    <Compile Include="Systems\Phase3DesignSystems.cs" />
+    <Compile Include="Systems\Phase3DirectorSystems.cs" />
+    <Compile Include="Systems\Phase3EngineProgrammerSystems.cs" />
+    <Compile Include="Systems\Phase3GameplaySystems.cs" />
+    <Compile Include="Systems\Phase3LevelDesignerSystems.cs" />
+    <Compile Include="Systems\Phase3NarrativeSystems.cs" />
+    <Compile Include="Systems\Phase3ProducerSystems.cs" />
+    <Compile Include="Systems\Phase3SystemsFoundation.cs" />
+    <Compile Include="Systems\Phase3TechLeadSystems.cs" />
     <Compile Include="Systems\PowerUpInventory.cs" />
     <Compile Include="Systems\PowerUpSystem.cs" />
     <Compile Include="Systems\ProducerSystems.cs" />

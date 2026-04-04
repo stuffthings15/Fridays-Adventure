@@ -165,6 +165,7 @@ namespace Fridays_Adventure.Systems
     {
         private static FileSystemWatcher _watcher;
         private static volatile bool     _pendingReload;
+        private static bool              _started;
 
         /// <summary>
         /// Starts watching the config file for changes.
@@ -172,8 +173,10 @@ namespace Fridays_Adventure.Systems
         /// </summary>
         public static void StartWatching()
         {
-            string dir  = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets");
-            string file = "game-config.txt";
+            if (_started) return;
+
+            string dir  = AppDomain.CurrentDomain.BaseDirectory;
+            string file = "game-config.ini";
             if (!Directory.Exists(dir)) return;
             try
             {
@@ -183,7 +186,8 @@ namespace Fridays_Adventure.Systems
                     EnableRaisingEvents = true
                 };
                 _watcher.Changed += (s, e) => _pendingReload = true;
-                DebugLogger.LogInfo("HotReloadConfig", "Watching Assets\\game-config.txt for changes.");
+                _started = true;
+                DebugLogger.LogInfo("HotReloadConfig", "Watching game-config.ini for changes.");
             }
             catch (Exception ex)
             {
@@ -198,6 +202,7 @@ namespace Fridays_Adventure.Systems
         /// </summary>
         public static void Tick()
         {
+            if (!_started) return;
             if (!_pendingReload) return;
             _pendingReload = false;
             GameConfig.Reload();
@@ -206,7 +211,12 @@ namespace Fridays_Adventure.Systems
         }
 
         /// <summary>Stops watching the config file.</summary>
-        public static void Stop() { _watcher?.Dispose(); _watcher = null; }
+        public static void Stop()
+        {
+            _watcher?.Dispose();
+            _watcher = null;
+            _started = false;
+        }
     }
 
     /// <summary>Published when the hot-reload config watcher detects a file change.</summary>

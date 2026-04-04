@@ -65,6 +65,9 @@ namespace Fridays_Adventure.Scenes
             _rows.Add(new Row { Type = RowType.SfxVol,   Label = "SFX Volume"   });
             _rows.Add(new Row { Type = RowType.HowToPlayBtn, Label = "How To Play / Controls" });
 
+            // PHASE 2 - Team 9: UI Programmer — Statistics Dashboard entry
+            _rows.Add(new Row { Type = RowType.ToolAction, Label = "Statistics Dashboard", ToolAction = OpenStatisticsDashboard });
+
             // PHASE 2 - Team 9: UI Programmer — Settings Menu Integration
             _rows.Add(new Row { Type = RowType.ToolAction, Label = "Game Settings", ToolAction = OpenSettings });
 
@@ -103,6 +106,15 @@ namespace Fridays_Adventure.Scenes
         {
             Game.Instance.CrtFilterEnabled = !Game.Instance.CrtFilterEnabled;
             SMB3Hud.ShowToast(Game.Instance.CrtFilterEnabled ? "CRT Filter: ON" : "CRT Filter: OFF");
+        }
+
+        /// <summary>
+        /// Opens the statistics + performance dashboard scene.
+        /// </summary>
+        /// <remarks>PHASE 2 - Team 9: Statistics Dashboard / Performance Metrics Display</remarks>
+        private static void OpenStatisticsDashboard()
+        {
+            Game.Instance.Scenes.Push(new StatisticsDashboardScene());
         }
 
         /// <summary>
