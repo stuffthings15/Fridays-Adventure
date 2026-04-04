@@ -297,7 +297,7 @@ namespace Fridays_Adventure.Scenes
             if (_exitFlag.IntersectsWith(playerRect) && !_levelComplete)
             {
                 _levelComplete = true;
-                _completeTimer = 2f;
+                _completeTimer = 0.7f;
             }
 
             // ── Death check ───────────────────────────────────────────────────

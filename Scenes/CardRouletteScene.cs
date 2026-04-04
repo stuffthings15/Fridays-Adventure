@@ -55,7 +55,7 @@ namespace Fridays_Adventure.Scenes
         private float _resultTimer;
         private string _resultMsg;
         private Color  _resultColor;
-        private const float ResultDisplay = 3.0f;
+        private const float ResultDisplay = 1.0f;
         private bool  _advancing;
 
         // Random for face selection.

@@ -232,7 +232,7 @@ namespace Fridays_Adventure.Scenes
             ThreatSystem.Tick(dt);
             _stormAnim += dt;
 
-            if (_complete) { _completeTimer += dt; if (_completeTimer >= 3f) { Game.Instance.LevelJustCompleted = true; Game.Instance.Scenes.Pop(); } return; }
+            if (_complete) { _completeTimer += dt; if (_completeTimer >= 1.0f) { Game.Instance.LevelJustCompleted = true; Game.Instance.Scenes.Pop(); } return; }
             if (_failed)   { Game.Instance.Scenes.Replace(new GameOverScene(() => new StormScene())); return; }
 
             UpdateDeck(dt);

@@ -43,7 +43,7 @@ namespace Fridays_Adventure.Scenes
 
         // ── Auto-advance ──────────────────────────────────────────────────────
         private float _autoTimer;
-        private const float AutoDelay = 4.5f;
+        private const float AutoDelay = 1.25f;
         private bool  _advancing;
 
         // ── Grade ─────────────────────────────────────────────────────────────

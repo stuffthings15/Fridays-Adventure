@@ -1409,6 +1409,146 @@
 
 ---
 
+## SESSION 37: Critical Gameplay Fix — Level Auto-Completing at Start
+
+**Date/Time:** April 4, 2026  
+**Duration:** Hotfix session  
+
+### ✅ Features Implemented
+- Fixed level progression gate in `Scenes/IslandScene.cs`:
+  - Restored proper completion condition in `CheckExit()` so level completion only triggers when player hitbox intersects `_exitFlag`.
+
+### 🐛 Bugs Fixed
+- Resolved critical issue where level 1 immediately showed "level complete" on start and skipped gameplay.
+- Root cause: `CheckExit()` completion block executed unconditionally.
+
+### 📋 Documentation Updated
+- `docs/WEEK_10_LOG_TEMPLATE.md` updated with Session 37 hotfix details.
+
+### 🏗️ Build Status
+- Build: ✅ PASSING
+
+### 🎯 Next Steps
+- In-game verify level start flow now allows full play until goal flag contact.
+
+---
+
+## SESSION 38: First-Entry Flow Fix — Force Character Select Before First Map Entry
+
+**Date/Time:** April 4, 2026  
+**Duration:** Hotfix session  
+
+### ✅ Features Implemented
+- Updated `Scenes/SaveSlotScene.cs` first-entry routing logic:
+  - New-game determination now checks persistent marker `runtime.characterSelected`.
+  - If marker is missing/zero, flow routes to `CharacterSelectScene` before map entry.
+- Updated `Scenes/CharacterSelectScene.cs` confirmation path:
+  - Persists selected character (`runtime.character`)
+  - Persists completion marker (`runtime.characterSelected = 1`)
+  - Saves immediately so subsequent slot loads can safely continue to map.
+
+### 🐛 Bugs Fixed
+- Fixed issue where first map entry could bypass character selection and jump directly to overworld.
+
+### 📋 Documentation Updated
+- `docs/WEEK_10_LOG_TEMPLATE.md` updated with Session 38 details.
+
+### 🏗️ Build Status
+- Build: ✅ PASSING
+
+### 🎯 Next Steps
+- Verify in-game flow on a fresh/legacy slot:
+  - First entry → Character Select
+  - Later entries on same slot → direct map load
+
+---
+
+## SESSION 39: UX Timing Hotfix — Faster Return to Map After Level Clear
+
+**Date/Time:** April 4, 2026  
+**Duration:** Hotfix session  
+
+### ✅ Features Implemented
+- Reduced post-clear delays across gameplay/clear flow:
+  - `Scenes/IslandScene.cs`: completion pause before roulette `1.2s → 0.35s`
+  - `Scenes/FortressScene.cs`: completion timer `1.8s → 0.6s`
+  - `Scenes/SkyIslandScene.cs`: completion hold `3.5s → 1.0s`
+  - `Scenes/StormScene.cs`: completion hold `3.0s → 1.0s`
+  - `Scenes/AirshipLevelScene.cs`: completion timer `2.0s → 0.7s`
+  - `Scenes/CourseClearScene.cs`: auto-advance delay `4.5s → 1.25s`
+  - `Scenes/CardRouletteScene.cs`: result display `3.0s → 1.0s`
+
+### 🐛 Bugs Fixed
+- Addressed user-facing lag where level completion felt delayed before returning to overworld map.
+
+### 📋 Documentation Updated
+- `docs/WEEK_10_LOG_TEMPLATE.md` updated with Session 39 details.
+
+### 🏗️ Build Status
+- Build: ✅ PASSING
+
+### 🎯 Next Steps
+- Validate in-game pacing on island/fortress/storm/airship clears to confirm transition timing feels responsive.
+
+---
+
+## SESSION 40: Save Slot UX + Centipede Boss Visual/Combat Upgrade
+
+**Date/Time:** April 4, 2026  
+**Duration:** Implementation + hotfix session  
+
+### ✅ Features Implemented
+- Updated `Scenes/SaveSlotScene.cs`:
+  - Added per-selection button next to save slots labeled `DELETE SAVE`.
+  - Removed old bottom `CLEAR SLOT` placement; kept bottom `BACK` button.
+  - Resize/layout adjusted so side delete button fits cleanly beside slot cards.
+- Updated `Scenes/WarlordBossScene.cs` for `CentipedeLord`:
+  - Implemented connected centipede body segments trailing the boss head.
+  - Added segment rendering with linked chain visuals.
+  - Added segment collisions and attack hit detection (segment hits apply shared boss damage).
+
+### 🐛 Bugs Fixed
+- Resolved UX mismatch where delete action was not clearly presented beside the save slots.
+- Upgraded centipede fight presentation/interaction so boss is represented as a connected multi-segment centipede body.
+
+### 📋 Documentation Updated
+- `docs/WEEK_10_LOG_TEMPLATE.md` updated with Session 40 details.
+
+### 🏗️ Build Status
+- Build: ✅ PASSING
+
+### 🎯 Next Steps
+- In-game verify delete-save button positioning on all resolutions used.
+- Playtest `centipede_final` encounter for hitbox fairness and segment spacing feel.
+
+---
+
+## SESSION 41: Build + Git Push (Release Executable Published)
+
+**Date/Time:** April 4, 2026  
+**Duration:** Release/build ops session  
+
+### ✅ Features Implemented
+- Built project in Release mode using MSBuild.
+- Published standalone release payload to `Release\`.
+- Verified executable output at `Release\Fridays Adventure.exe`.
+- Prepared local changes for remote sync.
+
+### 🐛 Bugs Fixed
+- None in this session (build/release + source control operation).
+
+### 📋 Documentation Updated
+- `docs/WEEK_10_LOG_TEMPLATE.md` updated with Session 41 details.
+
+### 🏗️ Build Status
+- Release Build: ✅ PASSING (`0 errors`, `1 warning`)
+- Warning: `Scenes\BossRushScene.cs` unused field `_startHp` (`CS0169`).
+
+### 🎯 Next Steps
+- Optional cleanup: remove/consume `_startHp` warning in `BossRushScene`.
+
+---
+
 ## NOTES & IDEAS
 
 **Recurring Tasks:**

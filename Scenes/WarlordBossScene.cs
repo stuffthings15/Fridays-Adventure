@@ -24,7 +24,11 @@ namespace Fridays_Adventure.Scenes
         private List<Rectangle>    _platforms = new List<Rectangle>();
         private List<Hazard>       _hazards   = new List<Hazard>();
         private List<IceWallInstance> _iceWalls = new List<IceWallInstance>();
+        private readonly List<PointF> _centipedeSegments = new List<PointF>();
         private ComboAssist        _combo     = new ComboAssist();
+
+        private const int   CentipedeSegmentCount   = 10;
+        private const float CentipedeSegmentSpacing = 34f;
 
         // Phase tracking
         private int   _phase = 1;
@@ -109,6 +113,13 @@ namespace Fridays_Adventure.Scenes
             // Use dedicated boss sprite art instead of the generic GARP placeholder
             var bs = SpriteManager.GetScaled("enemy_boss.png", 80, 110);
             if (bs != null) _boss.Sprite = bs;
+
+            if (_config.Type == WarlordType.CentipedeLord)
+            {
+                _centipedeSegments.Clear();
+                for (int i = 0; i < CentipedeSegmentCount; i++)
+                    _centipedeSegments.Add(new PointF(_boss.CenterX - i * CentipedeSegmentSpacing, _boss.CenterY));
+            }
         }
 
         private void AddTypeHazards(int W, int gY)
@@ -152,6 +163,7 @@ namespace Fridays_Adventure.Scenes
             UpdateBossAI(dt);
             _boss.Update(dt);
             MoveAndCollide(_boss, dt);
+            UpdateCentipedeSegments(dt);
             ApplyTypeSpecial(dt);
             _combo.Update(dt, _player, new List<Enemy> { _boss });
             if (_telegraphTimer > 0) _telegraphTimer -= dt;
@@ -356,6 +368,38 @@ namespace Fridays_Adventure.Scenes
                 _player.TakeDamage(_player.MaxHealth / 10);
                 Game.Instance.Audio.BeepHurt();
             }
+
+            if (_config.Type == WarlordType.CentipedeLord && _boss.IsAlive)
+            {
+                // Segment body collisions (centipede train).
+                for (int i = 0; i < _centipedeSegments.Count; i++)
+                {
+                    Rectangle segRect = GetCentipedeSegmentRect(i);
+                    if (!_player.IsInvincible && _player.Hitbox.IntersectsWith(segRect))
+                    {
+                        _player.TakeDamage(_player.MaxHealth / 10);
+                        Game.Instance.Audio.BeepHurt();
+                        break;
+                    }
+                }
+
+                // Any segment can be struck, applying shared boss damage.
+                if (pAtk != Rectangle.Empty)
+                {
+                    for (int i = 0; i < _centipedeSegments.Count; i++)
+                    {
+                        if (!pAtk.IntersectsWith(GetCentipedeSegmentRect(i))) continue;
+                        bool wasAlive = _boss.IsAlive;
+                        _boss.TakeDamage(_player.AttackDamage);
+                        if (wasAlive && !_boss.IsAlive)
+                        {
+                            BountySystem.Award(_boss.ScoreValue);
+                            Game.Instance.TotalBerriesCollected += 50;
+                        }
+                        break;
+                    }
+                }
+            }
         }
 
         private void CheckOutcome()
@@ -406,6 +450,7 @@ namespace Fridays_Adventure.Scenes
             DrawPlatforms(g);
             foreach (var hz in _hazards)  hz.Draw(g);
             foreach (var w  in _iceWalls) w.Draw(g);
+            DrawCentipedeSegments(g);
             if (_boss.IsAlive) _boss.Draw(g);
             _player.Draw(g);
             if (_player.IsAttacking)
@@ -422,6 +467,72 @@ namespace Fridays_Adventure.Scenes
             if (_showRescue)          DrawRescuePrompt(g, W, H);
             if (_victory)             DrawVictory(g, W, H);
             DrawDevMenuButton(g);
+        }
+
+        /// <summary>
+        /// Updates centipede body segments so they trail the boss head in a connected chain.
+        /// </summary>
+        /// <remarks>PHASE 3 - Team 5/6 crossover: Centipede boss body rig.</remarks>
+        private void UpdateCentipedeSegments(float dt)
+        {
+            if (_config.Type != WarlordType.CentipedeLord || _centipedeSegments.Count == 0) return;
+
+            PointF prev = new PointF(_boss.CenterX, _boss.CenterY);
+            for (int i = 0; i < _centipedeSegments.Count; i++)
+            {
+                PointF cur = _centipedeSegments[i];
+                float dx = cur.X - prev.X;
+                float dy = cur.Y - prev.Y;
+                float dist = (float)Math.Sqrt(dx * dx + dy * dy);
+
+                if (dist > CentipedeSegmentSpacing)
+                {
+                    float k = CentipedeSegmentSpacing / dist;
+                    cur = new PointF(prev.X + dx * k, prev.Y + dy * k);
+                }
+
+                // Smooth follow so the chain feels alive.
+                cur = new PointF(
+                    cur.X + (prev.X - cur.X) * Math.Min(1f, dt * 10f),
+                    cur.Y + (prev.Y - cur.Y) * Math.Min(1f, dt * 10f));
+
+                _centipedeSegments[i] = cur;
+                prev = cur;
+            }
+        }
+
+        /// <summary>Returns rectangle for one centipede body segment.</summary>
+        private Rectangle GetCentipedeSegmentRect(int index)
+        {
+            PointF p = _centipedeSegments[index];
+            int size = 30;
+            return new Rectangle((int)(p.X - size / 2f), (int)(p.Y - size / 2f), size, size);
+        }
+
+        /// <summary>Draws the centipede body chain for the centipede boss fight.</summary>
+        private void DrawCentipedeSegments(Graphics g)
+        {
+            if (_config.Type != WarlordType.CentipedeLord || _centipedeSegments.Count == 0 || !_boss.IsAlive) return;
+
+            using (var linkPen = new Pen(Color.FromArgb(180, 90, 200, 90), 6))
+            {
+                PointF prev = new PointF(_boss.CenterX, _boss.CenterY);
+                for (int i = 0; i < _centipedeSegments.Count; i++)
+                {
+                    PointF s = _centipedeSegments[i];
+                    g.DrawLine(linkPen, prev, s);
+                    prev = s;
+                }
+            }
+
+            for (int i = 0; i < _centipedeSegments.Count; i++)
+            {
+                var r = GetCentipedeSegmentRect(i);
+                using (var br = new SolidBrush(Color.FromArgb(220, 80, 170, 80)))
+                    g.FillEllipse(br, r);
+                using (var pen = new Pen(Color.FromArgb(230, 35, 90, 35), 2))
+                    g.DrawEllipse(pen, r);
+            }
         }
 
         public override void HandleClick(Point p)

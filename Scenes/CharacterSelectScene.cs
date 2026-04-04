@@ -156,6 +156,11 @@ namespace Fridays_Adventure.Scenes
         /// </summary>
         private void ConfirmAndProceed()
         {
+            // Persist selection marker so future map entries can skip first-time gating.
+            Game.Instance.Save.SetInt("runtime.character", (int)Game.Instance.SelectedCharacter);
+            Game.Instance.Save.SetInt("runtime.characterSelected", 1);
+            Game.Instance.Save.Save();
+
             // Push difficulty selection — it will Replace itself with OverworldScene on confirm
             Game.Instance.Scenes.Push(new DifficultySelectScene());
         }

@@ -40,7 +40,7 @@ namespace Fridays_Adventure.Scenes
 
         // ── Click targets ─────────────────────────────────────────────────────
         private Rectangle[] _slotRects = new Rectangle[SlotCount];
-        private Rectangle   _clearBtn;
+        private Rectangle   _deleteBtn;
         private Rectangle   _backBtn;
 
         // ── Fonts ─────────────────────────────────────────────────────────────
@@ -117,7 +117,7 @@ namespace Fridays_Adventure.Scenes
                 }
             }
 
-            if (_clearBtn.Contains(p))
+            if (_deleteBtn.Contains(p))
                 _confirmClear = true;
         }
 
@@ -133,9 +133,10 @@ namespace Fridays_Adventure.Scenes
             Game.Instance.SwitchSaveSlot(slot);
             Game.Instance.ApplySaveData(Game.Instance.Save);
 
-            // New game if no name or no campaign progress — route through character/difficulty select.
+            // New game if no player name OR this slot has never completed character selection.
+            // (Legacy saves without the marker will be routed once through character select.)
             bool isNewGame = string.IsNullOrEmpty(Game.Instance.PlayerName) ||
-                             Game.Instance.CurrentLevel == 0;
+                             Game.Instance.Save.GetInt("runtime.characterSelected", 0) == 0;
 
             if (isNewGame)
             {
@@ -201,11 +202,13 @@ namespace Fridays_Adventure.Scenes
 
         private void DrawSlots(Graphics g, int W, int H)
         {
-            int sw = (int)(W * 0.72f);
+            int sw = (int)(W * 0.62f);
             int sh = 82;
             int sx = (W - sw) / 2;
             int startY = 80;
             int spacing = 18;
+
+            _deleteBtn = Rectangle.Empty;
 
             for (int i = 0; i < SlotCount; i++)
             {
@@ -251,6 +254,10 @@ namespace Fridays_Adventure.Scenes
                             new PointF(sx - 8 + arrow,  sy + sh / 2f - 8),
                             new PointF(sx - 8 + arrow,  sy + sh / 2f + 8)
                         });
+
+                    // Delete button shown next to the currently selected save slot.
+                    _deleteBtn = new Rectangle(sx + sw + 10, sy + 24, 128, 32);
+                    DrawBtn(g, _deleteBtn, "DELETE SAVE", Brushes.IndianRed);
                 }
             }
         }
@@ -276,10 +283,8 @@ namespace Fridays_Adventure.Scenes
         private void DrawButtons(Graphics g, int W, int H)
         {
             int bw = 130, bh = 32;
-            _clearBtn = new Rectangle(W / 2 - bw - 10, H - 60, bw, bh);
-            _backBtn  = new Rectangle(W / 2 + 10,       H - 60, bw, bh);
+            _backBtn  = new Rectangle(W / 2 - bw / 2, H - 60, bw, bh);
 
-            DrawBtn(g, _clearBtn, "CLEAR SLOT", Brushes.IndianRed);
             DrawBtn(g, _backBtn,  "← BACK",     Brushes.LightGray);
         }
 

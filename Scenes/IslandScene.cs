@@ -1606,6 +1606,8 @@ namespace Fridays_Adventure.Scenes
 
         private void CheckExit()
         {
+            // Only complete the level when the player actually reaches the goal flag.
+            if (!_levelComplete && _player.Hitbox.IntersectsWith(_exitFlag))
             {
                 _levelComplete = true;
                 _completeTimer = 0;
@@ -1629,9 +1631,9 @@ namespace Fridays_Adventure.Scenes
         private void UpdateComplete(float dt)
         {
             _completeTimer += dt;
-            // At 1.2 s: push the SMB3 card-roulette mini-game first, then course clear.
+            // Short completion pause, then push the SMB3 card-roulette mini-game.
             // Flow: IslandScene → CardRouletteScene → CourseClearScene → Overworld
-            if (_completeTimer >= 1.2f && _completeTimer - dt < 1.2f)
+            if (_completeTimer >= 0.35f && _completeTimer - dt < 0.35f)
             {
                 string  id   = _islandId;
                 string  name = _islandName;

@@ -253,7 +253,7 @@ namespace Fridays_Adventure.Scenes
             if (_gateOpen && _exitDoor.IntersectsWith(playerRect))
             {
                 _levelComplete = true;
-                _completeTimer = 1.8f;
+                _completeTimer = 0.6f;
                 SMB3Hud.TriggerGetReady();
             }
 

@@ -133,7 +133,7 @@ namespace Fridays_Adventure.Scenes
 
         public override void Update(float dt)
         {
-            if (_levelComplete) { _completeTimer += dt; if (_completeTimer >= 3.5f) { Game.Instance.LevelJustCompleted = true; Game.Instance.Scenes.Pop(); } return; }
+            if (_levelComplete) { _completeTimer += dt; if (_completeTimer >= 1.0f) { Game.Instance.LevelJustCompleted = true; Game.Instance.Scenes.Pop(); } return; }
 
             UpdateWind(dt);
             HandleInput(dt);
