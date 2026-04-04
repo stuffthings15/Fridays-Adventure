@@ -274,8 +274,13 @@ namespace Fridays_Adventure.Scenes
             _enemies         = new List<Enemy>();
 
             // Phase 3 entities are per-level; always reset on build.
-            _fireballs       = new List<Fireball>();
-            _starCoins       = new List<StarCoinPickup>();
+            _fireballs     = new List<Fireball>();
+            _starCoins     = new List<StarCoinPickup>();
+            _goombas       = new List<GoombaEnemy>();
+            _koopas        = new List<KoopaEnemy>();
+            _piranhaPlants = new List<PiranhaPlant>();
+            _thwomps       = new List<Thwomp>();
+            _hammerBros    = new List<HammerBroEnemy>();
 
             switch (_islandId)
             {
@@ -483,6 +488,22 @@ namespace Fridays_Adventure.Scenes
             _exitFlag = new Rectangle(2520, _groundY - 52, 30, 52);
 
             _movingPlatforms.Add(new MovingPlatform(300, _groundY - 155, 80, 300, 480, 65f));
+
+            // ── Phase 3: SMB3 blocks & enemies — Blade Nation ─────────────────
+            BlockManager.QuestionBlocks.Add(new QuestionBlock(320, _groundY - 162, BlockContent.Coin));
+            BlockManager.QuestionBlocks.Add(new QuestionBlock(360, _groundY - 162, BlockContent.FireFlower));
+            BlockManager.QuestionBlocks.Add(new QuestionBlock(820, _groundY - 142, BlockContent.MultiCoin));
+            BlockManager.QuestionBlocks.Add(new QuestionBlock(1370, _groundY - 162, BlockContent.Mushroom));
+            BlockManager.QuestionBlocks.Add(new QuestionBlock(2020, _groundY - 182, BlockContent.Star));
+
+            BlockManager.BrickBlocks.Add(new BrickBlock(340, _groundY - 162));
+            BlockManager.BrickBlocks.Add(new BrickBlock(840, _groundY - 142));
+            BlockManager.BrickBlocks.Add(new BrickBlock(1390, _groundY - 162));
+
+            _goombas.Add(new GoombaEnemy(200, _groundY - 28, 100, 500));
+            _goombas.Add(new GoombaEnemy(650, _groundY - 28, 560, 900));
+            _koopas.Add(new KoopaEnemy(1150, _groundY - 40, 1100, 1400));
+            _hammerBros.Add(new HammerBroEnemy(1850, _groundY - 44, 1800, 2050));
         }
 
         private void BuildHarborTown()
@@ -514,6 +535,23 @@ namespace Fridays_Adventure.Scenes
             _exitFlag = new Rectangle(2100, _groundY - 52, 30, 52);
 
             _movingPlatforms.Add(new MovingPlatform(280, _groundY - 120, 80, 280, 460, 55f));
+
+            // ── Phase 3: SMB3 blocks & enemies — Harbor Town ──────────────────
+            BlockManager.QuestionBlocks.Add(new QuestionBlock(300, _groundY - 132, BlockContent.Coin));
+            BlockManager.QuestionBlocks.Add(new QuestionBlock(340, _groundY - 132, BlockContent.Mushroom));
+            BlockManager.QuestionBlocks.Add(new QuestionBlock(770, _groundY - 152, BlockContent.FireFlower));
+            BlockManager.QuestionBlocks.Add(new QuestionBlock(1320, _groundY - 172, BlockContent.MultiCoin));
+            BlockManager.QuestionBlocks.Add(new QuestionBlock(1360, _groundY - 172, BlockContent.Coin));
+
+            BlockManager.BrickBlocks.Add(new BrickBlock(320, _groundY - 132));
+            BlockManager.BrickBlocks.Add(new BrickBlock(790, _groundY - 152));
+            BlockManager.BrickBlocks.Add(new BrickBlock(1340, _groundY - 172));
+
+            _goombas.Add(new GoombaEnemy(100, _groundY - 28, 0, 480));
+            _goombas.Add(new GoombaEnemy(650, _groundY - 28, 560, 1000));
+            _koopas.Add(new KoopaEnemy(900, _groundY - 40, 800, 1080));
+            _piranhaPlants.Add(new PiranhaPlant(570, _groundY - 10));
+            _thwomps.Add(new Thwomp(1100, _groundY - 240));
         }
 
         private void BuildCoralReef()
@@ -554,6 +592,26 @@ namespace Fridays_Adventure.Scenes
 
             _movingPlatforms.Add(new MovingPlatform(320, _groundY - 120, 80, 320, 500, 58f));
             _movingPlatforms.Add(new MovingPlatform(1460, _groundY - 162, 80, 1460, 1620, 72f));
+
+            // ── Phase 3: SMB3 blocks & enemies — Coral Reef ───────────────────
+            BlockManager.QuestionBlocks.Add(new QuestionBlock(340, _groundY - 132, BlockContent.Mushroom));
+            BlockManager.QuestionBlocks.Add(new QuestionBlock(900, _groundY - 152, BlockContent.MultiCoin));
+            BlockManager.QuestionBlocks.Add(new QuestionBlock(1480, _groundY - 172, BlockContent.FireFlower));
+            BlockManager.QuestionBlocks.Add(new QuestionBlock(2070, _groundY - 192, BlockContent.Leaf));
+            BlockManager.QuestionBlocks.Add(new QuestionBlock(2110, _groundY - 192, BlockContent.Coin));
+
+            BlockManager.BrickBlocks.Add(new BrickBlock(360, _groundY - 132));
+            BlockManager.BrickBlocks.Add(new BrickBlock(920, _groundY - 152));
+            BlockManager.BrickBlocks.Add(new BrickBlock(1500, _groundY - 172));
+
+            _goombas.Add(new GoombaEnemy(150, _groundY - 28, 0,    600));
+            _goombas.Add(new GoombaEnemy(720, _groundY - 28, 600,  1060));
+            _koopas.Add(new KoopaEnemy(1000, _groundY - 40, 900,   1160));
+            _koopas.Add(new KoopaEnemy(1850, _groundY - 40, 1740,  2100));
+            _piranhaPlants.Add(new PiranhaPlant(610, _groundY - 10));
+            _piranhaPlants.Add(new PiranhaPlant(1670, _groundY - 10));
+            _thwomps.Add(new Thwomp(1260, _groundY - 260));
+            _hammerBros.Add(new HammerBroEnemy(2450, _groundY - 44, 2360, 2700));
         }
 
         private void BuildTundraPeak()
@@ -587,6 +645,25 @@ namespace Fridays_Adventure.Scenes
             _exitFlag = new Rectangle(2520, _groundY - 52, 30, 52);
 
             _movingPlatforms.Add(new MovingPlatform(260, _groundY - 160, 80, 260, 440, 60f));
+
+            // ── Phase 3: SMB3 blocks & enemies — Tundra Peak ─────────────────
+            BlockManager.QuestionBlocks.Add(new QuestionBlock(280, _groundY - 172, BlockContent.Coin));
+            BlockManager.QuestionBlocks.Add(new QuestionBlock(320, _groundY - 172, BlockContent.Leaf));
+            BlockManager.QuestionBlocks.Add(new QuestionBlock(780, _groundY - 192, BlockContent.MultiCoin));
+            BlockManager.QuestionBlocks.Add(new QuestionBlock(1340, _groundY - 212, BlockContent.FireFlower));
+            BlockManager.QuestionBlocks.Add(new QuestionBlock(1920, _groundY - 232, BlockContent.Star));
+
+            BlockManager.BrickBlocks.Add(new BrickBlock(300, _groundY - 172));
+            BlockManager.BrickBlocks.Add(new BrickBlock(800, _groundY - 192));
+            BlockManager.BrickBlocks.Add(new BrickBlock(1360, _groundY - 212));
+
+            _goombas.Add(new GoombaEnemy(100, _groundY - 28, 0,    460));
+            _goombas.Add(new GoombaEnemy(700, _groundY - 28, 540,  1040));
+            _koopas.Add(new KoopaEnemy(1050, _groundY - 40, 980,   1200));
+            _koopas.Add(new KoopaEnemy(1780, _groundY - 40, 1700,  2100));
+            _piranhaPlants.Add(new PiranhaPlant(550, _groundY - 10));
+            _thwomps.Add(new Thwomp(1350, _groundY - 280));
+            _hammerBros.Add(new HammerBroEnemy(2100, _groundY - 44, 2000, 2380));
         }
 
         private void SpawnEnemy(float x, float groundTop, float difficulty,
@@ -966,6 +1043,15 @@ namespace Fridays_Adventure.Scenes
                 if (!_player.IsWallJumping) _player.VelocityX = 0;
             }
 
+            // ── Phase 2 T7 #1: Wall Slide ──────────────────────────────────────
+            // When airborne and pressing into a wall, cap fall speed to simulate slide.
+            bool pressingIntoWall = (_player.IsOnRightWall && input.RightHeld) ||
+                                    (_player.IsOnLeftWall  && input.LeftHeld);
+            _player.IsWallSliding = !_player.IsGrounded && pressingIntoWall &&
+                                    _player.VelocityY > 0f;
+            if (_player.IsWallSliding)
+                _player.VelocityY = Math.Min(_player.VelocityY, Player.WallSlideSpeed);
+
             // ── Jump logic: regular, coyote-time, wall-jump ───────────────────
             if (input.JumpPressed)
             {
@@ -1010,7 +1096,21 @@ namespace Fridays_Adventure.Scenes
             }
 
             // ── Dodge ─────────────────────────────────────────────────────────
-            if (input.DodgePressed) _player.TryDodge();
+            if (input.DodgePressed)
+            {
+                _player.TryDodge();
+                // Phase 2 T4 #6: Parry — open the window on every dodge start.
+                _player.OpenParryWindow();
+            }
+
+            // ── Phase 2 T7 #2: Air Dash (C key) ──────────────────────────────
+            if (input.AirDashPressed && !_player.IsGrounded && !_player.AirDashUsed)
+            {
+                _player.DoAirDash();
+                Game.Instance.Audio.BeepJump();
+                ParticleSystem.SpawnBurst(_player.CenterX, _player.CenterY, 8,
+                    Color.Cyan, 60f, 160f, 0.15f, 0.35f);
+            }
 
             // ── Melee attack / Fire Flower projectile ─────────────────────────
             if (input.AttackPressed && !input.DownHeld)
@@ -1366,12 +1466,28 @@ namespace Fridays_Adventure.Scenes
                 if (!stomped && e.IsAlive && !_player.IsInvincible &&
                     _player.Hitbox.IntersectsWith(e.Hitbox))
                 {
-                    int healthBefore = _player.Health;
-                    _player.TakeDamage(_player.MaxHealth / 10);
-                    if (_player.Health < healthBefore)
+                    // Phase 2 T4 #6: Parry — open window deflects the hit
+                    if (_player.TryParry())
                     {
-                        Game.Instance.Audio.BeepHurt();
-                        _player.ResetStompChain();
+                        // Parried — stun the enemy briefly and push them back
+                        e.TakeDamage(_player.AttackDamage / 2);
+                        e.VelocityX = _player.FacingRight ? 220f : -220f;
+                        Game.Instance.FloatingText.Spawn("PARRY!", (int)_player.CenterX,
+                            (int)_player.Y - 20, Color.Gold, large: true);
+                        Game.Instance.Audio.BeepAttack();
+                        ParticleSystem.SpawnBurst(_player.CenterX, _player.CenterY,
+                            10, Color.Gold, 80f, 200f, 0.3f, 0.6f);
+                        AchievementSystem.Grant("ach_parry");
+                    }
+                    else
+                    {
+                        int healthBefore = _player.Health;
+                        _player.TakeDamage(_player.MaxHealth / 10);
+                        if (_player.Health < healthBefore)
+                        {
+                            Game.Instance.Audio.BeepHurt();
+                            _player.ResetStompChain();
+                        }
                     }
                 }
             }
@@ -2306,11 +2422,64 @@ namespace Fridays_Adventure.Scenes
                 }
 
                 fb.UpdateProjectile(dt, _groundY, _levelWidth, _platforms);
-                fb.CheckEnemyHit(_enemies, _player.AttackDamage);
+
+                // Base enemies (marine variants)
+                bool hitBase = fb.CheckEnemyHit(_enemies, _player.AttackDamage);
+
+                // Phase 3 SMB3 enemies
+                bool hitSmb3 = TryHitSmb3Enemies(fb);
+
+                if (hitBase || hitSmb3)
+                    Game.Instance.Audio.BeepAttack();
 
                 if (!fb.IsActive)
                     _fireballs.RemoveAt(i);
             }
+        }
+
+        /// <summary>
+        /// Checks fireball overlap against Phase 3 SMB3 enemy archetypes.
+        /// </summary>
+        private bool TryHitSmb3Enemies(Fireball fb)
+        {
+            if (!fb.IsActive) return false;
+
+            foreach (var g in _goombas)
+            {
+                if (g.IsAlive && fb.Hitbox.IntersectsWith(g.Hitbox))
+                {
+                    g.Stomp();
+                    BountySystem.Award(GoombaEnemy.Score);
+                    fb.IsActive = false;
+                    return true;
+                }
+            }
+
+            foreach (var k in _koopas)
+            {
+                if (!k.IsAlive || !fb.Hitbox.IntersectsWith(k.Hitbox)) continue;
+
+                // Fireball forces koopa into shell; shell can then be kicked (SMB3 style).
+                k.Stomp();
+                if (k.State == KoopaEnemy.KoopaState.Shell)
+                    k.Kick(_player.FacingRight);
+
+                fb.IsActive = false;
+                return true;
+            }
+
+            foreach (var hb in _hammerBros)
+            {
+                if (hb.IsAlive && fb.Hitbox.IntersectsWith(hb.Hitbox))
+                {
+                    hb.Stomp();
+                    BountySystem.Award(hb.Score);
+                    fb.IsActive = false;
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         /// <summary>

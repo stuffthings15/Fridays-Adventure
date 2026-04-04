@@ -4,6 +4,7 @@ using System.Drawing.Imaging;
 using Fridays_Adventure.Abilities;
 using Fridays_Adventure.Data;
 using Fridays_Adventure.Engine;
+using Fridays_Adventure.Systems;
 
 namespace Fridays_Adventure.Entities
 {
@@ -73,6 +74,35 @@ namespace Fridays_Adventure.Entities
         public bool IsWallJumping { get; private set; }
         private float _wallJumpTimer;
         private const float WallJumpDuration = 0.22f;
+
+        // ── Phase 2 Team 7 #1: Wall Slide ────────────────────────────────────
+        /// <summary>True while the player is sliding down a wall (Phase 2 T7 #1).</summary>
+        public bool IsWallSliding { get; set; }
+        /// <summary>Maximum fall speed while wall-sliding.</summary>
+        public const float WallSlideSpeed = 55f;
+
+        // ── Phase 2 Team 7 #2: Air Dash ──────────────────────────────────────
+        /// <summary>True during the air-dash burst frame window (Phase 2 T7 #2).</summary>
+        public bool AirDashActive { get; private set; }
+        private float _airDashTimer;
+        private const float AirDashDuration = 0.18f;
+        private const float AirDashForce    = 420f;
+        /// <summary>Whether the air dash has been used since last landing.</summary>
+        public bool AirDashUsed { get; set; }
+
+        // ── Phase 2 Team 4 #6: Parry ─────────────────────────────────────────
+        /// <summary>Remaining seconds of the active parry window (Phase 2 T4 #6).</summary>
+        public float ParryWindowTimer { get; private set; }
+        private const float ParryWindowDuration = 0.14f;  // tight SMB3-style window
+        /// <summary>True if the parry window is open this frame.</summary>
+        public bool IsParrying => ParryWindowTimer > 0f;
+
+        // ── Phase 2 Team 17 #1: Movement Trail ───────────────────────────────
+        private readonly System.Collections.Generic.Queue<System.Drawing.PointF> _trail
+            = new System.Collections.Generic.Queue<System.Drawing.PointF>();
+        private float _trailSampleTimer;
+        private const float TrailSampleInterval = 0.04f;
+        private const int   TrailMaxPoints      = 8;
 
         // ── Team 7: Ground Pound ──────────────────────────────────────────────
         /// <summary>True while the player is actively ground-pounding downward.</summary>
@@ -363,6 +393,42 @@ namespace Fridays_Adventure.Entities
         }
 
         /// <summary>
+        /// Activates an air dash in the player's facing direction.
+        /// Phase 2 — Team 7 #2: Air Dash.
+        /// </summary>
+        public void DoAirDash()
+        {
+            AirDashActive  = true;
+            AirDashUsed    = true;
+            _airDashTimer  = AirDashDuration;
+            VelocityX      = FacingRight ? AirDashForce : -AirDashForce;
+            VelocityY      = -60f;         // tiny upward nudge, feels snappy
+            GrantIFrames(AirDashDuration); // brief i-frames while dashing
+        }
+
+        /// <summary>
+        /// Opens the parry window on dodge start.
+        /// Phase 2 — Team 4 #6: Parry System.
+        /// </summary>
+        public void OpenParryWindow()
+        {
+            ParryWindowTimer = ParryWindowDuration;
+        }
+
+        /// <summary>
+        /// Checks whether an incoming attack can be parried.
+        /// Returns true and expends the window if so.
+        /// </summary>
+        public bool TryParry()
+        {
+            if (!IsParrying) return false;
+            ParryWindowTimer = 0f;
+            GrantIFrames(0.5f);
+            AbilityCastGlowTimer = 0.3f;
+            return true;
+        }
+
+        /// <summary>
         /// Wall-jump: launches the player away from the wall and sets the jump lock timer.
         /// Team 7 (Gameplay Programmer).
         /// </summary>
@@ -523,6 +589,39 @@ namespace Fridays_Adventure.Entities
                 StompChainTimer -= dt;
                 if (StompChainTimer <= 0f)
                     ResetStompChain();
+            }
+
+            // ── Phase 2 T7 #2: Air Dash timer ────────────────────────────────
+            if (AirDashActive)
+            {
+                _airDashTimer -= dt;
+                if (_airDashTimer <= 0f) AirDashActive = false;
+            }
+
+            // ── Phase 2 T4 #6: Parry window decay ────────────────────────────
+            if (ParryWindowTimer > 0f)
+                ParryWindowTimer = Math.Max(0f, ParryWindowTimer - dt);
+
+            // ── Reset air dash when grounded ──────────────────────────────────
+            if (IsGrounded) AirDashUsed = false;
+
+            // ── Phase 2 T17 #1: Trail position sampling ───────────────────────
+            _trailSampleTimer += dt;
+            if (_trailSampleTimer >= TrailSampleInterval)
+            {
+                _trailSampleTimer = 0f;
+                // Only trail when moving fast or dashing
+                bool fastEnough = Math.Abs(VelocityX) > MoveSpeed * 0.8f || AirDashActive || PMeterActive;
+                if (fastEnough)
+                {
+                    _trail.Enqueue(new System.Drawing.PointF(X, Y));
+                    while (_trail.Count > TrailMaxPoints)
+                        _trail.Dequeue();
+                }
+                else if (_trail.Count > 0)
+                {
+                    _trail.Dequeue();
+                }
             }
 
             UpdateGameplayTeam7(dt);
@@ -824,9 +923,30 @@ namespace Fridays_Adventure.Entities
         
         protected override void DrawPlaceholder(Graphics g)
         {
+            // ── Phase 2 T17 #1: Movement trail ghost ──────────────────────────
+            var pts = _trail.ToArray();
+            for (int ti = 0; ti < pts.Length; ti++)
+            {
+                float frac  = (float)(ti + 1) / (pts.Length + 1);
+                int   alpha = (int)(60 * frac);
+                using (var br = new SolidBrush(Color.FromArgb(alpha, AirDashActive ? Color.Cyan : Color.White)))
+                    g.FillRectangle(br, pts[ti].X, pts[ti].Y, Width, Height);
+            }
+
             // ── Mega Man hit-flash (blink during invincibility frames) ────────
-            bool flash = IsInvincible && ((int)(InvincibilityTimer * 12) % 2 == 0);
-            if (flash) return;
+            bool isStarInvincible = PowerUpInventory.IsInvincible;
+            if (isStarInvincible)
+            {
+                // Rainbow cycle during star mode instead of simple blink
+                float hue = (float)(Engine.Game.Instance?.Stats.PlaySeconds * 3.0 ?? 0) % 1.0f;
+                using (var br = new SolidBrush(HueToColor(hue, 180)))
+                    g.FillRectangle(br, X - 4, Y - 4, Width + 8, Height + 8);
+            }
+            else
+            {
+                bool flash = IsInvincible && ((int)(InvincibilityTimer * 12) % 2 == 0);
+                if (flash) return;
+            }
 
             // ── Team 16: 2D Animator — velocity lean ─────────────────────────
             // Lean body forward when running; degree proportional to horizontal speed.
@@ -960,10 +1080,53 @@ namespace Fridays_Adventure.Entities
                 }
             }
 
+            // ── Phase 2 T4 #6: Parry window flash (gold frame) ───────────────
+            if (IsParrying)
+            {
+                float pf = ParryWindowTimer / ParryWindowDuration;
+                using (var pen = new Pen(Color.FromArgb((int)(220 * pf), Color.Gold), 4))
+                    g.DrawRectangle(pen, X - 4, Y - 4, Width + 8, Height + 8);
+            }
+
+            // ── Phase 2 T7 #1: Wall-slide indicator (faint blue side streak) ──
+            if (IsWallSliding && !IsGrounded)
+            {
+                bool onRight = IsOnRightWall;
+                float sx = onRight ? X + Width - 3 : X;
+                using (var br = new SolidBrush(Color.FromArgb(110, 130, 190, 255)))
+                    g.FillRectangle(br, sx, Y + 8, 3, Height - 8);
+            }
+
+            // ── Phase 2 T7 #2: Air-dash cyan afterimage border ────────────────
+            if (AirDashActive)
+                using (var pen = new Pen(Color.FromArgb(180, Color.Cyan), 2))
+                    g.DrawRectangle(pen, X - 2, Y - 2, Width + 4, Height + 4);
+
             // Restore the rotation transform before drawing the health bar.
             g.Restore(state);
 
             DrawHealthBar(g);
+        }
+
+        /// <summary>
+        /// Converts a HSV hue [0..1) to a fully-saturated RGB Color.
+        /// Used for the star-mode rainbow cycle (Phase 2 — Team 16 #7 / Team 17 #1).
+        /// </summary>
+        private static Color HueToColor(float hue, int alpha)
+        {
+            float h = hue * 6f;
+            float x = 1f - Math.Abs(h % 2f - 1f);
+            float r, gr, b;
+            if      (h < 1) { r = 1; gr = x; b = 0; }
+            else if (h < 2) { r = x; gr = 1; b = 0; }
+            else if (h < 3) { r = 0; gr = 1; b = x; }
+            else if (h < 4) { r = 0; gr = x; b = 1; }
+            else if (h < 5) { r = x; gr = 0; b = 1; }
+            else            { r = 1; gr = 0; b = x; }
+            return Color.FromArgb(alpha,
+                (int)(r  * 255),
+                (int)(gr * 255),
+                (int)(b  * 255));
         }
     }
 }

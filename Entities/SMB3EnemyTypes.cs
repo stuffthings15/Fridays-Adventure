@@ -24,6 +24,7 @@
 using System;
 using System.Collections.Generic;
 using System.Drawing;
+using Fridays_Adventure.Data;
 using Fridays_Adventure.Engine;
 using Fridays_Adventure.Systems;
 
@@ -57,6 +58,8 @@ namespace Fridays_Adventure.Entities
         // ── Ground tracking ───────────────────────────────────────────────────
         private float _patrolLeft;
         private float _patrolRight;
+
+        private static Bitmap _sprite;
 
         public GoombaEnemy(float x, float y, float patrolLeft, float patrolRight)
             : base(x, y, 30, 28)
@@ -153,6 +156,18 @@ namespace Fridays_Adventure.Entities
         {
             if (!IsAlive && _squishTimer <= 0f) return;
 
+            // Prefer imported sprite asset if available.
+            if (IsAlive)
+            {
+                if (_sprite == null)
+                    _sprite = SpriteManager.GetScaled("enemy_goomba.png", Width, Height);
+                if (_sprite != null)
+                {
+                    g.DrawImage(_sprite, X, Y, Width, Height);
+                    return;
+                }
+            }
+
             float drawH = IsAlive ? Height : (int)(Height * (1f - (_squishTimer > 0 ? 1f - _squishTimer / SquishDuration : 1f)) * 0.3f + 4);
             float drawY = Y + (Height - drawH);
 
@@ -209,6 +224,8 @@ namespace Fridays_Adventure.Entities
         private float _patrolLeft, _patrolRight;
         private float _shellKickDir;   // +1 right, -1 left
         private float _shellBlinkTimer;
+
+        private static Bitmap _sprite;
 
         public KoopaEnemy(float x, float y, float patrolLeft, float patrolRight)
             : base(x, y, 32, 40)
@@ -332,6 +349,15 @@ namespace Fridays_Adventure.Entities
 
             if (State == KoopaState.Walking)
             {
+                // Prefer imported sprite asset if available.
+                if (_sprite == null)
+                    _sprite = SpriteManager.GetScaled("enemy_koopa.png", Width, Height);
+                if (_sprite != null)
+                {
+                    g.DrawImage(_sprite, X, Y, Width, Height);
+                    return;
+                }
+
                 // Shell (body)
                 using (var br = new SolidBrush(Color.FromArgb(60, 160, 60)))
                     g.FillEllipse(br, X + 4, Y + Height / 3f, Width - 8, Height * 0.6f);
@@ -640,6 +666,8 @@ namespace Fridays_Adventure.Entities
 
         public readonly List<Hammer> Hammers = new List<Hammer>();
 
+        private static Bitmap _sprite;
+
         public HammerBroEnemy(float x, float y, float patrolLeft, float patrolRight)
             : base(x, y, 32, 44)
         {
@@ -736,6 +764,15 @@ namespace Fridays_Adventure.Entities
 
             // Draw hammers
             foreach (var h in Hammers) h.Draw(g);
+
+            // Prefer imported sprite asset if available.
+            if (_sprite == null)
+                _sprite = SpriteManager.GetScaled("enemy_hammer_bro.png", Width, Height);
+            if (_sprite != null)
+            {
+                g.DrawImage(_sprite, X, Y, Width, Height);
+                return;
+            }
 
             // Body (green-khaki uniform)
             using (var br = new SolidBrush(Color.FromArgb(80, 130, 60)))

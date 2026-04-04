@@ -101,6 +101,13 @@ namespace Fridays_Adventure.Systems
 
             // ── 6. Temporal overlays (GET READY, world label, toast, fade) ────
             try { SMB3Hud.DrawOverlays(g, W, H); }  catch { /* section guarded */ }
+
+            // ── 7. Phase 2 T10 #6: Low-health danger vignette ────────────────
+            if (player != null)
+            {
+                try { DrawVignette(g, player, W, H); }
+                catch { /* section guarded */ }
+            }
         }
 
         /// <summary>
@@ -390,6 +397,48 @@ namespace Fridays_Adventure.Systems
         }
 
         // ─────────────────────────────────────────────────────────────────────
+        // ── Phase 2 T10 #6: Low-health danger vignette ───────────────────────
+        /// <summary>
+        /// Draws a red/orange radial vignette around the screen edges when the player
+        /// is at or below 25% HP. Intensity increases as HP drops toward 0.
+        /// Phase 2 — Team 10 (Engine Programmer) Idea 6: Vignette Renderer.
+        /// </summary>
+        private static void DrawVignette(Graphics g, Player player, int W, int H)
+        {
+            float hpPct = (float)player.Health / Math.Max(1, player.MaxHealth);
+            if (hpPct > 0.35f) return;   // only visible below 35 % HP
+
+            // Pulse the intensity for urgency (faster at lower HP)
+            float pulseSpeed = 3f + (1f - hpPct) * 6f;
+            float pulse      = 0.5f + 0.5f * (float)Math.Sin(
+                (Game.Instance?.Stats?.PlaySeconds ?? 0) * pulseSpeed);
+            float intensity  = (0.35f - hpPct) / 0.35f;   // 0 at 35%, 1 at 0%
+
+            int alpha = (int)(intensity * pulse * 160);
+            if (alpha <= 0) return;
+
+            // Four semi-transparent edge rectangles forming a vignette frame.
+            int thickness = (int)(W * 0.18f * intensity);
+            using (var br = new System.Drawing.Drawing2D.LinearGradientBrush(
+                new Rectangle(0, BandHeight, thickness, H),
+                Color.FromArgb(alpha, Color.DarkRed), Color.Transparent,
+                System.Drawing.Drawing2D.LinearGradientMode.Horizontal))
+                g.FillRectangle(br, 0, BandHeight, thickness, H - BandHeight);
+
+            using (var br = new System.Drawing.Drawing2D.LinearGradientBrush(
+                new Rectangle(W - thickness, BandHeight, thickness, H),
+                Color.Transparent, Color.FromArgb(alpha, Color.DarkRed),
+                System.Drawing.Drawing2D.LinearGradientMode.Horizontal))
+                g.FillRectangle(br, W - thickness, BandHeight, thickness, H - BandHeight);
+
+            int botThick = (int)(H * 0.18f * intensity);
+            using (var br = new System.Drawing.Drawing2D.LinearGradientBrush(
+                new Rectangle(0, H - botThick, W, botThick),
+                Color.Transparent, Color.FromArgb(alpha, Color.DarkRed),
+                System.Drawing.Drawing2D.LinearGradientMode.Vertical))
+                g.FillRectangle(br, 0, H - botThick, W, botThick);
+        }
+
         // SHARED PRIMITIVE: segmented bar (Mega Man weapon energy style)
         // ─────────────────────────────────────────────────────────────────────
         private static void DrawSegBar(Graphics g, int current, int max,
