@@ -58,6 +58,10 @@ namespace Fridays_Adventure.Tests
             _frostTimer   = 0f;
         }
 
+        // ── CardRoulette timing ──────────────────────────────────────────
+        private float _cardRouletteInputTimer = 0f;
+        private const float CardRouletteInputInterval = 0.5f;  // Press input every 0.5s for card selection
+
         /// <summary>
         /// Call once per game frame BEFORE the inner scene's Update().
         /// Injects the appropriate keys so the real player entity behaves like
@@ -71,26 +75,29 @@ namespace Fridays_Adventure.Tests
             _time         += dt;
             _jumpInterval += dt;
             _frostTimer   += dt;
+            _cardRouletteInputTimer += dt;
             if (_jumpHoldTimer > 0f)
                 _jumpHoldTimer -= dt;
 
-            // ── CARD ROULETTE & MINIGAME HANDLING ─────────────────────────────
-            // Inject Space (Jump) to select cards in CardRoulette
-            // Also inject Z (Attack) for interactive elements
-            input.InjectPressed(Keys.Space);   // For card selection in roulette
-            input.InjectPressed(Keys.Z);       // For attack/interact
+            // ── CARD ROULETTE HANDLING ────────────────────────────────────
+            // Inject Space periodically to select cards (not every frame!)
+            if (_cardRouletteInputTimer >= CardRouletteInputInterval)
+            {
+                input.InjectPressed(Keys.Space);   // Select card with proper timing
+                _cardRouletteInputTimer = 0f;
+            }
 
             // ── Always run right at sprint speed ──────────────────────────
             input.InjectHeld(Keys.Right);
             input.InjectHeld(Keys.ShiftKey);   // sprint — clears wide gaps faster
 
-            // ── Attack pressed every frame ────────────────────────────────
-            // Player.TryAttack() checks its own cooldown (~0.5 s), so this fires
-            // at the max allowed rate, not every frame in terms of actual hits.
-            // Injecting every frame also keeps InputManager.AnyMash = true, which
-            // causes the sinking/SeaStone escape timer to drain by 0.4 per frame
-            // — the bot escapes water in < 1 frame at 60 fps.
-            // REMOVED - already injecting above for card roulette compatibility
+            // ── Attack pressed with cooldown (not every frame!) ────────────
+            // Only inject Z every 0.5 seconds to prevent frost ball spam
+            // Player.TryAttack() has its own cooldown, but we throttle input
+            if ((_time % 0.5f) < 0.05f)  // Press briefly every 0.5s
+            {
+                input.InjectPressed(Keys.Z);
+            }
 
             // ── Periodic full-height jump ─────────────────────────────────
             // Fire a new jump every JumpInterval seconds.

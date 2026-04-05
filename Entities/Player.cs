@@ -874,7 +874,7 @@ namespace Fridays_Adventure.Entities
         /// </summary>
         public bool IsDashing  { get; private set; }
         private float _dashTimer;
-        private const float DashDuration  = 0.50f;  // Increased from 0.18f for longer dash (250px at 500 speed)
+        private const float DashDuration  = 0.56f;  // 280px at 500px/s = 7 player lengths
         private const float DashSpeed     = 500f;
         private float _dashCooldown;
         private const float DashCooldown  = 0.6f;
