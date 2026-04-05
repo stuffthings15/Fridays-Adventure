@@ -274,11 +274,13 @@
     <Compile Include="Tests\BotVisualDebugger.cs" />
     <Compile Include="Tests\ComprehensiveBotActivityLogger.cs" />
     <Compile Include="Tests\ComprehensiveIntelligentBot.cs" />
+    <Compile Include="Tests\DiagnosticBot.cs" />
     <Compile Include="Tests\EnhancedLevelTestResult.cs" />
     <Compile Include="Tests\ItemAndEnemyAnalyzer.cs" />
     <Compile Include="Tests\LevelBeatabilityTest.cs" />
     <Compile Include="Tests\LevelTestRunner.cs" />
     <Compile Include="Tests\ObservableBotAI.cs" />
+    <Compile Include="Tests\RealDiagnosticLogger.cs" />
     <Compile Include="Tests\RealSmartBotAI.cs" />
     <Compile Include="Tests\SmartBotAI.cs" />
     <Compile Include="Tests\SmartPathfinder.cs" />
@@ -346,6 +348,7 @@
     <None Include="docs\QA_TEST_LOGGING_QUICK_START.md" />
     <None Include="docs\QA_TEST_LOGGING_SYSTEM_GUIDE.md" />
     <None Include="docs\QA_VERIFICATION_PROTOCOL.md" />
+    <None Include="docs\REAL_DIAGNOSTIC_BOT_SYSTEM.md" />
     <None Include="docs\REAL_SMART_BOT_AI_REWRITE.md" />
     <None Include="docs\RUNTIME_WIRING_VERIFICATION.md" />
     <None Include="docs\SESSION_2_SUMMARY.md" />
