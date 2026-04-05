@@ -81,21 +81,24 @@ namespace Fridays_Adventure.Tests
         {
             DetectedEnemies.Clear();
             DetectedPickups.Clear();
+            int entitiesSearched = 0;
 
             try
             {
                 // Try to get entities
                 var entitiesField = _scene.GetType().GetField("_entities",
                     System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-                
+
                 if (entitiesField != null)
                 {
                     var entities = entitiesField.GetValue(_scene) as List<Entity>;
-                    
-                    if (entities != null && entities.Count > 0)
+
+                    if (entities != null)
                     {
-                        _thisFrameLog.Add($"  Found {entities.Count} total entities");
-                        
+                        entitiesSearched = entities.Count;
+                        _thisFrameLog.Add($"  🔍 Searching {entities.Count} entities...");
+
+                        int enemiesFound = 0;
                         foreach (var entity in entities)
                         {
                             if (entity == null || entity == _player) continue;
@@ -106,52 +109,65 @@ namespace Fridays_Adventure.Tests
                             {
                                 float distance = Math.Abs(_player.X - enemy.X);
                                 DetectedEnemies.Add(enemy);
-                                _thisFrameLog.Add($"  ✓ ENEMY: X={enemy.X:F0} Distance={distance:F0}px Type={enemy.GetType().Name}");
+                                enemiesFound++;
+                                _thisFrameLog.Add($"    ✓ ENEMY #{enemiesFound}: X={enemy.X:F0} Distance={distance:F0}px Type={enemy.GetType().Name}");
                             }
+                        }
+
+                        if (enemiesFound == 0)
+                        {
+                            _thisFrameLog.Add($"    (No enemies found in {entities.Count} entities)");
                         }
                     }
                     else
                     {
-                        _thisFrameLog.Add($"  WARNING: _entities is null or empty!");
+                        _thisFrameLog.Add($"  ⚠️ _entities list is NULL!");
                     }
                 }
                 else
                 {
-                    _thisFrameLog.Add($"  ERROR: No _entities field in {_scene.GetType().Name}");
+                    _thisFrameLog.Add($"  ❌ ERROR: Scene {_scene.GetType().Name} has NO _entities field!");
                 }
 
                 // Try to get pickups
                 var pickupsField = _scene.GetType().GetField("_pickups",
                     System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-                
+
                 if (pickupsField != null)
                 {
                     var pickups = pickupsField.GetValue(_scene) as List<HealthPickup>;
-                    
-                    if (pickups != null && pickups.Count > 0)
+
+                    if (pickups != null)
                     {
-                        _thisFrameLog.Add($"  Found {pickups.Count} health pickups");
-                        
+                        int pickupsFound = 0;
+                        _thisFrameLog.Add($"  🔍 Found {pickups.Count} health pickups");
+
                         foreach (var pickup in pickups)
                         {
                             if (pickup != null && !pickup.Collected)
                             {
                                 float distance = Math.Abs(_player.X - pickup.X);
-                                
+
                                 // Only consider pickups if player needs health
                                 if (_player.Health < _player.MaxHealth * 0.8f)
                                 {
                                     DetectedPickups.Add(pickup);
-                                    _thisFrameLog.Add($"  ✓ PICKUP: X={pickup.X:F0} Distance={distance:F0}px");
+                                    pickupsFound++;
+                                    _thisFrameLog.Add($"    ✓ PICKUP #{pickupsFound}: X={pickup.X:F0} Distance={distance:F0}px");
                                 }
                             }
+                        }
+
+                        if (pickupsFound == 0 && _player.Health < _player.MaxHealth * 0.8f)
+                        {
+                            _thisFrameLog.Add($"    (No available pickups for player health={_player.Health})");
                         }
                     }
                 }
             }
             catch (Exception ex)
             {
-                _thisFrameLog.Add($"  EXCEPTION in detection: {ex.Message}");
+                _thisFrameLog.Add($"  💥 EXCEPTION: {ex.GetType().Name}: {ex.Message}");
             }
         }
 
@@ -264,21 +280,18 @@ namespace Fridays_Adventure.Tests
         }
 
         /// <summary>
-        /// Log this frame's decisions (once per second to avoid spam)
+        /// Log this frame's decisions
         /// </summary>
         private void LogFrame()
         {
-            // Log every frame to debug, but could throttle for production
-            if ((int)_elapsedTime % 1 == 0 && _elapsedTime % 1 < 0.016f)
+            // Log EVERY frame (can be throttled later if needed)
+            foreach (var line in _thisFrameLog)
             {
-                foreach (var line in _thisFrameLog)
-                {
-                    System.Diagnostics.Debug.WriteLine(line);
-                }
-                
-                System.Diagnostics.Debug.WriteLine($"  ➜ DECISION: State={CurrentState} Jump={ShouldJump} Attack={ShouldAttack} Dodge={ShouldDodge}");
-                System.Diagnostics.Debug.WriteLine("");
+                System.Diagnostics.Debug.WriteLine(line);
             }
+
+            // Always log the final decision
+            System.Diagnostics.Debug.WriteLine($"  ➜ ACTION: Jump={ShouldJump} | Attack={ShouldAttack} | Move={ShouldMoveRight} | State={CurrentState}");
         }
 
         public string GetDebugInfo()

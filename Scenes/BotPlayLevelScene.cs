@@ -234,29 +234,42 @@ namespace Fridays_Adventure.Scenes
             _diagnostics.Update(dt);
 
             // ════════════════════════════════════════════════════════════════════
-            // INITIALIZE REAL AI - ONE TIME ONLY!
+            // INITIALIZE OBSERVABLE BOT AI - ONE TIME ONLY!
             // ════════════════════════════════════════════════════════════════════
             if (!_aiInitialized)
             {
                 Player player = GetPlayerFromScene(_inner);
                 if (player != null && _bot != null)
                 {
+                    System.Diagnostics.Debug.WriteLine("");
+                    System.Diagnostics.Debug.WriteLine("╔═══════════════════════════════════════════════════════════════╗");
+                    System.Diagnostics.Debug.WriteLine("║ BOT INITIALIZATION                                            ║");
+                    System.Diagnostics.Debug.WriteLine("╚═══════════════════════════════════════════════════════════════╝");
+                    System.Diagnostics.Debug.WriteLine($"Scene: {_inner.GetType().Name}");
+                    System.Diagnostics.Debug.WriteLine($"Player: X={player.X:F0} Y={player.Y:F0} HP={player.Health}");
+
                     _bot.InitializeForScene(player, _inner, Game.Instance.Input);
                     _aiInitialized = true;
-                    System.Diagnostics.Debug.WriteLine("[BOT_PLAY_SCENE] ✅ RealSmartBotAI initialized!");
+
+                    System.Diagnostics.Debug.WriteLine("[BOT] ✅ ObservableBotAI initialized!");
+                    System.Diagnostics.Debug.WriteLine("");
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine("[BOT] ❌ ERROR: Player is null or bot is null!");
+                    System.Diagnostics.Debug.WriteLine($"[BOT] Player={player} | Bot={_bot}");
                 }
             }
 
             // ── Now inject bot input using OBSERVABLE AI ─────────────────
-            _bot.InjectInput(Game.Instance.Input, dt);
-
-            // Log what the bot is injecting for diagnostics
-            if (input.IsHeld(Keys.Right))
-                _diagnostics.LogInputInjected(Keys.Right, true);
-            if (input.IsPressed(Keys.Z))
-                _diagnostics.LogAbility("Attack", true, "key injected");
-            if (input.IsPressed(Keys.Space))
-                _diagnostics.LogAbility("Jump", true, "key injected");
+            if (_aiInitialized)
+            {
+                _bot.InjectInput(Game.Instance.Input, dt);
+            }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine("[BOT] ⚠️ WARNING: AI not initialized, not injecting input!");
+            }
 
             _inner.Update(dt);
             input.ClearInjected();
