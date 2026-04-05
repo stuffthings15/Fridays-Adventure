@@ -1920,33 +1920,70 @@ namespace Fridays_Adventure.Scenes
             int top = _exitFlag.Y;
             int bottom = _exitFlag.Y + _exitFlag.Height;
 
+            // Use a static timer for smooth animation
+            double glowTime = Environment.TickCount * 0.001;
+
+            // ── Animated glow halo around goal flag ──────────────────────────────
+            float glowPhase = (float)Math.Sin(glowTime * 2.0) * 0.5f + 0.5f;
+            int glowAlpha = (int)(100 * glowPhase + 50);
+            using (var br = new SolidBrush(Color.FromArgb(glowAlpha, 255, 200, 0)))
+                g.FillEllipse(br, px - 30, top - 20, 70, 50);
+
+            // ── Animated ">>> GO <<<" indicator above flag ──────────────────────────
+            using (var f = new Font("Courier New", 10, FontStyle.Bold))
+            using (var br = new SolidBrush(Color.Gold))
+            {
+                string arrow = ">>> GO <<<";
+                g.DrawString(arrow, f, br, px - 35, top - 35);
+            }
+
+            // ── Animated arrows pointing down to goal ────────────────────────────
+            float arrowPhase = (float)Math.Sin(glowTime * 2.5) * 4f;
+            for (int i = 0; i < 3; i++)
+            {
+                int arrowY = (int)(top - 50 - (i * 12) - arrowPhase);
+                if (arrowY > top - 70 && arrowY < top)
+                {
+                    int opacity = (int)(200 * (1f - Math.Abs(arrowPhase - (i * 4)) / 12f));
+                    using (var pen = new Pen(Color.FromArgb(opacity, 255, 200, 0), 2))
+                    {
+                        g.DrawLine(pen, px - 12, arrowY, px, arrowY + 8);
+                        g.DrawLine(pen, px + 12, arrowY, px, arrowY + 8);
+                    }
+                }
+            }
+
             // ── SMB3-style goal flagpole ──────────────────────────────────────
-            // Pole (silver/gray vertical bar)
-            using (var br = new SolidBrush(Color.FromArgb(200, 200, 210)))
+            // Pole (silver/gray vertical bar) - made more visible
+            using (var br = new SolidBrush(Color.FromArgb(220, 220, 230)))
                 g.FillRectangle(br, px, top, 4, _exitFlag.Height);
             // Pole highlight
-            using (var br = new SolidBrush(Color.FromArgb(100, 255, 255, 255)))
+            using (var br = new SolidBrush(Color.FromArgb(150, 255, 255, 255)))
                 g.FillRectangle(br, px, top, 2, _exitFlag.Height);
-            // Gold ball on top
+            // Gold ball on top - MUCH bigger and more prominent
             using (var br = new SolidBrush(Color.Gold))
-                g.FillEllipse(br, px - 4, top - 9, 12, 12);
-            using (var pen = new Pen(Color.DarkGoldenrod, 1))
-                g.DrawEllipse(pen, px - 4, top - 9, 12, 12);
+                g.FillEllipse(br, px - 8, top - 13, 20, 20);
+            using (var pen = new Pen(Color.DarkGoldenrod, 2))
+                g.DrawEllipse(pen, px - 8, top - 13, 20, 20);
 
-            // ── Checkered goal flag (SMB3 two-tone green) ────────────────────
-            int fw = 24, fh = 16;
-            int fx = px + 4;
-            using (var br = new SolidBrush(Color.FromArgb(40, 170, 40)))
+            // ── Checkered goal flag (SMB3 two-tone green) - ENLARGED ────────────────────
+            int fw = 32, fh = 22;
+            int fx = px + 2;
+            using (var br = new SolidBrush(Color.FromArgb(50, 200, 50)))
                 g.FillRectangle(br, fx, top, fw, fh);
             // Checker squares
-            using (var br = new SolidBrush(Color.FromArgb(28, 120, 28)))
+            using (var br = new SolidBrush(Color.FromArgb(28, 140, 28)))
             {
                 g.FillRectangle(br, fx,           top,        fw / 2, fh / 2);
                 g.FillRectangle(br, fx + fw / 2,  top + fh / 2, fw / 2, fh / 2);
             }
-            // "GOAL" label
-            using (var f = new Font("Courier New", 7, FontStyle.Bold))
+            // "GOAL" label - bigger and bolder
+            using (var f = new Font("Courier New", 9, FontStyle.Bold))
                 g.DrawString("GOAL", f, Brushes.White, fx + 2, top + 4);
+
+            // ── Border highlight to make flag POP ──────────────────────────────────
+            using (var pen = new Pen(Color.Gold, 2))
+                g.DrawRectangle(pen, fx - 2, top - 2, fw + 4, fh + 4);
         }
 
         private void DrawAttackArc(Graphics g)
