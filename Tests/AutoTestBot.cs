@@ -92,6 +92,11 @@ namespace Fridays_Adventure.Tests
         public float LastGapWidth { get; set; } = 0f;
 
         /// <summary>
+        /// Stuck detection system
+        /// </summary>
+        public BotStuckDetector _stuckDetector = new BotStuckDetector();
+
+        /// <summary>
         /// Initialize bot for a new level
         /// </summary>
         public void Initialize(float startX, float startY)
@@ -107,20 +112,40 @@ namespace Fridays_Adventure.Tests
             ShouldJump = false;
             MoveRight = true;
             ShouldAttack = false;
+
+            // Initialize stuck detector
+            _stuckDetector.Initialize(startX, startY);
         }
 
         /// <summary>
         /// Update bot behavior each frame
         /// </summary>
-        public void Update(float dt)
+        public void Update(float dt, TestSessionLogger logger = null)
         {
             TimeInLevel += dt;
+
+            // Check for stuck before timeout
+            _stuckDetector.Update(dt, this, logger);
+
+            // If stuck for more than 3 seconds, mark level as stuck
+            if (_stuckDetector.IsStuck && _stuckDetector.CurrentStuckDuration > 3f)
+            {
+                // Give it another 10 seconds before declaring failure
+                if (_stuckDetector.CurrentStuckDuration > 13f)
+                {
+                    State = BotState.Failed;
+                    LevelCompleted = false;
+                    logger?.WriteLine($"[BOT] Level failed - bot stuck for {_stuckDetector.CurrentStuckDuration:F1}s");
+                    return;
+                }
+            }
 
             // Timeout - level is too hard or unbeatable
             if (TimeInLevel > MAX_TIME_PER_LEVEL)
             {
                 State = BotState.Failed;
                 LevelCompleted = false;
+                logger?.WriteLine($"[BOT] Level timeout after {TimeInLevel:F1}s");
                 return;
             }
 
@@ -215,6 +240,22 @@ namespace Fridays_Adventure.Tests
         {
             return $"Time: {TimeInLevel:F1}s | Distance: {DistanceTraveled:F0}px | Items: {ItemsCollected} | Enemies: {EnemiesDefeated} | Completed: {(LevelCompleted ? "✅" : "❌")}";
         }
+
+        /// <summary>
+        /// Get stuck detection report
+        /// </summary>
+        public string GetStuckReport()
+        {
+            return _stuckDetector.GetStuckReport();
+        }
+
+        /// <summary>
+        /// Check if bot got stuck at any point
+        /// </summary>
+        public bool DidBotGetStuck()
+        {
+            return _stuckDetector.AllStuckEvents.Count > 0;
+        }
     }
 
     /// <summary>
@@ -251,7 +292,7 @@ namespace Fridays_Adventure.Tests
         /// <summary>
         /// Test a single level with the bot (used for live progress)
         /// </summary>
-        public static LevelAutoTestResult TestLevelSingle(string levelId, string levelName)
+        public static LevelAutoTestResult TestLevelSingle(string levelId, string levelName, TestSessionLogger logger = null)
         {
             var bot = new AutoTestBot();
             bot.Initialize(100f, 300f); // Start position
@@ -268,7 +309,7 @@ namespace Fridays_Adventure.Tests
                 // Simulate bot running through level for 60 seconds
                 for (float time = 0f; time < 60f; time += 0.016f) // ~60 FPS
                 {
-                    bot.Update(0.016f);
+                    bot.Update(0.016f, logger);
 
                     // Simulate random events
                     SimulateLevelEvents(bot, time, levelId);
@@ -297,6 +338,13 @@ namespace Fridays_Adventure.Tests
                 {
                     result.IsBeatable = false;
                     result.FailureReason = "Bot made insufficient progress";
+                }
+
+                // Check if bot got stuck
+                if (bot.DidBotGetStuck())
+                {
+                    result.FailureReason = "Bot got stuck during level";
+                    logger?.WriteLine(bot.GetStuckReport());
                 }
             }
             catch (Exception ex)
@@ -414,7 +462,7 @@ namespace Fridays_Adventure.Tests
                 // Simulate bot running through level for 60 seconds
                 for (float time = 0f; time < 60f; time += 0.016f) // ~60 FPS
                 {
-                    bot.Update(0.016f);
+                    bot.Update(0.016f, _logger);
 
                     // Simulate random events
                     SimulateLevelEvents(bot, time, levelId);
@@ -443,6 +491,13 @@ namespace Fridays_Adventure.Tests
                 {
                     result.IsBeatable = false;
                     result.FailureReason = "Bot made insufficient progress";
+                }
+
+                // Check if bot got stuck
+                if (bot.DidBotGetStuck())
+                {
+                    result.FailureReason = $"Bot got stuck during level ({bot._stuckDetector.AllStuckEvents.Count} stuck events)";
+                    _logger?.WriteLine(bot.GetStuckReport());
                 }
             }
             catch (Exception ex)

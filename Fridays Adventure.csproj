@@ -270,6 +270,7 @@
     <Compile Include="Tests\BotDiagnostics.cs" />
     <Compile Include="Tests\BotDialogueHandler.cs" />
     <Compile Include="Tests\BotPlayerController.cs" />
+    <Compile Include="Tests\BotStuckDetector.cs" />
     <Compile Include="Tests\BotVisualDebugger.cs" />
     <Compile Include="Tests\EnhancedLevelTestResult.cs" />
     <Compile Include="Tests\ItemAndEnemyAnalyzer.cs" />
@@ -308,6 +309,7 @@
     <None Include="docs\BOT_FINAL_DIAGNOSTIC_PROTOCOL.md" />
     <None Include="docs\BOT_OBSERVABLE_TEST_GUIDE.md" />
     <None Include="docs\BOT_QA_TESTING_COMPLETE_GUIDE.md" />
+    <None Include="docs\BOT_STUCK_DETECTION_SYSTEM.md" />
     <None Include="docs\COMPREHENSIVE_TEAM_FEATURE_AUDIT.md" />
     <None Include="docs\DOCUMENTATION_INDEX.md" />
     <None Include="docs\FEATURE_COMPLETION_AUDIT.md" />
