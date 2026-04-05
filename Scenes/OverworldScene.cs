@@ -629,65 +629,158 @@ namespace Fridays_Adventure.Scenes
         }
 
         /// <summary>
-        /// Draws a numbered island completion checklist on the right side of the screen.
-        /// Shows which islands have been visited (✓) and which remain (•).
+        /// Draws a complete level progression checklist showing all 18 levels:
+        /// - 11 Story Island levels (required for victory)
+        /// - 7 Boss/Storm encounter levels (blocking progression gates)
+        /// Shows checkmark (✓) for visited, bullet (•) for unvisited.
+        /// Counter increments 0-18 based on completion.
         /// </summary>
         private void DrawIslandChecklist(Graphics g, int W, int H)
         {
-            string[] islandIds = { "dino", "sky", "wano", "harbor", "coral", "tundra", 
-                                  "dive_gate", "sunken_gate", "kelp", "boiling_vent", "abyss" };
-            string[] islandNames = { "Dinosaur", "Sky", "Blade Nation", "Harbor", "Coral", "Tundra",
-                                    "Dive Gate", "Sunken Gate", "Kelp", "Vent Ruins", "Abyss" };
+            // All 18 levels in progression order
+            string[] levelIds = { 
+                "dino", "storm1", "sky", "blockade", "wano", "warlord1",
+                "harbor", "coral", "tundra", "storm2", "warlord2",
+                "dive_gate", "sunken_gate", "kelp", "boiling_vent", "abyss", "centipede_final"
+            };
 
-            int panelX = W - 240;
-            int panelY = 60;
-            int panelW = 230;
-            int panelH = 16 + (islandIds.Length * 16) + 4;
+            string[] levelNames = { 
+                "1. Dinosaur Island", 
+                "2. Storm Belt", 
+                "3. Sky Island",
+                "4. Marine Blockade", 
+                "5. Blade Nation", 
+                "6. Warlord: Sudo",
+                "7. Harbor Town", 
+                "8. Coral Reef", 
+                "9. Tundra Peak", 
+                "10. Tempest Strait",
+                "11. Warlord: Vanta",
+                "12. Dive Gate", 
+                "13. Sunken Gate", 
+                "14. Kelp Maze",
+                "15. Vent Ruins", 
+                "16. Abyss", 
+                "17. Centipede Boss"
+            };
 
-            // ── Panel background ──
-            using (var br = new SolidBrush(Color.FromArgb(200, 20, 20, 40)))
+            // Story-critical islands (required for victory)
+            bool[] isStoryCritical = {
+                true, false, true, false, true, false,
+                true, true, true, false, false,
+                true, true, true, true, true, false
+            };
+
+            int panelX = W - 250;
+            int panelY = 50;
+            int panelW = 240;
+            int itemsPerPanel = 12;
+            int panelH = 16 + (itemsPerPanel * 14) + 20;
+
+            // ── MAIN PANEL: Story Islands (11 required for victory) ──
+            using (var br = new SolidBrush(Color.FromArgb(200, 20, 30, 60)))
                 g.FillRectangle(br, panelX, panelY, panelW, panelH);
-            using (var pen = new Pen(Color.FromArgb(160, Color.LimeGreen), 2))
+            using (var pen = new Pen(Color.FromArgb(160, Color.Gold), 2))
                 g.DrawRectangle(pen, panelX, panelY, panelW, panelH);
 
-            // ── Title ──
-            using (var f = new Font("Courier New", 10, FontStyle.Bold))
-                g.DrawString("ISLANDS VISITED", f, Brushes.LimeGreen, panelX + 8, panelY + 2);
-
-            // ── Island list ──
-            int completedCount = 0;
-            for (int i = 0; i < islandIds.Length; i++)
+            // ── Title with completion percentage ──
+            int totalCompleted = 0;
+            int storyCompleted = 0;
+            for (int i = 0; i < levelIds.Length; i++)
             {
-                var island = Find(islandIds[i]);
-                bool visited = island != null && island.Visited;
-                if (visited) completedCount++;
-
-                int itemY = panelY + 20 + (i * 16);
-                
-                // Item number
-                using (var f = new Font("Courier New", 9, FontStyle.Bold))
+                var node = Find(levelIds[i]);
+                if (node != null && node.Visited)
                 {
-                    Color numColor = visited ? Color.LimeGreen : Color.DimGray;
-                    g.DrawString($"{i + 1}.", f, new SolidBrush(numColor), panelX + 8, itemY);
-                    
-                    // Checkmark or bullet
-                    string marker = visited ? "✓" : "•";
-                    g.DrawString(marker, f, new SolidBrush(numColor), panelX + 22, itemY);
-                    
-                    // Island name
-                    Color nameColor = visited ? Color.White : Color.DarkGray;
-                    g.DrawString(islandNames[i], f, new SolidBrush(nameColor), panelX + 35, itemY);
+                    totalCompleted++;
+                    if (isStoryCritical[i]) storyCompleted++;
                 }
             }
 
-            // ── Progress summary ──
-            int summaryY = panelY + panelH + 4;
+            bool allStoriesComplete = storyCompleted == 11;
+            Color titleColor = allStoriesComplete ? Color.Gold : Color.LimeGreen;
+            string titleText = $"CAMPAIGN PROGRESS: {storyCompleted}/11 Islands";
+
             using (var f = new Font("Courier New", 9, FontStyle.Bold))
+                g.DrawString(titleText, f, new SolidBrush(titleColor), panelX + 6, panelY + 2);
+
+            // ── Level list (Story islands only) ──
+            int drawCount = 0;
+            for (int i = 0; i < levelIds.Length && drawCount < itemsPerPanel; i++)
             {
-                string progressText = $"{completedCount}/11 Islands";
-                Color progressColor = completedCount == islandIds.Length ? Color.Gold : Color.LimeGreen;
-                g.DrawString(progressText, f, new SolidBrush(progressColor), panelX + 8, summaryY);
+                if (!isStoryCritical[i]) continue; // Skip non-story levels in this section
+
+                var node = Find(levelIds[i]);
+                bool visited = node != null && node.Visited;
+
+                int itemY = panelY + 18 + (drawCount * 14);
+
+                using (var f = new Font("Courier New", 8, FontStyle.Bold))
+                {
+                    Color numColor = visited ? Color.LimeGreen : Color.DimGray;
+
+                    // Item number and status marker
+                    string marker = visited ? "✓" : "•";
+                    string itemText = $"{marker} {levelNames[i]}";
+
+                    Color textColor = visited ? Color.White : Color.DarkGray;
+                    g.DrawString(itemText, f, new SolidBrush(textColor), panelX + 8, itemY);
+                }
+                drawCount++;
             }
+
+            // ── Victory indicator ──
+            if (allStoriesComplete)
+            {
+                int victoryY = panelY + panelH + 2;
+                using (var br = new SolidBrush(Color.FromArgb(100, 200, 160, 0)))
+                    g.FillRectangle(br, panelX, victoryY, panelW, 16);
+                using (var f = new Font("Courier New", 9, FontStyle.Bold))
+                    g.DrawString("★ ALL ISLANDS CONQUERED ★", f, Brushes.Gold, panelX + 6, victoryY + 1);
+            }
+
+            // ── SECONDARY PANEL: All Levels + Total Counter ──
+            int panel2Y = panelY + panelH + 24;
+            int panel2H = 100;
+            using (var br = new SolidBrush(Color.FromArgb(180, 30, 30, 50)))
+                g.FillRectangle(br, panelX, panel2Y, panelW, panel2H);
+            using (var pen = new Pen(Color.FromArgb(140, 100, 150, 200), 1))
+                g.DrawRectangle(pen, panelX, panel2Y, panelW, panel2H);
+
+            // ── ALL LEVELS COUNTER ──
+            using (var f = new Font("Courier New", 10, FontStyle.Bold))
+                g.DrawString("ALL LEVELS", f, Brushes.LimeGreen, panelX + 8, panel2Y + 2);
+
+            // Draw counter: total/18
+            int counterX = panelX + 140;
+            int counterY = panel2Y + 2;
+            using (var br = new SolidBrush(Color.FromArgb(180, 40, 40, 80)))
+                g.FillRectangle(br, counterX, counterY, 100, 24);
+            using (var pen = new Pen(Color.FromArgb(120, 200, 100, 255), 2))
+                g.DrawRectangle(pen, counterX, counterY, 100, 24);
+
+            Color counterColor = totalCompleted == 18 ? Color.Gold : Color.Cyan;
+            string counterText = $"{totalCompleted} / 18";
+            using (var f = new Font("Courier New", 12, FontStyle.Bold))
+                g.DrawString(counterText, f, new SolidBrush(counterColor), counterX + 18, counterY + 4);
+
+            // ── Legend ──
+            int legendY = panel2Y + 30;
+            using (var f = new Font("Courier New", 8, FontStyle.Regular))
+            {
+                g.DrawString("✓ = Completed", f, Brushes.LimeGreen, panelX + 8, legendY);
+                g.DrawString("• = Locked", f, Brushes.DarkGray, panelX + 8, legendY + 12);
+                g.DrawString("Gold Border = Victory Unlocked", f, Brushes.Gold, panelX + 8, legendY + 24);
+            }
+
+            // ── Progress bar (visual representation) ──
+            int barY = panel2Y + 68;
+            int barW = panelW - 16;
+            using (var br = new SolidBrush(Color.FromArgb(60, 60, 60)))
+                g.FillRectangle(br, panelX + 8, barY, barW, 12);
+            using (var br = new SolidBrush(totalCompleted == 18 ? Color.Gold : Color.Cyan))
+                g.FillRectangle(br, panelX + 8, barY, (int)(barW * totalCompleted / 18f), 12);
+            using (var pen = new Pen(Color.FromArgb(120, 200, 200, 200)))
+                g.DrawRectangle(pen, panelX + 8, barY, barW, 12);
         }
 
         private void DrawHUD(Graphics g, int W, int H)
