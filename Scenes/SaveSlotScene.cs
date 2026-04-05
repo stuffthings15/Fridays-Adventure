@@ -42,6 +42,8 @@ namespace Fridays_Adventure.Scenes
         private Rectangle[] _slotRects = new Rectangle[SlotCount];
         private Rectangle   _deleteBtn;
         private Rectangle   _backBtn;
+        private Rectangle   _confirmYesBtn;
+        private Rectangle   _confirmNoBtn;
 
         // ── Fonts ─────────────────────────────────────────────────────────────
         private static readonly Font _titleFont = new Font("Courier New", 24, FontStyle.Bold);
@@ -102,7 +104,13 @@ namespace Fridays_Adventure.Scenes
 
             if (_confirmClear)
             {
-                // Handled in Update via keyboard; mouse clicks dismiss
+                // Click Yes to confirm delete, No (or anywhere else) to cancel.
+                if (_confirmYesBtn.Contains(p))
+                {
+                    ExecuteClear(_selected);
+                    return;
+                }
+                // No button or clicking outside dismisses the confirmation.
                 _confirmClear = false;
                 return;
             }
@@ -302,13 +310,44 @@ namespace Fridays_Adventure.Scenes
 
         private void DrawConfirmOverlay(Graphics g, int W, int H)
         {
+            // Darken background
             using (var br = new SolidBrush(Color.FromArgb(200, 0, 0, 0)))
                 g.FillRectangle(br, 0, 0, W, H);
 
-            string msg = $"Clear File {_selected + 1}?  (Y)es / (N)o";
+            // Prompt text
+            string msg = $"Delete File {_selected + 1}?";
             var sz = g.MeasureString(msg, _slotFont);
             g.DrawString(msg, _slotFont, Brushes.OrangeRed,
-                (W - sz.Width) / 2f, H / 2f - 16);
+                (W - sz.Width) / 2f, H / 2f - 40);
+
+            // Yes / No buttons
+            int bw = 120, bh = 36;
+            int gap = 20;
+            int cx = W / 2;
+            int by = H / 2;
+
+            _confirmYesBtn = new Rectangle(cx - bw - gap / 2, by, bw, bh);
+            _confirmNoBtn  = new Rectangle(cx + gap / 2,       by, bw, bh);
+
+            // Yes button (green)
+            using (var br = new SolidBrush(Color.FromArgb(30, 100, 30)))
+                g.FillRectangle(br, _confirmYesBtn);
+            using (var pen = new Pen(Color.LimeGreen, 2))
+                g.DrawRectangle(pen, _confirmYesBtn);
+            var ysz = g.MeasureString("YES (Y)", _btnFont);
+            g.DrawString("YES (Y)", _btnFont, Brushes.LimeGreen,
+                _confirmYesBtn.X + (_confirmYesBtn.Width - ysz.Width) / 2f,
+                _confirmYesBtn.Y + (_confirmYesBtn.Height - ysz.Height) / 2f);
+
+            // No button (red)
+            using (var br = new SolidBrush(Color.FromArgb(100, 30, 30)))
+                g.FillRectangle(br, _confirmNoBtn);
+            using (var pen = new Pen(Color.IndianRed, 2))
+                g.DrawRectangle(pen, _confirmNoBtn);
+            var nsz = g.MeasureString("NO (N)", _btnFont);
+            g.DrawString("NO (N)", _btnFont, Brushes.IndianRed,
+                _confirmNoBtn.X + (_confirmNoBtn.Width - nsz.Width) / 2f,
+                _confirmNoBtn.Y + (_confirmNoBtn.Height - nsz.Height) / 2f);
         }
     }
 }
