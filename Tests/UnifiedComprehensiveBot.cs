@@ -213,6 +213,43 @@ namespace Fridays_Adventure.Tests
         /// </summary>
         private void MakeIntelligentDecisions()
         {
+            // PRIORITY 0: CHECK FOR GOAL/EXIT FLAG FIRST
+            // Look for the level goal (exit flag, gate, etc.)
+            Entity goalEntity = DetectGoal();
+            if (goalEntity != null)
+            {
+                float distanceToGoal = Math.Abs(_player.X - goalEntity.X);
+
+                // If near goal, walk to it without jumping
+                if (distanceToGoal < 300f)
+                {
+                    CurrentState = "GOAL_NEARBY";
+                    ShouldJump = false;  // ← CRITICAL: Don't jump over goal!
+                    ShouldMoveRight = true;
+                    _activityLogger?.LogPlatformingAction("GOAL_DETECTED", 
+                        $"Distance: {distanceToGoal:F0}px - walking to goal WITHOUT jumping");
+
+                    // If VERY close, we should reach it naturally through collision
+                    if (distanceToGoal < 50f)
+                    {
+                        CurrentState = "AT_GOAL";
+                        _activityLogger?.LogPlatformingAction("AT_GOAL", "Player should collide and complete level");
+                    }
+                    return;
+                }
+
+                // If goal is far but visible, move toward it
+                if (distanceToGoal < 500f)
+                {
+                    CurrentState = "GOAL_VISIBLE";
+                    ShouldJump = false;  // Don't jump yet
+                    ShouldMoveRight = true;
+                    _activityLogger?.LogPlatformingAction("GOAL_VISIBLE", 
+                        $"Distance: {distanceToGoal:F0}px - moving to goal");
+                    return;
+                }
+            }
+
             // Find nearest enemy
             Enemy nearestEnemy = null;
             float nearestEnemyDistance = float.MaxValue;
@@ -283,7 +320,7 @@ namespace Fridays_Adventure.Tests
                 }
             }
 
-            // PRIORITY 3: PLATFORMING - Only jump to recover from falling, NOT periodically
+            // PRIORITY 3: PLATFORMING - Only jump to recover from falling
             CurrentState = "PLATFORMING";
             ShouldMoveRight = true;
             ShouldJump = false;  // ← Default: don't jump!
@@ -294,7 +331,52 @@ namespace Fridays_Adventure.Tests
                 ShouldJump = true;
                 _activityLogger?.LogPlatformingAction("FALL_RECOVERY", $"Y={_player.Y:F0} (falling)");
             }
-            // Otherwise, don't jump. Let the player move naturally without jumping over collectibles
+        }
+
+        /// <summary>
+        /// DETECT: The goal/exit flag for the level
+        /// </summary>
+        private Entity DetectGoal()
+        {
+            try
+            {
+                var entitiesField = _scene.GetType().GetField("_entities",
+                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+
+                if (entitiesField != null)
+                {
+                    var entities = entitiesField.GetValue(_scene) as List<Entity>;
+                    if (entities != null)
+                    {
+                        foreach (var entity in entities)
+                        {
+                            if (entity == null || entity == _player) continue;
+
+                            // Check for various goal types
+                            string typeName = entity.GetType().Name;
+
+                            // Common goal names
+                            if (typeName.Contains("Flag") || 
+                                typeName.Contains("Goal") || 
+                                typeName.Contains("Exit") ||
+                                typeName.Contains("Gate") ||
+                                typeName.Contains("Door") ||
+                                typeName.Contains("Finish"))
+                            {
+                                _activityLogger?.LogPlatformingAction("GOAL_FOUND", 
+                                    $"Type: {typeName} at X={entity.X:F0}");
+                                return entity;
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _activityLogger?.LogPlatformingAction("ERROR", $"Goal detection failed: {ex.Message}");
+            }
+
+            return null;
         }
 
         /// <summary>

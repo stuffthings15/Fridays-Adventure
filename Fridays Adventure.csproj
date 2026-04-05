@@ -325,6 +325,7 @@
     <None Include="docs\FINAL_BUILD_EXECUTABLE_SUMMARY.md" />
     <None Include="docs\FINAL_VERIFICATION_REPORT.md" />
     <None Include="docs\FIXES_APPLIED.md" />
+    <None Include="docs\GOAL_DETECTION_COMPLETION_FIX.md" />
     <None Include="docs\IMPLEMENTATION_START_HERE.md" />
     <None Include="docs\INITIALIZATION_WIRING_VERIFICATION.md" />
     <None Include="docs\INTEGRATION_TEST_COMPLETE.md" />
