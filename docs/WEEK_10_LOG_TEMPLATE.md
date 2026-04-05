@@ -1812,6 +1812,46 @@
 
 ---
 
+## SESSION 50: Dev Menu Character Select + Documentation Cleanup
+
+**Date/Time:** April 5, 2026  
+**Duration:** Feature + documentation overhaul session  
+
+### ✅ Features Implemented
+- **Dev Menu forces character select before any level** (Scenes/DevMenuScene.cs + Scenes/CharacterSelectScene.cs):
+  - Added optional `Action onConfirm` callback to `CharacterSelectScene`.
+  - When constructed with a callback, ConfirmAndProceed invokes it instead of the default difficulty→overworld flow.
+  - Back (Esc) correctly pops back to DevMenu when used as an overlay.
+  - DevMenu `ActivateEntry` now pushes CharacterSelectScene before any gameplay level; on confirm, pops char-select and replaces DevMenu with the chosen level.
+  - Tool/QA/dashboard scenes ([PH2], [PH3], [QA], [TOOLS]) still launch directly without character select.
+- **Documentation overhaul** — cleaned up inflated claims:
+  - `README.md` rewritten: removed bloated 400+ line feature table, replaced with honest project status. Added "How to Play" controls table. Phase 2/3 status now accurately described as "systems/dashboard stubs accessible from Dev Menu."
+  - `docs/AI_DOCS.md` rewritten: clarified that Phase 2/3 are not deeply integrated into core gameplay. Removed broken markdown formatting.
+  - `.github/copilot-instructions.md`: fixed session log path from `Assets/The Forge/Week10 Log_.docx` to `docs/WEEK_10_LOG_TEMPLATE.md`.
+
+### 🐛 Bugs Fixed
+- Fixed Dev Menu launching levels without character selection — player always had whichever character was previously set.
+- Fixed CharacterSelectScene always replacing with TitleScene on back; now pops correctly when used as overlay.
+- Fixed documentation files overstating project completion and referencing wrong log file paths.
+
+### 📋 Documentation Updated
+- ✅ `README.md` — complete rewrite, accurate and concise
+- ✅ `docs/AI_DOCS.md` — accurate phase status, honest about Phase 2/3 scope
+- ✅ `.github/copilot-instructions.md` — correct log file path
+- ✅ `docs/WEEK_10_LOG_TEMPLATE.md` — Session 50 entry
+
+### 🏗️ Build Status
+- Build: ✅ PASSING
+- Release: ✅ Published to `Release\Fridays Adventure.exe`
+- Git: ✅ Pushed to `origin/master`
+
+### 🎯 Next Steps
+- In-game verify Dev Menu → character select → level launch flow.
+- Verify Esc returns from character select back to Dev Menu.
+- Continue verifying core gameplay features are working.
+
+---
+
 ## NOTES & IDEAS
 
 **Recurring Tasks:**
