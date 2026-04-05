@@ -39,7 +39,8 @@ namespace Fridays_Adventure.Data
             catch { return null; }
         }
 
-        // Returns a pre-scaled copy — call once at startup, not every frame
+        // Returns a pre-scaled copy — call once at startup, not every frame.
+        // Uses the full high-quality GDI+ pipeline so sprites stay sharp.
         public static Bitmap GetScaled(string fileName, int w, int h)
         {
             string key = $"{fileName}_{w}x{h}";
@@ -49,7 +50,10 @@ namespace Fridays_Adventure.Data
             var scaled = new Bitmap(w, h);
             using (var g = Graphics.FromImage(scaled))
             {
-                g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+                g.InterpolationMode  = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+                g.SmoothingMode      = System.Drawing.Drawing2D.SmoothingMode.HighQuality;
+                g.CompositingQuality = System.Drawing.Drawing2D.CompositingQuality.HighQuality;
+                g.PixelOffsetMode    = System.Drawing.Drawing2D.PixelOffsetMode.HighQuality;
                 g.DrawImage(src, 0, 0, w, h);
             }
             _cache[key] = scaled;
@@ -67,5 +71,15 @@ namespace Fridays_Adventure.Data
         /// Safe to call from a background thread — simply calls Get which is idempotent.
         /// </summary>
         public static void Preload(string fileName) => Get(fileName);
+
+        /// <summary>
+        /// Clears the entire sprite cache so that sprites are reloaded and
+        /// re-scaled with the latest quality settings on next access.
+        /// </summary>
+        public static void InvalidateCache()
+        {
+            foreach (var b in _cache.Values) b?.Dispose();
+            _cache.Clear();
+        }
     }
 }

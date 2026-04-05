@@ -39,7 +39,14 @@ namespace Fridays_Adventure.Entities
         public virtual void Draw(Graphics g)
         {
             if (Sprite != null)
+            {
+                // Use high-quality interpolation for sprite rendering
+                // so character art stays crisp at any scale.
+                var prevMode = g.InterpolationMode;
+                g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
                 g.DrawImage(Sprite, X, Y, Width, Height);
+                g.InterpolationMode = prevMode;
+            }
             else
                 DrawPlaceholder(g);
         }
