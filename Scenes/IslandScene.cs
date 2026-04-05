@@ -11,6 +11,7 @@ using Fridays_Adventure.Entities;
 using Fridays_Adventure.Systems;
 using Fridays_Adventure.Hazards;
 using Fridays_Adventure.Rules;
+using Fridays_Adventure.Tests;
 
 namespace Fridays_Adventure.Scenes
 {
@@ -118,6 +119,198 @@ namespace Fridays_Adventure.Scenes
             WeatherSystem.Set(WeatherSystem.Mode.None);  // clear weather on exit
             _bg?.Dispose(); _bg = null;
         }
+
+        // ════════════════════════════════════════════════════════════════════════
+        // BOT AI DETECTION METHODS (BATCH 2 - Game Scene Integration)
+        // These methods scan the level for hazards, enemies, and pickups
+        // and provide that information to SmartBotAI each frame.
+        // ════════════════════════════════════════════════════════════════════════
+
+        /// <summary>
+        /// Detect all hazards near the bot (lightning, spikes, obstacles).
+        /// Returns list of DetectedHazard objects with positions and distances.
+        /// Called by BotPlayLevelScene each frame for smart bot decisions.
+        /// </summary>
+        public List<Tests.DetectedHazard> DetectHazardsNearBot(Player bot)
+        {
+            var detected = new List<Tests.DetectedHazard>();
+            if (bot == null) return detected;
+
+            const float DETECTION_RANGE = 300f;
+
+            // Scan hazard list for spikes, fire, etc.
+            foreach (var h in _hazards)
+            {
+                if (h == null || !h.IsActive) continue;
+                float dist = Math.Abs(h.X - bot.X);
+                if (dist > DETECTION_RANGE) continue;
+
+                detected.Add(new Tests.DetectedHazard
+                {
+                    X = h.X,
+                    Y = h.Y,
+                    Width = h.Width,
+                    Height = h.Height,
+                    Type = h.GetType().Name.ToLower(),
+                    Distance = dist,
+                    IsImmediate = dist < 150f
+                });
+            }
+
+            // Scan moving platforms as obstacles
+            foreach (var mp in _movingPlatforms)
+            {
+                float dist = Math.Abs(mp.X - bot.X);
+                if (dist > DETECTION_RANGE) continue;
+                if (Math.Abs(mp.VelocityX) > 100f || Math.Abs(mp.VelocityY) > 100f)
+                {
+                    detected.Add(new Tests.DetectedHazard
+                    {
+                        X = mp.X,
+                        Y = mp.Y,
+                        Width = mp.Width,
+                        Height = mp.Height,
+                        Type = "moving_platform",
+                        Distance = dist,
+                        IsImmediate = dist < 150f
+                    });
+                }
+            }
+
+            return detected;
+        }
+
+        /// <summary>
+        /// Detect all enemies near the bot.
+        /// Returns list of DetectedEnemy objects with positions and threat levels.
+        /// Bot uses this to decide whether to attack or dodge.
+        /// </summary>
+        public List<Tests.DetectedEnemy> DetectEnemiesNearBot(Player bot)
+        {
+            var detected = new List<Tests.DetectedEnemy>();
+            if (bot == null) return detected;
+
+            const float DETECTION_RANGE = 400f;
+
+            // Scan all generic enemies
+            foreach (var e in _enemies)
+            {
+                if (!e.IsAlive) continue;
+                float dist = Math.Abs(e.X - bot.X);
+                if (dist > DETECTION_RANGE) continue;
+
+                bool isAggressive = e.VelocityX != 0 || (e.X < bot.X && e.VelocityX < 0) || (e.X > bot.X && e.VelocityX > 0);
+
+                detected.Add(new Tests.DetectedEnemy
+                {
+                    X = e.X,
+                    Y = e.Y,
+                    Width = e.Width,
+                    Height = e.Height,
+                    Type = e.GetType().Name,
+                    Distance = dist,
+                    IsAggressive = isAggressive,
+                    Health = e.Health
+                });
+            }
+
+            return detected;
+        }
+
+        /// <summary>
+        /// Detect all pickups near the bot (berries, health items, powerups, star coins).
+        /// Returns list of DetectedPickup objects with positions and values.
+        /// Bot prioritizes health pickups when hurt, currency otherwise.
+        /// </summary>
+        public List<Tests.DetectedPickup> DetectPickupsNearBot(Player bot)
+        {
+            var detected = new List<Tests.DetectedPickup>();
+            if (bot == null) return detected;
+
+            const float DETECTION_RANGE = 250f;
+
+            // Berries (currency)
+            foreach (var b in _berries)
+            {
+                if (b.Collected) continue;
+                float dist = Math.Abs(b.X - bot.X);
+                if (dist > DETECTION_RANGE) continue;
+
+                detected.Add(new Tests.DetectedPickup
+                {
+                    X = b.X,
+                    Y = b.Y,
+                    Type = "berry",
+                    Value = b.Value,
+                    Distance = dist
+                });
+            }
+
+            // Health pickups (CRITICAL - top priority when hurt)
+            foreach (var hp in _healthPickups)
+            {
+                float dist = Math.Abs(hp.X - bot.X);
+                if (dist > DETECTION_RANGE) continue;
+
+                detected.Add(new Tests.DetectedPickup
+                {
+                    X = hp.X,
+                    Y = hp.Y,
+                    Type = "health",
+                    Value = 25,
+                    Distance = dist
+                });
+            }
+
+            // Power-ups
+            foreach (var pu in _powerUps)
+            {
+                if (pu.IsCollected) continue;
+                float dist = Math.Abs(pu.X - bot.X);
+                if (dist > DETECTION_RANGE) continue;
+
+                detected.Add(new Tests.DetectedPickup
+                {
+                    X = pu.X,
+                    Y = pu.Y,
+                    Type = "powerup",
+                    Value = 100,
+                    Distance = dist
+                });
+            }
+
+            // Star coins
+            foreach (var sc in _starCoins)
+            {
+                float dist = Math.Abs(sc.X - bot.X);
+                if (dist > DETECTION_RANGE) continue;
+
+                detected.Add(new Tests.DetectedPickup
+                {
+                    X = sc.X,
+                    Y = sc.Y,
+                    Type = "starcoin",
+                    Value = 50,
+                    Distance = dist
+                });
+            }
+
+            return detected;
+        }
+
+        /// <summary>
+        /// Helper: Get player health for bot decision making.
+        /// </summary>
+        public int GetBotPlayerHealth() => _player?.Health ?? 0;
+
+        /// <summary>
+        /// Helper: Check if level is still playable.
+        /// </summary>
+        public bool IsBotLevelActive() => !_levelComplete && _player.IsAlive;
+
+        // ════════════════════════════════════════════════════════════════════════
+        // END BOT AI DETECTION (See BotPlayLevelScene for integration)
+        // ════════════════════════════════════════════════════════════════════════
 
         /// <summary>
         /// PHASE 2 — Team 14: Maps an island ID to its weather mode.
