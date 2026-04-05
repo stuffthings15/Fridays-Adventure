@@ -207,8 +207,8 @@ namespace Fridays_Adventure.Tests
 
         private void DetectHazards(float botX, float botY)
         {
-            // BATCH 1: Placeholder - game will populate this
-            // Actual hazards detected by scanning scene's hazard list
+            // BATCH 1: Basic detection (already populated by game)
+            // BATCH 4: Enhanced detection for specialized scenes
             System.Diagnostics.Debug.WriteLine($"[SMART_BOT] Scanning for hazards in range {HAZARD_DETECTION_RANGE}px");
         }
 

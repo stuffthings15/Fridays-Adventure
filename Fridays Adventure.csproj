@@ -263,6 +263,7 @@
     <Compile Include="Systems\UIStyleGuide.cs" />
     <Compile Include="Systems\VisualDebugger.cs" />
     <Compile Include="Systems\WeatherSystem.cs" />
+    <Compile Include="Tests\AdvancedSceneDetector.cs" />
     <Compile Include="Tests\AutoTestBot.cs" />
     <Compile Include="Tests\BotComprehensiveTestLogger.cs" />
     <Compile Include="Tests\BotDiagnostics.cs" />
