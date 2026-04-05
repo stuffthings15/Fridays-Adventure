@@ -6,10 +6,82 @@
 
 ---
 
-## SESSION 78: Comprehensive Bot Diagnostics + CardRoulette Auto-Advance + Attack Logging
+## SESSION 79: Achievement System Comprehensive Integration Fix
 
 **Date/Time:** Current Session  
-**Build Status:** ✅ 0 errors, 0 warnings
+**Build Status:** ✅ 0 errors, 0 warnings  
+**Git Status:** ✅ Pushed to master
+
+### Problem Identified & Fixed
+
+**Issue:** Achievements were only triggering 1-2 times during extensive play tests despite 17 defined achievements
+
+**Root Causes:**
+1. **No achievement grants at key gameplay moments** — only `ach_checkpoint` was being granted
+2. **Milestones tracked but achievements not linked** — `CheckMilestones()` published events but never called `AchievementSystem.Grant()`
+3. **Missing triggers for major events** — ground pound, wall jump, no-death level completion, marathon play
+
+### Solutions Implemented
+
+**1. Linked Milestones to Achievements (SessionStats.cs)**
+```csharp
+CheckMilestones() now grants:
+- ach_first_step (1+ levels completed)
+- ach_combo_5 (5+ enemy combo)
+- ach_combo_10 (10+ enemy combo)
+- ach_boss_slayer (1+ boss defeated)
+- ach_warlord_bane (4+ bosses defeated)
+- ach_berry_100 (100+ berries in session)
+- ach_berry_500 (500+ berries total)
+- ach_powerup_3 (3+ power-ups collected)
+```
+
+**2. Added Achievement Grants at Key Actions**
+- `Player.TryGroundPound()` → grants `ach_ground_pound`
+- `Player.TryWallJump()` → already granting `ach_wall_jump`
+- `SessionStats.RecordLevelComplete()` → grants `ach_no_death` if 0 deaths, `ach_full_clear` if 4+ levels
+- `SessionStats.CheckPlaytimeBadges()` → grants `ach_marathon` at 30 minutes playtime
+
+**3. Structured Achievement Categories**
+
+| Category | Achievements | Triggers |
+|----------|--------------|----------|
+| **Progression** | First Step, Boss Slayer, Warlord's Bane, Full Clear | Complete levels/bosses |
+| **Combat** | Combo Starter, Combo Master, Untouchable, Ground Pounder | Enemy chains, no damage |
+| **Collection** | Coin Collector, Berry Hoarder, Power Hungry | Items collected |
+| **Exploration** | Safe Harbor, Wall Climber, Crew United | Checkpoint, wall jump, crew bonds |
+| **Session** | Marathon Runner | 30 min playtime |
+
+### Files Modified
+- `Systems\SessionStats.cs` — integrated achievement granting into `CheckMilestones()`, `RecordLevelComplete()`, `CheckPlaytimeBadges()`
+- `Entities\Player.cs` — added `ach_ground_pound` grant in `TryGroundPound()`
+
+### Expected Behavior Now
+
+When you play a level:
+- ✅ Reach checkpoint → `ach_checkpoint`
+- ✅ Defeat 5 enemies without damage → `ach_combo_5`
+- ✅ Complete level with 0 deaths → `ach_no_death`
+- ✅ Collect 100 berries → `ach_berry_100`
+- ✅ Defeat a boss → `ach_boss_slayer`
+- ✅ Play for 30 minutes → `ach_marathon`
+- ✅ Ground pound an enemy → `ach_ground_pound`
+- ✅ Wall jump → `ach_wall_jump`
+- ✅ Complete 4 levels → `ach_full_clear`
+
+Each achievement grants displays a **golden banner notification** via `EventBus.Publish(AchievementEarnedEvent)`
+
+### Testing Recommendations
+
+1. Play Dinosaur Island and complete it without dying → expect `ach_first_step` + `ach_no_death` banners
+2. Get 5 enemy combo → expect `ach_combo_5` banner
+3. Collect 100+ berries → expect `ach_berry_100` banner
+4. Play for 30+ minutes → expect `ach_marathon` banner
+5. Use ground pound on enemy → expect `ach_ground_pound` banner
+
+---
+
+
 
 ### New Features Implemented
 

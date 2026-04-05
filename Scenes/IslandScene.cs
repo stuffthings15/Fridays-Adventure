@@ -1167,11 +1167,21 @@ namespace Fridays_Adventure.Scenes
                     _fireballShotCooldown = 0.28f;
                     Game.Instance.Audio.BeepFireball();
                     fired = true;
+                    System.Diagnostics.Debug.WriteLine("[ATTACK] FireFlower fireball fired");
                 }
 
                 if (!fired)
                 {
-                    if (_player.TryAttack()) Game.Instance.Audio.BeepAttack();
+                    bool attackSuccess = _player.TryAttack();
+                    if (attackSuccess)
+                    {
+                        Game.Instance.Audio.BeepAttack();
+                        System.Diagnostics.Debug.WriteLine($"[ATTACK] Melee attack fired. Cooldown set to {_player.AttackCooldown:F2}s");
+                    }
+                    else
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[ATTACK] Melee attack REJECTED. Cooldown={_player.AttackCooldown:F2}s, IsAttacking={_player.IsAttacking}");
+                    }
                 }
             }
 

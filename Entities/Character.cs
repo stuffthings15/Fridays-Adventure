@@ -93,6 +93,10 @@ namespace Fridays_Adventure.Entities
             IsAttacking  = true;
             _attackTimer = AttackDuration;
             AttackCooldown = AttackCooldownMax;
+
+            // Diagnostic logging for attack cooldown issues
+            System.Diagnostics.Debug.WriteLine($"[ATTACK] Fired at AttackCooldown={AttackCooldown:F2}s, Duration={AttackDuration:F2}s, Cooldown={AttackCooldownMax:F2}s");
+
             return true;
         }
 
