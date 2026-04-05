@@ -34,7 +34,8 @@ namespace Fridays_Adventure.Tests
         private GameDialogueHandler _dialogueHandler;
 
         // ── REAL AI (Replaces fake periodic timers) ──────────────────────
-        public ObservableBotAI _realAI = null;  // Initialized when scene loads
+        public ObservableBotAI _realAI = null;  // For compatibility
+        public UnifiedComprehensiveBot _comprehensiveBot = null;  // NEW: Unified bot system
         private bool _useRealAI = true;  // ALWAYS use real AI
 
         // ── Tuning ────────────────────────────────────────────────────────
@@ -67,7 +68,7 @@ namespace Fridays_Adventure.Tests
         }
 
         /// <summary>
-        /// Initialize bot for a new scene with OBSERVABLE AI.
+        /// Initialize bot for a new scene with UNIFIED COMPREHENSIVE BOT AI.
         /// Call this when level starts!
         /// </summary>
         public void InitializeForScene(Entities.Player player, Scenes.Scene scene, InputManager input)
@@ -75,9 +76,12 @@ namespace Fridays_Adventure.Tests
             if (player == null || scene == null)
                 throw new System.ArgumentNullException("Player and scene required!");
 
-            // Initialize observable AI
-            _realAI = new ObservableBotAI(player, scene);
+            // Initialize UNIFIED comprehensive bot (replaces all previous systems)
+            _comprehensiveBot = new UnifiedComprehensiveBot(player, scene, null);
             _useRealAI = true;
+
+            // Keep ObservableBotAI for compatibility but don't use it
+            _realAI = null;
 
             // Initialize dialogue handler
             if (_dialogueHandler == null)
@@ -87,9 +91,10 @@ namespace Fridays_Adventure.Tests
             _dialogueHandler.SetCurrentScene(scene);
 
             System.Diagnostics.Debug.WriteLine("[BOT] ═══════════════════════════════════════════════════════════");
-            System.Diagnostics.Debug.WriteLine("[BOT] ✅ OBSERVABLE BOT AI INITIALIZED");
+            System.Diagnostics.Debug.WriteLine("[BOT] ✅ UNIFIED COMPREHENSIVE BOT INITIALIZED");
             System.Diagnostics.Debug.WriteLine("[BOT] Scene: " + scene.GetType().Name);
             System.Diagnostics.Debug.WriteLine("[BOT] Player: X=" + player.X + " Y=" + player.Y);
+            System.Diagnostics.Debug.WriteLine("[BOT] Systems: Combat, Platforming, Item Collection, Health Mgmt");
             System.Diagnostics.Debug.WriteLine("[BOT] All frame updates will be logged below:");
             System.Diagnostics.Debug.WriteLine("[BOT] ═══════════════════════════════════════════════════════════");
         }
@@ -140,20 +145,20 @@ namespace Fridays_Adventure.Tests
             }
 
             // ════════════════════════════════════════════════════════════════════
-            // REAL AI DECISIONS - NOT PERIODIC TIMERS!
+            // UNIFIED COMPREHENSIVE BOT - Intelligent decisions
             // ════════════════════════════════════════════════════════════════════
-            if (_useRealAI && _realAI != null)
+            if (_useRealAI && _comprehensiveBot != null)
             {
-                // UPDATE REAL AI with current game state
-                _realAI.Update(dt);
+                // UPDATE comprehensive bot with current game state
+                _comprehensiveBot.Update(dt);
 
-                // GET DECISIONS based on ACTUAL detection
-                bool shouldJump = _realAI.ShouldJump;
-                bool shouldAttack = _realAI.ShouldAttack;
-                bool shouldDodge = _realAI.ShouldDodge;
-                bool moveRight = _realAI.ShouldMoveRight;
+                // GET DECISIONS based on ACTUAL detection and analysis
+                bool shouldJump = _comprehensiveBot.ShouldJump;
+                bool shouldAttack = _comprehensiveBot.ShouldAttack;
+                bool shouldDodge = _comprehensiveBot.ShouldDodge;
+                bool moveRight = _comprehensiveBot.ShouldMoveRight;
 
-                // ── APPLY REAL AI DECISIONS ──────────────────────────────
+                // ── APPLY COMPREHENSIVE BOT DECISIONS ──────────────────────────
 
                 // Move right based on state
                 if (moveRight)
@@ -162,7 +167,7 @@ namespace Fridays_Adventure.Tests
                     input.InjectHeld(Keys.ShiftKey);  // Sprint
                 }
 
-                // Jump based on ACTUAL detection
+                // Jump based on ACTUAL detection (combat, platforming, etc.)
                 if (shouldJump)
                 {
                     input.InjectPressed(Keys.Space);
@@ -181,17 +186,17 @@ namespace Fridays_Adventure.Tests
                     input.InjectPressed(Keys.Z);
                 }
 
-                // Dodge/dodge
+                // Dodge based on hazard detection
                 if (shouldDodge)
                 {
                     input.InjectPressed(Keys.X);  // Dodge key
                 }
 
-                return;  // ← ALWAYS use real AI, never fallback
+                return;  // ← Always use comprehensive bot
             }
 
-            // If AI not initialized, do nothing (don't fake it!)
-            System.Diagnostics.Debug.WriteLine("[BOT_ERROR] Observable AI not initialized!");
+            // If bot not initialized, do nothing (don't fake it!)
+            System.Diagnostics.Debug.WriteLine("[BOT_ERROR] Unified Comprehensive Bot not initialized!");
         }
 
         /// <summary>Elapsed seconds since last Reset.</summary>

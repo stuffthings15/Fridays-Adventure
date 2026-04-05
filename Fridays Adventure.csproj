@@ -284,6 +284,7 @@
     <Compile Include="Tests\SmartPathfinder.cs" />
     <Compile Include="Tests\TestLogSystem.cs" />
     <Compile Include="Tests\TestSessionLogger.cs" />
+    <Compile Include="Tests\UnifiedComprehensiveBot.cs" />
     <EmbeddedResource Include="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
