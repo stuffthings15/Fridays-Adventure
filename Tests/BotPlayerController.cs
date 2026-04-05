@@ -12,30 +12,30 @@ namespace Fridays_Adventure.Tests
 
     /// <summary>
     /// Enhanced bot controller that combines:
-    /// • SmartBotAI - Detects hazards, enemies, pickups and makes strategic decisions
+    /// • RealSmartBotAI - ACTUAL detection-based decisions (NOT timers!)
     /// • BotDialogueHandler - Auto-skips dialogue and narrative boxes
     /// • Real input injection - Presses actual keys so game engine handles player movement
     ///
-    /// Decision hierarchy:
+    /// Decision hierarchy (based on ACTUAL game state):
     /// 1. DIALOGUE/NARRATIVE → Skip/progress automatically
-    /// 2. HEALTH CRITICAL → Seek health items
-    /// 3. HAZARD AHEAD → Dodge/jump
-    /// 4. ENEMY NEARBY → Attack or avoid
-    /// 5. PICKUPS VISIBLE → Collect currency/items
-    /// 6. DEFAULT → Sprint forward with periodic jumps
+    /// 2. STUCK → Jump and attack to escape
+    /// 3. HEALTH CRITICAL → Seek health items (real detection)
+    /// 4. ENEMY IN MELEE → Jump on head and attack (real target)
+    /// 5. HAZARD AHEAD → Jump and dodge (real detection)
+    /// 6. GAP AHEAD → Calculate jump (real geometry)
+    /// 7. DISTANT ENEMY → Fire ranged attacks
+    /// 8. EXPLORE → Move forward safely
     /// </summary>
     public sealed class BotPlayerController
     {
         // ── State ─────────────────────────────────────────────────────────
-        private float _time         = 0f;   // total elapsed time this level
-        private float _jumpInterval = 0f;   // accumulates toward next jump
-        private float _jumpHoldTimer = 0f;  // > 0 while Space should stay held
-        private GameDialogueHandler _dialogueHandler;  // Auto-skip dialogue
-        private float _frostTimer   = 0f;   // accumulates toward next frost ball
+        private float _time         = 0f;
+        private float _jumpHoldTimer = 0f;
+        private GameDialogueHandler _dialogueHandler;
 
-        // ── Smart AI ──────────────────────────────────────────────────────
-        private SmartBotAI _smartAI = new SmartBotAI();
-        private bool _useSmartAI = true;    // Toggle between simple and smart
+        // ── REAL AI (Replaces fake periodic timers) ──────────────────────
+        private RealSmartBotAI _realAI = null;  // Initialized when scene loads
+        private bool _useRealAI = true;  // ALWAYS use real AI
 
         // ── Tuning ────────────────────────────────────────────────────────
         /// <summary>Seconds between jump triggers.</summary>
@@ -61,24 +61,34 @@ namespace Fridays_Adventure.Tests
         public void Reset()
         {
             _time         = 0f;
-            _jumpInterval = 0f;
             _jumpHoldTimer = 0f;
-            _frostTimer   = 0f;
-            _cardRouletteInputTimer = 0f;
-            _enemyStompCooldown = 0f;
             _dialogueHandler?.Reset();
+            _realAI = null;  // Clear AI (will reinitialize on next scene)
         }
 
         /// <summary>
-        /// Initialize dialogue handler (called when scene loads).
+        /// Initialize bot for a new scene with REAL AI.
+        /// Call this when level starts!
         /// </summary>
-        public void InitializeDialogueHandler(InputManager input, Scenes.Scene currentScene = null)
+        public void InitializeForScene(Entities.Player player, Scenes.Scene scene, InputManager input)
         {
-            _dialogueHandler = new GameDialogueHandler(input);
-            if (currentScene != null)
+            if (player == null || scene == null)
+                throw new System.ArgumentNullException("Player and scene required!");
+
+            // Initialize real AI
+            _realAI = new RealSmartBotAI(player, scene);
+            _useRealAI = true;
+
+            // Initialize dialogue handler
+            if (_dialogueHandler == null)
             {
-                _dialogueHandler.SetCurrentScene(currentScene);
+                _dialogueHandler = new GameDialogueHandler(input);
             }
+            _dialogueHandler.SetCurrentScene(scene);
+
+            System.Diagnostics.Debug.WriteLine("[BOT] ===== REAL AI INITIALIZED =====" );
+            System.Diagnostics.Debug.WriteLine("[BOT] Using actual environment detection");
+            System.Diagnostics.Debug.WriteLine("[BOT] NO more fake periodic timers");
         }
 
         // ── CardRoulette timing ──────────────────────────────────────────
@@ -93,13 +103,26 @@ namespace Fridays_Adventure.Tests
         /// </summary>
         /// <param name="input">The game's InputManager instance.</param>
         /// <param name="dt">Frame delta time in seconds.</param>
+        public void InitializeDialogueHandler(InputManager input, Scenes.Scene currentScene = null)
+        {
+            _dialogueHandler = new GameDialogueHandler(input);
+            if (currentScene != null)
+            {
+                _dialogueHandler.SetCurrentScene(currentScene);
+            }
+        }
+
+        /// <summary>
+        /// Call once per game frame BEFORE the inner scene's Update().
+        /// Injects the appropriate keys so the real player entity behaves like
+        /// a live human player.
+        /// Call <see cref="InputManager.ClearInjected"/> AFTER the scene Update().
+        /// </summary>
+        /// <param name="input">The game's InputManager instance.</param>
+        /// <param name="dt">Frame delta time in seconds.</param>
         public void InjectInput(InputManager input, float dt)
         {
-            _time         += dt;
-            _jumpInterval += dt;
-            _frostTimer   += dt;
-            _cardRouletteInputTimer += dt;
-            _enemyStompCooldown -= dt;  // Decrement stomp cooldown
+            _time += dt;
             if (_jumpHoldTimer > 0f)
                 _jumpHoldTimer -= dt;
 
@@ -108,171 +131,67 @@ namespace Fridays_Adventure.Tests
             // ════════════════════════════════════════════════════════════════════
             if (_dialogueHandler != null && _dialogueHandler.Update(dt))
             {
-                // Dialogue was detected and handled - return early
                 System.Diagnostics.Debug.WriteLine(
                     $"[BOT_INPUT] Dialogue detected - {_dialogueHandler.GetSummary()}");
-                return;  // Skip all other input until dialogue is cleared
+                return;  // Skip all input until dialogue clears
             }
 
             // ════════════════════════════════════════════════════════════════════
-            // CRITICAL: USE SMARTBOTAI DECISIONS - NOT HARD-CODED TIMERS!
+            // REAL AI DECISIONS - NOT PERIODIC TIMERS!
             // ════════════════════════════════════════════════════════════════════
-            if (_useSmartAI)
+            if (_useRealAI && _realAI != null)
             {
-                // GET SMARTBOTAI DECISIONS
-                var behavior = _smartAI.CurrentBehavior;
-                bool shouldJump = _smartAI.ShouldJump;
-                bool shouldAttack = _smartAI.ShouldAttack;
-                bool shouldDodge = _smartAI.ShouldDodge;
+                // UPDATE REAL AI with current game state
+                _realAI.Update(dt);
 
-                // ── APPLY SMARTBOTAI DECISIONS TO INPUT ──────────────────
+                // GET DECISIONS based on ACTUAL detection
+                bool shouldJump = _realAI.ShouldJump;
+                bool shouldAttack = _realAI.ShouldAttack;
+                bool shouldDodge = _realAI.ShouldDodge;
+                bool moveRight = _realAI.ShouldMoveRight;
 
-                // Always sprint/move right (from SmartBotAI)
-                if (_smartAI.ShouldMoveRight)
+                // ── APPLY REAL AI DECISIONS ──────────────────────────────
+
+                // Move right based on state
+                if (moveRight)
                 {
                     input.InjectHeld(Keys.Right);
                     input.InjectHeld(Keys.ShiftKey);  // Sprint
                 }
 
-                // Jump based on AI decision
+                // Jump based on ACTUAL detection
                 if (shouldJump)
                 {
                     input.InjectPressed(Keys.Space);
-                    _jumpHoldTimer = JumpHoldTime;
-                    System.Diagnostics.Debug.WriteLine($"[BOT_AI_INPUT] JUMP - Behavior: {behavior}");
+                    _jumpHoldTimer = 0.35f;  // Hold for jump arc
+                    System.Diagnostics.Debug.WriteLine($"[BOT_REAL_AI] JUMP - {_realAI.CurrentState}");
                 }
 
-                // Hold jump if in hold window
+                // Hold space during jump
                 if (_jumpHoldTimer > 0f)
                 {
                     input.InjectHeld(Keys.Space);
                 }
 
-                // Attack based on AI decision
+                // Attack based on ACTUAL enemy detection
                 if (shouldAttack)
                 {
                     input.InjectPressed(Keys.Z);
-                    System.Diagnostics.Debug.WriteLine($"[BOT_AI_INPUT] ATTACK - Behavior: {behavior}");
+                    System.Diagnostics.Debug.WriteLine($"[BOT_REAL_AI] ATTACK - {_realAI.CurrentState}");
                 }
 
-                // Dodge/special moves
+                // Dodge/dodge
                 if (shouldDodge)
                 {
                     input.InjectPressed(Keys.X);  // Dodge key
-                    System.Diagnostics.Debug.WriteLine($"[BOT_AI_INPUT] DODGE - Behavior: {behavior}");
+                    System.Diagnostics.Debug.WriteLine($"[BOT_REAL_AI] DODGE - {_realAI.CurrentState}");
                 }
 
-                // ── CARD ROULETTE HANDLING (SPECIAL CASE) ────────────────
-                // When in CardRoulette, use periodic Space for card selection
-                if (_cardRouletteInputTimer >= CardRouletteInputInterval)
-                {
-                    input.InjectPressed(Keys.Space);
-                    _cardRouletteInputTimer = 0f;
-                    System.Diagnostics.Debug.WriteLine("[BOT_AI_INPUT] CARD ROULETTE - Select card");
-                }
-
-                return;  // ← CRITICAL: Exit here and DON'T use fallback logic below
+                return;  // ← ALWAYS use real AI, never fallback
             }
 
-            // ════════════════════════════════════════════════════════════════════
-            // FALLBACK: Manual/testing mode (when SmartAI disabled)
-            // ════════════════════════════════════════════════════════════════════
-
-            // ── CARD ROULETTE HANDLING ────────────────────────────────────
-            // Inject Space periodically to select cards (not every frame!)
-            if (_cardRouletteInputTimer >= CardRouletteInputInterval)
-            {
-                input.InjectPressed(Keys.Space);   // Select card with proper timing
-                _cardRouletteInputTimer = 0f;
-            }
-
-            // ── Always run right at sprint speed ──────────────────────────
-            input.InjectHeld(Keys.Right);
-            input.InjectHeld(Keys.ShiftKey);   // sprint — clears wide gaps faster
-
-            // ── Attack pressed with cooldown (not every frame!) ────────────
-            // Only inject Z every 0.5 seconds to prevent frost ball spam
-            if ((_time % 0.5f) < 0.05f)
-            {
-                input.InjectPressed(Keys.Z);
-            }
-
-            // ── Periodic full-height jump ─────────────────────────────────
-            if (_jumpInterval >= JumpInterval)
-            {
-                input.InjectPressed(Keys.Space);
-                _jumpHoldTimer = JumpHoldTime;
-                _jumpInterval  = 0f;
-            }
-
-            // While inside the hold window, keep Space held
-            if (_jumpHoldTimer > 0f)
-                input.InjectHeld(Keys.Space);
-
-            // ── Periodic frost ball ────────────────────────────────────────
-            if (_frostTimer >= FrostInterval)
-            {
-                input.InjectPressed(Keys.B);
-                _frostTimer = 0f;
-            }
-        }
-
-        // ── Smart AI Integration ──────────────────────────────────────────
-
-        /// <summary>
-        /// Enable/disable smart AI mode.
-        /// </summary>
-        public void SetSmartAIEnabled(bool enabled)
-        {
-            _useSmartAI = enabled;
-            System.Diagnostics.Debug.WriteLine($"[BOT_CONTROLLER] Smart AI: {(enabled ? "ENABLED" : "DISABLED")}");
-        }
-
-        /// <summary>
-        /// Update smart AI with current game state.
-        /// Should be called once per frame with player health and detected objects.
-        /// </summary>
-        public void UpdateSmartAI(float botX, float botY, int currentHealth, int maxHealth)
-        {
-            if (!_useSmartAI) return;
-            _smartAI.Update(_time, botX, botY, currentHealth, maxHealth);
-        }
-
-        /// <summary>
-        /// Provide detected hazards to the AI.
-        /// Game scene should call this with list of nearby hazards each frame.
-        /// </summary>
-        public void SetDetectedHazards(System.Collections.Generic.List<DetectedHazard> hazards)
-        {
-            if (!_useSmartAI) return;
-            _smartAI.SetDetectedHazards(hazards);
-        }
-
-        /// <summary>
-        /// Provide detected enemies to the AI.
-        /// </summary>
-        public void SetDetectedEnemies(System.Collections.Generic.List<DetectedEnemy> enemies)
-        {
-            if (!_useSmartAI) return;
-            _smartAI.SetDetectedEnemies(enemies);
-        }
-
-        /// <summary>
-        /// Provide detected pickups to the AI.
-        /// </summary>
-        public void SetDetectedPickups(System.Collections.Generic.List<DetectedPickup> pickups)
-        {
-            if (!_useSmartAI) return;
-            _smartAI.SetDetectedPickups(pickups);
-        }
-
-        /// <summary>
-        /// Report health change to AI.
-        /// </summary>
-        public void OnPlayerHealthChanged(int newHealth)
-        {
-            if (!_useSmartAI) return;
-            _smartAI.OnHealthChanged(newHealth);
+            // If AI not initialized, do nothing (don't fake it!)
+            System.Diagnostics.Debug.WriteLine("[BOT_ERROR] Real AI not initialized!");
         }
 
         /// <summary>Elapsed seconds since last Reset.</summary>

@@ -217,44 +217,18 @@ namespace Fridays_Adventure.Scenes
 
             // ════════════════════════════════════════════════════════════════════
             // BATCH 3: SMART BOT AI INTEGRATION - Real-time decision making
-            // ════════════════════════════════════════════════════════════════════
-
             // Get the player from the inner scene to query detection
             Player player = GetPlayerFromScene(_inner);
             if (player != null)
             {
-                // Cast inner scene to IslandScene or compatible to get detection methods
-                IslandScene levelScene = _inner as IslandScene;
-                if (levelScene != null)
+                // Initialize RealSmartBotAI on first run
+                if (_bot != null)
                 {
-                    // DETECTION PHASE: Gather intelligence about the level
-                    var hazards = levelScene.DetectHazardsNearBot(player);
-                    var enemies = levelScene.DetectEnemiesNearBot(player);
-                    var pickups = levelScene.DetectPickupsNearBot(player);
-
-                    // Provide data to SmartBotAI
-                    _bot.SetDetectedHazards(hazards);
-                    _bot.SetDetectedEnemies(enemies);
-                    _bot.SetDetectedPickups(pickups);
-
-                    // UPDATE AI: Make tactical decisions based on detections
-                    _bot.UpdateSmartAI(
-                        player.X, player.Y,
-                        player.Health, player.MaxHealth);
-
-                    // Log detections for diagnostics
-                    if (hazards.Count > 0)
-                        System.Diagnostics.Debug.WriteLine($"[BOT_BATCH3] Detected {hazards.Count} hazards");
-                    if (enemies.Count > 0)
-                        System.Diagnostics.Debug.WriteLine($"[BOT_BATCH3] Detected {enemies.Count} enemies");
-                    if (pickups.Count > 0)
-                        System.Diagnostics.Debug.WriteLine($"[BOT_BATCH3] Detected {pickups.Count} pickups");
+                    _bot.InitializeForScene(player, _inner, input);
                 }
             }
 
-            // ════════════════════════════════════════════════════════════════════
-            // END BATCH 3: SmartBotAI has made decisions, now inject keys
-            // ════════════════════════════════════════════════════════════════════
+            // ────────────────────────────────────────────────────────────────
 
             _bot.InjectInput(input, dt);
 

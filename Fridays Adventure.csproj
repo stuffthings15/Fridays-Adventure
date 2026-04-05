@@ -274,6 +274,7 @@
     <Compile Include="Tests\ItemAndEnemyAnalyzer.cs" />
     <Compile Include="Tests\LevelBeatabilityTest.cs" />
     <Compile Include="Tests\LevelTestRunner.cs" />
+    <Compile Include="Tests\RealSmartBotAI.cs" />
     <Compile Include="Tests\SmartBotAI.cs" />
     <Compile Include="Tests\SmartPathfinder.cs" />
     <Compile Include="Tests\TestLogSystem.cs" />
@@ -295,6 +296,7 @@
     <None Include="docs\AI_DOCS.md" />
     <None Include="docs\ART_ASSETS_NEEDED.md" />
     <None Include="docs\AUTOMATED_TEST_USER_GUIDE.md" />
+    <None Include="docs\AUTOMATION_QUICK_START.md" />
     <None Include="docs\BOT_DIAGNOSTICS_GUIDE.md" />
     <None Include="docs\BOT_QA_TESTING_COMPLETE_GUIDE.md" />
     <None Include="docs\COMPREHENSIVE_TEAM_FEATURE_AUDIT.md" />
