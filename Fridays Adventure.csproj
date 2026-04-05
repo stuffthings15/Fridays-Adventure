@@ -340,6 +340,7 @@
     <None Include="docs\SESSION_80_BOT_PIPELINE_SUMMARY.md" />
     <None Include="docs\SMART_BOT_BATCH_1_SUMMARY.md" />
     <None Include="docs\SMART_BOT_BATCH_2_SUMMARY.md" />
+    <None Include="docs\SMART_BOT_BATCH_3_SUMMARY.md" />
     <None Include="docs\TESTING_QUICK_REFERENCE.md" />
     <None Include="docs\TEST_LOGGING_GUIDE.md" />
     <None Include="docs\THIRD_PARTY_ASSETS.md" />
