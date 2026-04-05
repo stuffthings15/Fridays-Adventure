@@ -6,7 +6,186 @@
 
 ---
 
-## SESSION 67: Advanced Logging System for Automated Tests
+## SESSION 69: Auto Test Scene UI Improvements — Prominent Buttons + Enter Key Support
+
+**Date/Time:** April 5, 2026  
+**Duration:** UI enhancement session  
+
+### ✅ Features Implemented
+
+1. **Enter Key Support** (Scenes/AutoTestLevelScene.cs):
+   - Added keyboard input handling in Update method
+   - **Enter key now starts the test** on instruction screen
+   - **Enter key reruns the test** on results screen
+   - **Esc key exits** the scene from any screen
+
+2. **Prominent Start Button** (Scenes/AutoTestLevelScene.cs):
+   - Added large, clickable **gold "START TEST" button** on instructions screen
+   - Button is **300px wide × 50px tall** with:
+     - Gold background with yellow border
+     - Large bold text: `[ENTER] START TEST`
+     - Centered on screen for easy visibility
+   - Clickable with mouse or keyboard (Enter)
+
+3. **Prominent Rerun Button** (Scenes/AutoTestLevelScene.cs):
+   - Added large, clickable **green "RERUN TEST" button** on results screen
+   - Button is **250px wide × 40px tall** with:
+     - Lime green background with green border
+     - Bold text: `[ENTER] RERUN TEST`
+     - Centered above back button
+   - Clickable with mouse or keyboard (Enter)
+
+4. **Enhanced Back Button** (Scenes/AutoTestLevelScene.cs):
+   - Added clickable **orange "BACK" button** on both screens
+   - Button is **200px wide × 40px tall** with:
+     - Dark orange background with orange border
+     - Text: `[ESC] BACK`
+     - Aligned below action buttons
+   - Clickable with mouse or keyboard (Esc)
+
+5. **Button Rectangle Tracking** (Scenes/AutoTestLevelScene.cs):
+   - Added `_startButtonRect`, `_rerunButtonRect`, `_backButtonRect` fields
+   - Used for accurate mouse click detection
+   - HandleClick method now uses `Contains()` for reliable button detection
+
+### 📊 Visual Improvements
+
+**Instructions Screen Now Shows:**
+- Prominent **gold START button** that jumps out visually
+- Clear "Press Enter to Start" behavior
+- Obvious back button below
+
+**Results Screen Now Shows:**
+- Navigation info and progress bar
+- Prominent **green RERUN button** for running tests again
+- Obvious back button below
+
+### 🎮 User Experience
+
+**Keyboard:**
+1. Enter Dev Menu → Navigate to Featured QA Test Button
+2. Press Enter → Launches AutoTestLevelScene
+3. See instructions with prominent gold button
+4. Press Enter (or click button) → Tests start
+5. Results displayed with green Rerun button
+6. Press Enter (or click) → Tests rerun
+7. Press Esc (or click Back) → Return to Dev Menu
+
+**Mouse:**
+1. Click Featured QA Test Button → Launches AutoTestLevelScene
+2. See instructions with prominent gold button
+3. Click gold button → Tests start
+4. Results displayed with green Rerun button
+5. Click green button → Tests rerun
+6. Click orange Back button → Return to Dev Menu
+
+### 🐛 Bugs Fixed
+- Fixed Enter key not working in AutoTestLevelScene
+- Fixed Esc key not working in AutoTestLevelScene
+- Fixed missing button click detection
+- Fixed buttons not being visually prominent or accessible
+
+### 📋 Documentation Updated
+- `docs/WEEK_10_LOG_TEMPLATE.md` updated with Session 69 details.
+
+### 🔄 Build Status
+- Build: ✅ **PASSING (0 errors, 0 warnings)**
+
+### 📁 Files Created/Modified
+- `Scenes/AutoTestLevelScene.cs` - Enhanced with keyboard input, prominent buttons, better UI
+
+### ✨ Benefits
+
+- ✅ **Keyboard Control:** Enter key starts/reruns tests, Esc goes back
+- ✅ **Visual Buttons:** Large, colorful buttons clearly show what to do
+- ✅ **Mouse Support:** All buttons are clickable
+- ✅ **Clear Feedback:** Gold button on start, green button on rerun
+- ✅ **Accessibility:** Multiple ways to interact (keyboard + mouse)
+- ✅ **Professional Look:** Well-spaced, color-coded buttons
+
+### 🎯 Next Steps
+- In-game verify Enter key starts test from instructions screen
+- In-game verify Enter key reruns test from results screen
+- In-game verify Esc key exits from any screen
+- In-game verify button clicks work correctly
+- Verify button visibility and prominence
+
+---
+
+## SESSION 68: Prominent QA Automated Test Button in Dev Menu
+
+**Date/Time:** April 5, 2026  
+**Duration:** Dev Menu enhancement session  
+
+### ✅ Features Implemented
+
+1. **Featured QA Test Button** (Scenes/DevMenuScene.cs):
+   - Moved AUTO-TEST bot tester to **top of Dev Menu** (right after header)
+   - **Always visible** - no scrolling required to see it
+   - Clear label: `★ QA AUTOMATED TEST (All 18 Levels) ★`
+   - Tests all 18 stages (11 islands + 7 bosses)
+
+2. **Visual Prominence** (Scenes/DevMenuScene.cs):
+   - Added `IsFeatured` flag to `LevelEntry` struct
+   - Featured entries render with:
+     - **Gold background** (translucent, 100 alpha)
+     - **Gold border** (2px width)
+     - **Larger font** (15pt vs 13pt)
+     - **Bold text styling**
+     - **Extra padding** (larger entry height)
+   - When selected, featured entry highlights with darker gold
+   - All non-featured entries below work as before
+
+3. **Removed Duplicate Entry**:
+   - Removed old `[QA] AUTO-TEST: Bot Level Tester` from bottom of list
+   - It now only appears once at the top as the featured entry
+
+### 📊 Dev Menu Structure
+
+**New Top Entry (Always Visible):**
+```
+★ QA AUTOMATED TEST (All 18 Levels) ★
+├─ Runs all 18 levels automatically
+├─ Includes 11 story islands
+├─ Includes 7 boss encounters
+└─ Generates logs with pass/fail status
+```
+
+**Below that:**
+- Overworld Map
+- All gameplay levels
+- Tools & utilities
+- Phase 2/3 dashboards
+
+### 🎮 How to Use
+
+1. **Enter Dev Menu** → Any gameplay scene with pause
+2. **Look at top** → See `★ QA AUTOMATED TEST (All 18 Levels) ★` in gold
+3. **Press Enter or Click** → Test launches immediately (no scrolling needed)
+4. **Wait for results** → All 18 levels tested in seconds
+5. **Review logs** → Open Logs folder from within Dev Menu
+
+### 🔄 Build Status
+- Build: ✅ **PASSING (0 errors, 0 warnings)**
+
+### 📁 Files Created/Modified
+- `Scenes/DevMenuScene.cs` - Reordered menu entries, added IsFeatured flag, enhanced Draw method
+
+### ✨ Benefits
+
+- ✅ **Clear Visibility:** Gold button with stars instantly attracts attention
+- ✅ **No Scrolling:** Top position means always visible on any screen resolution
+- ✅ **Prominent Label:** "★ QA AUTOMATED TEST ★" makes purpose crystal clear
+- ✅ **Larger Target:** Bigger clickable area + larger font
+- ✅ **Professional Look:** Gold styling differentiates from standard menu items
+- ✅ **Complete Coverage:** Tests all 18 levels in one click
+
+### 🎯 Next Steps
+- In-game verify QA test button is visible and prominent at Dev Menu top
+- Verify clicking/pressing Enter launches the auto-test
+- Verify all 18 levels are tested when using featured button
+
+---
 
 **Date/Time:** April 5, 2026  
 **Duration:** Test logging enhancement session  

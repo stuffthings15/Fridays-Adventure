@@ -26,6 +26,12 @@ namespace Fridays_Adventure.Scenes
         private Font _headFont;
         private Font _bodyFont;
         private Font _smallFont;
+        private Font _buttonFont;
+
+        // Button rectangles for clickable areas
+        private Rectangle _startButtonRect;
+        private Rectangle _rerunButtonRect;
+        private Rectangle _backButtonRect;
 
         public override void OnEnter()
         {
@@ -33,6 +39,7 @@ namespace Fridays_Adventure.Scenes
             _headFont = new Font("Courier New", 12, FontStyle.Bold);
             _bodyFont = new Font("Courier New", 10);
             _smallFont = new Font("Courier New", 8);
+            _buttonFont = new Font("Courier New", 12, FontStyle.Bold);
             _testRunning = false;
             _results.Clear();
             _currentDisplayIndex = 0;
@@ -44,6 +51,7 @@ namespace Fridays_Adventure.Scenes
             _headFont?.Dispose();
             _bodyFont?.Dispose();
             _smallFont?.Dispose();
+            _buttonFont?.Dispose();
         }
 
         public override void Update(float dt)
@@ -51,6 +59,30 @@ namespace Fridays_Adventure.Scenes
             if (_testRunning)
             {
                 return;
+            }
+
+            var input = Game.Instance.Input;
+
+            // Handle keyboard input
+            if (input.InteractPressed)
+            {
+                // Enter key pressed
+                if (_results.Count == 0)
+                {
+                    // Start the test
+                    StartTest();
+                }
+                else
+                {
+                    // Rerun the test
+                    RerunTest();
+                }
+            }
+
+            if (input.PausePressed)
+            {
+                // ESC to go back
+                Game.Instance.Scenes.Pop();
             }
 
             if (_results.Count > 0)
@@ -112,12 +144,50 @@ namespace Fridays_Adventure.Scenes
             g.DrawString("  • Stuck detection & recovery", _smallFont, Brushes.LimeGreen, 50, y); y += 40;
             g.DrawString("📝 Comprehensive logs generated for analysis:", _bodyFont, Brushes.Yellow, 30, y); y += 25;
             g.DrawString("  • Action timeline | Ability usage | Bot decisions", _smallFont, Brushes.Cyan, 50, y); y += 20;
-            g.DrawString("  • Saved to: Logs/bot-tests/", _smallFont, Brushes.Cyan, 50, y); y += 20;
+            g.DrawString("  • Saved to: Logs/bot-tests/", _smallFont, Brushes.Cyan, 50, y); y += 40;
 
-            // Draw buttons
-            int btnY = H - 80;
-            g.DrawString("[ENTER] Start Test", _bodyFont, Brushes.LimeGreen, 40, btnY);
-            g.DrawString("[ESC] Back", _bodyFont, Brushes.Orange, 40, btnY + 30);
+            // Draw prominent START button
+            int btnX = (W - 300) / 2;
+            int btnY = H - 140;
+            int btnW = 300;
+            int btnH = 50;
+
+            _startButtonRect = new Rectangle(btnX, btnY, btnW, btnH);
+
+            // Button background (gold/yellow)
+            using (var br = new SolidBrush(Color.FromArgb(200, Color.Gold)))
+                g.FillRectangle(br, _startButtonRect);
+
+            // Button border
+            using (var pen = new Pen(Color.Yellow, 3))
+                g.DrawRectangle(pen, _startButtonRect);
+
+            // Button text
+            string btnText = "[ENTER] START TEST";
+            SizeF btnTextSize = g.MeasureString(btnText, _buttonFont);
+            float textX = btnX + (btnW - btnTextSize.Width) / 2;
+            float textY = btnY + (btnH - btnTextSize.Height) / 2;
+            g.DrawString(btnText, _buttonFont, Brushes.Black, textX, textY);
+
+            // Draw back button
+            int backBtnX = (W - 200) / 2;
+            int backBtnY = H - 70;
+            int backBtnW = 200;
+            int backBtnH = 40;
+
+            _backButtonRect = new Rectangle(backBtnX, backBtnY, backBtnW, backBtnH);
+
+            using (var br = new SolidBrush(Color.FromArgb(120, Color.DarkOrange)))
+                g.FillRectangle(br, _backButtonRect);
+
+            using (var pen = new Pen(Color.Orange, 2))
+                g.DrawRectangle(pen, _backButtonRect);
+
+            string backText = "[ESC] BACK";
+            SizeF backTextSize = g.MeasureString(backText, _bodyFont);
+            float backTextX = backBtnX + (backBtnW - backTextSize.Width) / 2;
+            float backTextY = backBtnY + (backBtnH - backTextSize.Height) / 2;
+            g.DrawString(backText, _bodyFont, Brushes.White, backTextX, backTextY);
         }
 
         private void DrawResults(Graphics g, int W, int H)
@@ -163,48 +233,101 @@ namespace Fridays_Adventure.Scenes
             int progressY = H - 120;
             g.DrawString($"Progress: {_currentDisplayIndex + 1} / {_results.Count}  |  Beatable: {totalBeatable}/{_results.Count}", _bodyFont, Brushes.Cyan, 40, progressY);
 
-            // Draw navigation buttons
-            int btnY = H - 50;
-            g.DrawString("[LEFT/RIGHT] Navigate | [ENTER] Rerun | [ESC] Back", _smallFont, Brushes.Cyan, 40, btnY);
+            // Draw Rerun button
+            int rerunBtnX = (W - 250) / 2;
+            int rerunBtnY = H - 90;
+            int rerunBtnW = 250;
+            int rerunBtnH = 40;
+
+            _rerunButtonRect = new Rectangle(rerunBtnX, rerunBtnY, rerunBtnW, rerunBtnH);
+
+            using (var br = new SolidBrush(Color.FromArgb(150, Color.LimeGreen)))
+                g.FillRectangle(br, _rerunButtonRect);
+
+            using (var pen = new Pen(Color.LimeGreen, 2))
+                g.DrawRectangle(pen, _rerunButtonRect);
+
+            string rerunText = "[ENTER] RERUN TEST";
+            SizeF rerunTextSize = g.MeasureString(rerunText, _bodyFont);
+            float rerunTextX = rerunBtnX + (rerunBtnW - rerunTextSize.Width) / 2;
+            float rerunTextY = rerunBtnY + (rerunBtnH - rerunTextSize.Height) / 2;
+            g.DrawString(rerunText, _bodyFont, Brushes.Black, rerunTextX, rerunTextY);
+
+            // Draw back button
+            int backBtnX = (W - 150) / 2;
+            int backBtnY = H - 40;
+            int backBtnW = 150;
+            int backBtnH = 35;
+
+            _backButtonRect = new Rectangle(backBtnX, backBtnY, backBtnW, backBtnH);
+
+            using (var br = new SolidBrush(Color.FromArgb(120, Color.DarkOrange)))
+                g.FillRectangle(br, _backButtonRect);
+
+            using (var pen = new Pen(Color.Orange, 2))
+                g.DrawRectangle(pen, _backButtonRect);
+
+            string backText = "[ESC] BACK";
+            SizeF backTextSize = g.MeasureString(backText, _bodyFont);
+            float backTextX = backBtnX + (backBtnW - backTextSize.Width) / 2;
+            float backTextY = backBtnY + (backBtnH - backTextSize.Height) / 2;
+            g.DrawString(backText, _bodyFont, Brushes.White, backTextX, backTextY);
         }
 
         public override void HandleClick(System.Drawing.Point p)
         {
             if (!_testRunning && _results.Count == 0)
             {
-                // Start button area
-                if (p.X >= 40 && p.X <= 250 && p.Y >= _canvasHeight - 80 && p.Y <= _canvasHeight - 50)
+                // Start button clicked
+                if (_startButtonRect.Contains(p))
                 {
-                    _testRunning = true;
-                    _results.Clear();
-                    _currentDisplayIndex = 0;
-                    _displayTimer = 0f;
-
-                    Console.WriteLine("\n🤖 AUTO-TEST BOT: Starting level beatability test...\n");
-                    LevelAutoTestManager.RunAllTests();
-                    _results = LevelAutoTestManager.AllResults;
-                    _testRunning = false;
+                    StartTest();
+                }
+                // Back button clicked
+                else if (_backButtonRect.Contains(p))
+                {
+                    Game.Instance.Scenes.Pop();
                 }
             }
-            else if (p.X >= 40 && p.X <= 250 && p.Y >= _canvasHeight - 80 && p.Y <= _canvasHeight - 50 && _results.Count > 0)
+            else if (_results.Count > 0)
             {
-                // Rerun test
-                _testRunning = true;
-                _results.Clear();
-                _currentDisplayIndex = 0;
-                _displayTimer = 0f;
-
-                Console.WriteLine("\n🤖 AUTO-TEST BOT: Rerunning level beatability test...\n");
-                LevelAutoTestManager.RunAllTests();
-                _results = LevelAutoTestManager.AllResults;
-                _testRunning = false;
+                // Rerun button clicked
+                if (_rerunButtonRect.Contains(p))
+                {
+                    RerunTest();
+                }
+                // Back button clicked
+                else if (_backButtonRect.Contains(p))
+                {
+                    Game.Instance.Scenes.Pop();
+                }
             }
+        }
 
-            // Back button - ESC also works
-            if (p.X >= 40 && p.X <= 200 && p.Y >= _canvasHeight - 40 && p.Y <= _canvasHeight - 10)
-            {
-                Game.Instance.Scenes.Pop();
-            }
+        private void StartTest()
+        {
+            _testRunning = true;
+            _results.Clear();
+            _currentDisplayIndex = 0;
+            _displayTimer = 0f;
+
+            Console.WriteLine("\n🤖 AUTO-TEST BOT: Starting level beatability test...\n");
+            LevelAutoTestManager.RunAllTests();
+            _results = LevelAutoTestManager.AllResults;
+            _testRunning = false;
+        }
+
+        private void RerunTest()
+        {
+            _testRunning = true;
+            _results.Clear();
+            _currentDisplayIndex = 0;
+            _displayTimer = 0f;
+
+            Console.WriteLine("\n🤖 AUTO-TEST BOT: Rerunning level beatability test...\n");
+            LevelAutoTestManager.RunAllTests();
+            _results = LevelAutoTestManager.AllResults;
+            _testRunning = false;
         }
     }
 }

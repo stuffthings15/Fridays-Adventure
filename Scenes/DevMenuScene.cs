@@ -25,6 +25,9 @@ namespace Fridays_Adventure.Scenes
 
             // Convenience flag to identify utility rows.
             public bool IsAction => Action != null;
+
+            // Flag to display entry with special prominent styling (QA testing, etc).
+            public bool IsFeatured;
         }
 
         private List<LevelEntry> _levels;
@@ -46,6 +49,9 @@ namespace Fridays_Adventure.Scenes
             Game.Instance.Audio.ContinueOrPlay("overworld");
             _levels = new List<LevelEntry>
             {
+                // ── FEATURED QA TESTING (Always Visible at Top) ────────────
+                new LevelEntry { Label = "★ QA AUTOMATED TEST (All 18 Levels) ★", Create = () => new AutoTestLevelScene(), IsFeatured = true },
+
                 // ── Original ──────────────────────────────────────────────
                 new LevelEntry { Label = "Overworld Map",                   Create = () => new OverworldScene() },
                 new LevelEntry { Label = "Dinosaur Island",                 Create = () => new IslandScene("dino",         "Dinosaur Island") },
@@ -87,7 +93,6 @@ namespace Fridays_Adventure.Scenes
                 // ── QA / Reporting scenes ─────────────────────────────────
                 new LevelEntry { Label = "[QA] Visual Debugger Report",     Create = () => new QAReportScene() },
                 new LevelEntry { Label = "[QA] Achievements Browser",       Create = () => new AchievementsScene() },
-                new LevelEntry { Label = "[QA] AUTO-TEST: Bot Level Tester", Create = () => new AutoTestLevelScene() },
                 new LevelEntry { Label = "[PH3] Producer Dashboard",        Create = () => new Phase3ProducerDashboardScene() },
                 new LevelEntry { Label = "[PH3] Systems Hub",               Create = () => new Phase3SystemsHubScene() },
                 new LevelEntry { Label = "[PH3] Tech Lead Ops",             Create = () => new Phase3TechLeadOpsScene() },
@@ -456,8 +461,17 @@ namespace Fridays_Adventure.Scenes
                 int idx = _scroll + i;
                 bool sel = idx == _sel;
                 float ty = H * 0.28f + i * 40;
+                bool isFeatured = _levels[idx].IsFeatured;
 
-                if (sel)
+                // Featured entry: bright gold background with larger, bold text
+                if (isFeatured)
+                {
+                    using (var br = new SolidBrush(Color.FromArgb(100, Color.Gold)))
+                        g.FillRectangle(br, 20, ty - 6, W - 40, 44);
+                    using (var pen = new Pen(Color.Gold, 2))
+                        g.DrawRectangle(pen, 20, ty - 6, W - 40, 44);
+                }
+                else if (sel)
                 {
                     using (var br = new SolidBrush(Color.FromArgb(70, Color.LimeGreen)))
                         g.FillRectangle(br, 0, ty - 4, W, 38);
@@ -465,13 +479,18 @@ namespace Fridays_Adventure.Scenes
                         g.DrawLine(pen, 0, ty - 4, W, ty - 4);
                 }
 
-                using (var f = new Font("Courier New", 13, sel ? FontStyle.Bold : FontStyle.Regular))
+                using (var f = new Font("Courier New", isFeatured ? 15 : 13, 
+                       isFeatured ? FontStyle.Bold : (sel ? FontStyle.Bold : FontStyle.Regular)))
                 {
                     SizeF sz = g.MeasureString(_levels[idx].Label, f);
-                    Brush br = _levels[idx].IsAction
-                        ? (sel ? Brushes.Yellow : Brushes.LightCyan)
-                        : (sel ? Brushes.LimeGreen : Brushes.DarkSeaGreen);
-                    if (sel)
+                    Brush br;
+                    if (isFeatured)
+                        br = sel ? Brushes.DarkGoldenrod : Brushes.Gold;
+                    else
+                        br = _levels[idx].IsAction
+                            ? (sel ? Brushes.Yellow : Brushes.LightCyan)
+                            : (sel ? Brushes.LimeGreen : Brushes.DarkSeaGreen);
+                    if (sel && !isFeatured)
                         g.DrawString("▶", f, br, (W - sz.Width) / 2f - 24, ty);
                     g.DrawString(_levels[idx].Label, f, br, (W - sz.Width) / 2f, ty);
                 }
