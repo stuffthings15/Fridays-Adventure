@@ -113,6 +113,10 @@ namespace Fridays_Adventure.Scenes
                 _rows.Add(new Row { Type = RowType.ToolAction, Label = "Capture Test Error", ToolAction = CaptureTestError });
             }
 
+            // Application exit option
+            _rows.Add(new Row { Type = RowType.Header, Label = "APPLICATION" });
+            _rows.Add(new Row { Type = RowType.ToolAction, Label = "Exit to Desktop", ToolAction = () => Game.RequestClose() });
+
             _rows.Add(new Row { Type = RowType.BackBtn, Label = "Back" });
             _sel = Math.Max(0, Math.Min(_sel, _rows.Count - 1));
         }

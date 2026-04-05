@@ -213,6 +213,15 @@ namespace Fridays_Adventure.Systems
             CurrentLevelAttempts = 0;   // reset retry counter for next level
             DebugLogger.LogInfo("SessionStats.Level",
                 $"Level #{LevelsCompleted} completed. Deaths={DeathCount} Time={PlayTimeFormatted}");
+
+            // Check for "no death" achievement this level
+            if (DeathCount == 0)
+                AchievementSystem.Grant("ach_no_death");
+
+            // Grant full clear achievement if all 4 levels beaten
+            if (LevelsCompleted >= 4)
+                AchievementSystem.Grant("ach_full_clear");
+
             CheckMilestones();
         }
 
@@ -240,6 +249,16 @@ namespace Fridays_Adventure.Systems
             TryUnlockMilestone("Enemy of the State",  EnemiesDefeated >= 50);
             TryUnlockMilestone("Persistent",          DeathCount      >= 10);
             TryUnlockMilestone("Unstoppable",         DeathCount      == 0  && BossesDefeated >= 2);
+
+            // ── Achievement checks (grant corresponding achievements) ────────
+            if (LevelsCompleted >= 1)  AchievementSystem.Grant("ach_first_step");
+            if (LongestCombo >= 5)      AchievementSystem.Grant("ach_combo_5");
+            if (LongestCombo >= 10)     AchievementSystem.Grant("ach_combo_10");
+            if (BossesDefeated >= 1)    AchievementSystem.Grant("ach_boss_slayer");
+            if (BossesDefeated >= 4)    AchievementSystem.Grant("ach_warlord_bane");
+            if (BerriesCollected >= 100) AchievementSystem.Grant("ach_berry_100");
+            if (BerriesCollected >= 500) AchievementSystem.Grant("ach_berry_500");
+            if (PowerUpsCollected >= 3) AchievementSystem.Grant("ach_powerup_3");
         }
 
         private void TryUnlockMilestone(string name, bool condition)
@@ -251,7 +270,7 @@ namespace Fridays_Adventure.Systems
             EventBus.Publish(new MilestoneEarnedEvent { Name = name });
         }
 
-        // -- Team 2 -- Idea 6: playtime badges
+        // ── Team 2 — Idea 6: playtime badges
         /// <summary>
         /// Awards a badge notification when the player crosses a cumulative
         /// playtime threshold for the first time this session.
@@ -266,6 +285,10 @@ namespace Fridays_Adventure.Systems
                 if (playHours >= threshold && !_unlockedMilestones.Contains(badge))
                     TryUnlockMilestone(badge, true);
             }
+
+            // Marathon achievement: 30 minutes of play this session
+            if (PlaySeconds >= 1800f)  // 30 * 60
+                AchievementSystem.Grant("ach_marathon");
         }
 
         // -- Team 2 -- Idea 2: play-streak tracker

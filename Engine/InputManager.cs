@@ -11,8 +11,39 @@ namespace Fridays_Adventure.Engine
         private readonly HashSet<Keys> _released = new HashSet<Keys>();
         private readonly StringBuilder _typedBuf = new StringBuilder();
 
-        public bool IsHeld(Keys k)     => _held.Contains(k);
-        public bool IsPressed(Keys k)  => _pressed.Contains(k);
+        // ── Bot input injection ───────────────────────────────────────────────
+        // BotPlayLevelScene calls InjectHeld/InjectPressed each frame before the
+        // scene's Update so the real game loop treats bot keys identically to
+        // genuine keyboard input.  ClearInjected() removes them after the frame.
+        private readonly HashSet<Keys> _injectedHeld    = new HashSet<Keys>();
+        private readonly HashSet<Keys> _injectedPressed = new HashSet<Keys>();
+
+        /// <summary>
+        /// Simulate holding a key this frame (equivalent to keyboard key-down).
+        /// Call before the scene's Update; cleared automatically by ClearInjected().
+        /// </summary>
+        public void InjectHeld(Keys k)
+        {
+            _injectedHeld.Add(k);
+            _injectedPressed.Add(k);  // also register as pressed-this-frame
+        }
+
+        /// <summary>
+        /// Simulate a one-frame key press without holding (for jump, attack, etc.).
+        /// </summary>
+        public void InjectPressed(Keys k) => _injectedPressed.Add(k);
+
+        /// <summary>
+        /// Remove all injected keys.  Called by BotPlayLevelScene after each Update.
+        /// </summary>
+        public void ClearInjected()
+        {
+            _injectedHeld.Clear();
+            _injectedPressed.Clear();
+        }
+
+        public bool IsHeld(Keys k)     => _held.Contains(k) || _injectedHeld.Contains(k);
+        public bool IsPressed(Keys k)  => _pressed.Contains(k) || _injectedPressed.Contains(k);
         public bool IsReleased(Keys k) => _released.Contains(k);
 
         public bool LeftHeld        => IsHeld(Keys.Left)  || IsHeld(Keys.A);
@@ -69,6 +100,8 @@ namespace Fridays_Adventure.Engine
             _pressed.Clear();
             _released.Clear();
             _typedBuf.Clear();
+            // Injected keys are cleared by ClearInjected(), not EndFrame,
+            // so they persist for exactly the one Update() call they were set for.
         }
 
         public void Reset()
@@ -76,6 +109,9 @@ namespace Fridays_Adventure.Engine
             _held.Clear();
             _pressed.Clear();
             _released.Clear();
+            _injectedHeld.Clear();
+            _injectedPressed.Clear();
         }
     }
 }
+

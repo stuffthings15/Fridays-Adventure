@@ -16,12 +16,17 @@ namespace Fridays_Adventure.Scenes
         private float     _promptBlink;
         private bool      _showPrompt = true;
 
+        // AFK idle timer — auto-launches demo mode after 60 s of no input
+        private float     _idleTimer  = 0f;
+        private const float IdleAutoDemo = 60f;
+
         // Button rectangles — computed in Draw, used in HandleClick
         private Rectangle _optionsBtn;
         private Rectangle _exitBtn;
         private Rectangle _scoresBtn;
         private Rectangle _saveBtn;
         private Rectangle _loadBtn;
+        private Rectangle _demoBtn;
 
         // Name entry — shown when player has not entered a name yet
         private bool   _nameActive;
@@ -30,8 +35,10 @@ namespace Fridays_Adventure.Scenes
         // Both "Luffy" and "Loofy" (case-insensitive) unlock the dev menu.
         private static readonly string[] SecretPasswords = { "Luffy", "Loofy" };
 
+
         public override void OnEnter()
         {
+            _idleTimer = 0f;   // reset AFK counter each time we return to the title
             // Background candidates — character art should not be used as backgrounds.
             string[] candidates = new[]
             {
@@ -62,6 +69,24 @@ namespace Fridays_Adventure.Scenes
             if (_promptBlink >= 0.55f) { _showPrompt = !_showPrompt; _promptBlink = 0; }
 
             var input = Game.Instance.Input;
+
+            // ── AFK idle → auto demo ──────────────────────────────────────────
+            // Any key press resets the idle counter; after 60 s of silence the
+            // demo launches automatically.  We check _held so held keys also count.
+            bool anyInput = input.LeftHeld || input.RightHeld || input.UpHeld ||
+                            input.DownHeld || input.JumpHeld  || input.AttackHeld ||
+                            input.AnyMash;
+            if (anyInput)
+                _idleTimer = 0f;
+            else
+                _idleTimer += dt;
+
+            if (_idleTimer >= IdleAutoDemo)
+            {
+                _idleTimer = 0f;
+                Game.Instance.Scenes.Push(new DemoModeScene(autoStart: true));
+                return;
+            }
 
             // ── Name entry box ────────────────────────────────────────────────
             // PHASE 2 - Team 9: UI Programmer - Allow dev menu access during name entry
@@ -128,6 +153,7 @@ namespace Fridays_Adventure.Scenes
             if (_loadBtn.Contains(p))   { LoadGameJson(); return; }
             if (_saveBtn.Contains(p))   { SaveGameJson(); return; }
             if (_optionsBtn.Contains(p)) Game.Instance.Scenes.Push(new OptionsScene());
+            if (_demoBtn.Contains(p))    Game.Instance.Scenes.Push(new DemoModeScene());
             if (_exitBtn.Contains(p))    Game.RequestClose();
             if (_scoresBtn.Contains(p))  Game.Instance.Scenes.Push(new HighScoreScene(0, 0, isNewEntry: false));
         }
@@ -217,6 +243,30 @@ namespace Fridays_Adventure.Scenes
             DrawButton(g, _optionsBtn, "OPTIONS", Color.FromArgb(40, 80, 140));
             DrawButton(g, _scoresBtn,  "SCORES",  Color.FromArgb(120, 100, 20));
             DrawButton(g, _exitBtn,    "EXIT",    Color.FromArgb(120, 30, 30));
+
+            // ── Demo button (below main buttons) ──────────────────────────────
+            int demoBtnW = 200;
+            int demoBtnX = (W - demoBtnW) / 2;
+            int demoBtnY = btnY + btnH + 15;
+            _demoBtn = new Rectangle(demoBtnX, demoBtnY, demoBtnW, btnH);
+            DrawButton(g, _demoBtn, "WATCH DEMO", Color.FromArgb(100, 150, 50));
+
+            // AFK idle countdown — shown in the last 15 seconds before auto-demo
+            if (_idleTimer >= IdleAutoDemo - 15f)
+            {
+                float remaining = IdleAutoDemo - _idleTimer;
+                string hint = $"Demo in {remaining:F0}s — press any key to cancel";
+                using (var f = new Font("Courier New", 10, FontStyle.Bold))
+                {
+                    SizeF sz = g.MeasureString(hint, f);
+                    int hx = (int)((W - sz.Width) / 2f);
+                    int hy = demoBtnY + btnH + 8;
+                    using (var br = new SolidBrush(Color.FromArgb(180, 0, 0, 0)))
+                        g.FillRectangle(br, hx - 6, hy - 2, (int)sz.Width + 12, (int)sz.Height + 4);
+                    using (var br = new SolidBrush(Color.FromArgb(220, Color.Orange)))
+                        g.DrawString(hint, f, br, hx, hy);
+                }
+            }
 
             // ── High scores panel ─────────────────────────────────────────────
             DrawHighScoresPanel(g, W, H);

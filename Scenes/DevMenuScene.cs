@@ -113,6 +113,10 @@ namespace Fridays_Adventure.Scenes
                 new LevelEntry { Label = "[PH2] Engine Ops",                Create = () => new Phase2EngineOpsScene() },
                 new LevelEntry { Label = "[PH2] Build Ops",                 Create = () => new Phase2BuildOpsScene() },
                 new LevelEntry { Label = "[PH2] Director Ops",              Create = () => new Phase2DirectorOpsScene() },
+
+                // ── Exit application ──────────────────────────────────────────
+                new LevelEntry { Label = "", Create = null },  // Spacer
+                new LevelEntry { Label = "[EXIT] Exit to Desktop",          Action = () => Game.RequestClose() },
             };
 
             // Prime the summary panel immediately when opening dev menu.

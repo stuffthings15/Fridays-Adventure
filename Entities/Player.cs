@@ -558,6 +558,8 @@ namespace Fridays_Adventure.Entities
         public override void TakeDamage(int amount)
         {
             if (IsInvincible && amount > 0) return;   // Team 7 — Idea 8: i-frames block damage
+            // GodMode (dev / bot testing) makes the player completely immune to damage.
+            if (Engine.Game.Instance?.GodMode == true) return;
             base.TakeDamage(amount);
             if (amount > 0)
             {
@@ -755,6 +757,9 @@ namespace Fridays_Adventure.Entities
             // Orca: flag a shockwave AOE on landing (Gameplay Programmer — Idea 1).
             if (Archetype == PlayableCharacter.Orca)
                 PendingGroundPoundShockwave = true;
+
+            // Achievement: ground pound for the first time
+            AchievementSystem.Grant("ach_ground_pound");
 
             if (Engine.Game.Instance != null)
                 Engine.Game.Instance.ScreenShake.Trigger(0.3f);

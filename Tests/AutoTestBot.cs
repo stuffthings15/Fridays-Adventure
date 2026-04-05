@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices;
 
 namespace Fridays_Adventure.Tests
 {
@@ -236,10 +237,169 @@ namespace Fridays_Adventure.Tests
     /// </summary>
     public class LevelAutoTestManager
     {
+        /// <summary>
+        /// Allocates a new console window for this process
+        /// </summary>
+        [DllImport("kernel32.dll", SetLastError = true)]
+        private static extern bool AllocConsole();
+
         public static List<LevelAutoTestResult> AllResults { get; set; } = new List<LevelAutoTestResult>();
 
+        /// <summary>
+        /// Test a single level with detailed visual debugging
+        /// </summary>
+        public static EnhancedLevelTestResult TestLevelVisual(string levelId, string levelName, BotVisualDebugger debugger = null)
+        {
+            var bot = new AutoTestBot();
+            bot.Initialize(100f, 300f); // Start position
+
+            var visualDebugger = debugger ?? new BotVisualDebugger();
+            visualDebugger.StartLevelDebug(bot, levelName);
+
+            var result = new EnhancedLevelTestResult
+            {
+                LevelId = levelId,
+                LevelName = levelName,
+                BotData = bot,
+                VisualDebugData = visualDebugger
+            };
+
+            try
+            {
+                // Simulate bot running through level for 60 seconds
+                for (float time = 0f; time < 60f; time += 0.016f) // ~60 FPS
+                {
+                    bot.Update(0.016f);
+                    visualDebugger.Update(0.016f);
+
+                    // Simulate random events
+                    SimulateLevelEvents(bot, time, levelId);
+
+                    // Log important events
+                    if (bot.State == AutoTestBot.BotState.WonLevel && !result.IsBeatable)
+                    {
+                        visualDebugger.LogAction("🎉 EXIT REACHED - Level Won!", "SUCCESS");
+                    }
+
+                    // Check if bot reached exit
+                    if (bot.State == AutoTestBot.BotState.WonLevel)
+                    {
+                        result.IsBeatable = true;
+                        result.TimeToComplete = bot.TimeInLevel;
+                        result.ItemsCollected = bot.ItemsCollected;
+                        result.EnemiesDefeated = bot.EnemiesDefeated;
+                        break;
+                    }
+
+                    // Check timeout
+                    if (bot.TimeInLevel >= 60f)
+                    {
+                        result.IsBeatable = false;
+                        result.FailureReason = "Timeout - Level took too long";
+                        visualDebugger.LogAction("⏱️ TIMEOUT - 60 seconds exceeded", "TIMEOUT");
+                        break;
+                    }
+                }
+
+                // If bot made no progress, level is likely unbeatable
+                if (bot.DistanceTraveled < 50f)
+                {
+                    result.IsBeatable = false;
+                    result.FailureReason = "Bot made insufficient progress";
+                    visualDebugger.LogAction("❌ NO PROGRESS - Bot didn't move enough", "NO_PROGRESS");
+                }
+
+                // Capture debug data
+                result.BotGotStuck = visualDebugger.WasStuckAtAnyPoint();
+                result.StuckDuration = visualDebugger.GetStuckDuration();
+                result.DetailedActionLog = visualDebugger.GetActionLog();
+            }
+            catch (Exception ex)
+            {
+                result.IsBeatable = false;
+                result.FailureReason = $"Exception: {ex.Message}";
+                visualDebugger.LogAction($"💥 EXCEPTION: {ex.Message}", "ERROR");
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// Test a single level with the bot (used for live progress)
+        /// </summary>
+        public static LevelAutoTestResult TestLevelSingle(string levelId, string levelName)
+        {
+            var bot = new AutoTestBot();
+            bot.Initialize(100f, 300f); // Start position
+
+            var result = new LevelAutoTestResult
+            {
+                LevelId = levelId,
+                LevelName = levelName,
+                BotData = bot
+            };
+
+            try
+            {
+                // Simulate bot running through level for 60 seconds
+                for (float time = 0f; time < 60f; time += 0.016f) // ~60 FPS
+                {
+                    bot.Update(0.016f);
+
+                    // Simulate random events
+                    SimulateLevelEvents(bot, time, levelId);
+
+                    // Check if bot reached exit
+                    if (bot.State == AutoTestBot.BotState.WonLevel)
+                    {
+                        result.IsBeatable = true;
+                        result.TimeToComplete = bot.TimeInLevel;
+                        result.ItemsCollected = bot.ItemsCollected;
+                        result.EnemiesDefeated = bot.EnemiesDefeated;
+                        break;
+                    }
+
+                    // Check timeout
+                    if (bot.TimeInLevel >= 60f)
+                    {
+                        result.IsBeatable = false;
+                        result.FailureReason = "Timeout - Level took too long";
+                        break;
+                    }
+                }
+
+                // If bot made no progress, level is likely unbeatable
+                if (bot.DistanceTraveled < 50f)
+                {
+                    result.IsBeatable = false;
+                    result.FailureReason = "Bot made insufficient progress";
+                }
+            }
+            catch (Exception ex)
+            {
+                result.IsBeatable = false;
+                result.FailureReason = $"Exception: {ex.Message}";
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// Run automated tests on all 18 levels (blocking)
+        /// </summary>
         public static void RunAllTests()
         {
+            // Allocate console window for WinExe application
+            // Fixes "The handle is invalid" IOException when calling Console.Clear()
+            try
+            {
+                AllocConsole();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to allocate console: {ex.Message}");
+            }
+
             Console.Clear();
             Console.WriteLine("\n╔════════════════════════════════════════════════════════════╗");
             Console.WriteLine("║                                                            ║");
@@ -345,43 +505,45 @@ namespace Fridays_Adventure.Tests
         }
 
         /// <summary>
-        /// Simulate level events (items, enemies, obstacles)
+        /// Simulate level events (items and enemies only).
+        /// NOTE: This statistical simulation does NOT auto-complete levels.
+        /// Real beatability data comes from Visual Mode (key 2), which runs
+        /// the actual game scenes with the real bot player.
         /// </summary>
         private static void SimulateLevelEvents(AutoTestBot bot, float time, string levelId)
         {
-            // Randomly trigger item collection
+            // Item collection roughly every 5 s
             if ((time % 5f) < 0.1f && time > 0)
-            {
                 bot.CollectItem();
-            }
 
-            // Randomly trigger enemy defeats
+            // Enemy defeat roughly every 8 s
             if ((time % 8f) < 0.1f && time > 0)
-            {
                 bot.DefeatEnemy();
-            }
 
-            // After 30-50 seconds of progress, consider level "completed"
-            if (bot.DistanceTraveled > 2000f && time > 30f)
-            {
-                bot.ReachedExit();
-            }
+            // ── NO auto-complete here ────────────────────────────────────────
+            // The old code called bot.ReachedExit() whenever distance > 2000px,
+            // which always triggered after ~30 s regardless of actual level layout.
+            // That was a lie: every level appeared beatable without any real test.
+            // Statistical mode is a rough SIMULATION ESTIMATE only.
+            // Use Visual Mode (key 2) for a real beatability verdict.
         }
 
         /// <summary>
-        /// Print summary of all test results
+        /// Print summary of all test results.
         /// </summary>
         private static void PrintTestSummary()
         {
-            int beatableCount = AllResults.Count(r => r.IsBeatable);
+            int beatableCount   = AllResults.Count(r => r.IsBeatable);
             int unbeatableCount = AllResults.Count(r => !r.IsBeatable);
 
             Console.WriteLine("════════════════════════════════════════════════════════════");
-            Console.WriteLine("TEST SUMMARY - AUTOMATED BOT TESTING");
+            Console.WriteLine("TEST SUMMARY - STATISTICAL SIMULATION (ESTIMATE ONLY)");
+            Console.WriteLine("⚠  This mode simulates distance/item events only.");
+            Console.WriteLine("⚠  Use Visual Mode (key 2 in-game) for real results.");
             Console.WriteLine("════════════════════════════════════════════════════════════\n");
 
-            Console.WriteLine($"✅ Beatable Levels:    {beatableCount}/18");
-            Console.WriteLine($"❌ Unbeatable Levels:  {unbeatableCount}/18\n");
+            Console.WriteLine($"✅ Beatable (simulation): {beatableCount}/18");
+            Console.WriteLine($"❌ Not beatable (simulation): {unbeatableCount}/18\n");
 
             if (unbeatableCount > 0)
             {
