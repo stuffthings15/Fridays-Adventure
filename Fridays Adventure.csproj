@@ -327,6 +327,7 @@
     <None Include="docs\PROJECT_COMPLETION_SUMMARY.md" />
     <None Include="docs\PROJECT_STATUS_SESSION_2.md" />
     <None Include="docs\QA_VERIFICATION_PROTOCOL.md" />
+    <None Include="docs\REAL_SMART_BOT_AI_REWRITE.md" />
     <None Include="docs\RUNTIME_WIRING_VERIFICATION.md" />
     <None Include="docs\SESSION_2_SUMMARY.md" />
     <None Include="docs\SESSION_3_COMPLETION_CERTIFICATE.md" />
