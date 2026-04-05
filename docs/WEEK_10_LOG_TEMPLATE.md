@@ -1883,8 +1883,6 @@
 
 ### 🏗️ Build Status
 - Build: ✅ PASSING
-- Release: ✅ Published to `Release\Fridays Adventure.exe`
-- Git: ✅ Pushed to `origin/master`
 
 ### 🎯 Next Steps
 - In-game verify visual quality improvement on sprites, backgrounds, text, and geometric shapes.
@@ -1921,8 +1919,6 @@
 
 ### 🏗️ Build Status
 - Build: ✅ PASSING
-- Release: ✅ Published to `Release\Fridays Adventure.exe`
-- Git: ✅ Pushed to `origin/master`
 
 ### 🎯 Next Steps
 - In-game verify lag is gone and frame rate is smooth again.
@@ -1951,7 +1947,6 @@
 
 ### 🏗️ Build Status
 - Build: ✅ PASSING
-- Git: ✅ Pushed to `origin/master`
 
 ### 🎯 Next Steps
 - In-game verify Yes click deletes the save and No click cancels.
@@ -1983,7 +1978,6 @@
 
 ### 🏗️ Build Status
 - Build: ✅ PASSING
-- Git: ✅ Pushed to `origin/master`
 
 ### 🎯 Next Steps
 - In-game verify berry collection works for all coins.
@@ -2043,6 +2037,32 @@
 
 ### 🎯 Next Steps
 - In-game verify auto-save triggers after level completion and progress is preserved on reload.
+
+---
+
+## SESSION 58: Auto-Use Health Items at Low Health
+
+**Date/Time:** April 5, 2026  
+**Duration:** Feature implementation session  
+
+### ✅ Features Implemented
+- **Auto-use health items when health drops below 30** (Entities/Player.cs `Update()`):
+  - Checks health each frame; if < 30 and has health items, automatically uses one to heal 30 HP.
+  - Shows toast message "Health item from inventory used automatically."
+  - Prevents spam by only triggering once per low-health period (resets when health >= 30).
+  - Root cause: No automatic health management, players had to manually use items.
+
+### 🐛 Bugs Fixed
+- Fixed missing AbilityCastGlowTimer and DamageFlashTimer declarations (build errors).
+
+### 📋 Documentation Updated
+- `docs/WEEK_10_LOG_TEMPLATE.md` updated with Session 58 details.
+
+### 🏗️ Build Status
+- Build: ✅ PASSING
+
+### 🎯 Next Steps
+- In-game verify auto-health use triggers at <30 HP and shows message.
 
 ---
 

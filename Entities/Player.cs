@@ -214,6 +214,9 @@ namespace Fridays_Adventure.Entities
         /// </summary>
         public bool PendingGroundPoundShockwave { get; set; }
 
+        // ── Auto-use health item when low ───────────────────────────────────────
+        private bool _autoUsedHealth;
+
         // ── Team 17: VFX Artist — ability cast glow ───────────────────────────
         /// <summary>
         /// Seconds of ability-cast glow VFX remaining.
@@ -667,6 +670,18 @@ namespace Fridays_Adventure.Entities
                 else if (_trail.Count > 0)
                 {
                     _trail.Dequeue();
+                }
+            }
+
+            // ── Auto-use health item when health drops below 30 ──────────────────
+            if (Health >= 30)
+                _autoUsedHealth = false;
+            else if (Health < 30 && !_autoUsedHealth && PowerUpInventory.HealthItemCount > 0)
+            {
+                if (PowerUpInventory.UseHealthItem(this, 30))
+                {
+                    SMB3Hud.ShowToast("Health item from inventory used automatically.");
+                    _autoUsedHealth = true;
                 }
             }
 
