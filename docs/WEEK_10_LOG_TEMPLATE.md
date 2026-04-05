@@ -6,7 +6,108 @@
 
 ---
 
-## SESSION 79: Achievement System Comprehensive Integration Fix
+## SESSION 80: Comprehensive Bot Diagnostics & Pipeline Fixes
+
+**Date/Time:** Current Session  
+**Build Status:** ✅ 0 errors, 0 warnings  
+**Git Status:** ✅ Pushed to master
+
+### Problems Identified & Fixed
+
+**Issue 1: Bot Stuck on CardRoulette (CRITICAL)**
+- **Root cause**: Logic error in CardRouletteScene input check - missing parenthesis meant condition always evaluated incorrectly
+- **Old code**: `if (!_resultShown && JumpPressed || InteractPressed || AttackPressed)` → always processed InteractPressed/AttackPressed regardless of _resultShown
+- **Fixed code**: `if (!_resultShown && (JumpPressed || InteractPressed || AttackPressed))` → now waits for result shown before accepting further input
+- **Added**: Diagnostic logging when cards are selected: `[CARD_ROULETTE] Card X stopped. Face: Y`
+
+**Issue 2: Pickups Not Being Collected (CRITICAL)**
+- **Problem**: Berry collection was not calling `SessionStats.Instance.RecordBerry()` to track stats
+- **Fix in UpdateBerries()**: Added `SessionStats.Instance.RecordBerry(b.Value)` after collection
+- **Added logging**: `[PICKUP] Berry collected. Value: X, Total this level: Y, Total overall: Z`
+- **Also added**: Health pickup logging in UpdateHealthPickups()
+
+**Issue 3: No Comprehensive Failure Diagnostics**
+- **Problem**: When bot failed, there was no clear report showing what went wrong
+- **Solution**: Created new `BotComprehensiveTestLogger` class that:
+  - Tracks EVERY bot event (attacks, jumps, pickups, enemies, scene transitions)
+  - Auto-detects failures (attack blocked too much, pickups missed, minigame hung)
+  - Generates detailed report with automatic recommendations
+  - Saves reports to `Logs/bot-tests/` for analysis
+
+### New Files Created
+
+**`Tests\BotComprehensiveTestLogger.cs`** (300 lines)
+- Comprehensive event logging system
+- Event categories: INPUT, ABILITY, PICKUP, ENEMY, SCENE, STATE, MINIGAME, HEALTH
+- Automatic issue detection:
+  - Attack cooldown problems
+  - Pickup collection failures
+  - CardRoulette not responding
+  - Enemy defeat tracking
+  - Level timeout
+- Report generation with specific recommendations
+- File-based logging for later analysis
+
+### Enhanced Logging Added
+
+**CardRouletteScene.cs**:
+- Card selection now logged: `[CARD_ROULETTE] Card {N} stopped`
+
+**IslandScene.cs**:
+- Berry collection logged with value and totals
+- Health pickup collection logged with position
+- Enables tracking of what pickups are/aren't being collected
+
+### Report Sample Output
+
+The comprehensive logger now generates reports like:
+
+```
+STATISTICS:
+  Attacks: 5 fired, 12 blocked
+  Jumps: 20
+  Pickups Collected: 18
+  Pickups Missed: 3
+  Enemies Defeated: 8
+  Minigames: 1
+  FAILURES: 3
+
+ISSUES DETECTED:
+⚠️  CRITICAL: Attack ability blocked too frequently - check cooldown
+⚠️  CONCERN: 3 pickups missed - collision detection issue?
+⚠️  CRITICAL: CardRoulette started but no cards selected - input not working!
+
+AUTOMATIC RECOMMENDATIONS:
+→ Check Character.TryAttack() cooldown - may be too restrictive
+→ Verify Hitbox collision detection in UpdateBerries()
+→ CardRoulette input handler broken - verify InteractPressed check
+```
+
+### Expected Testing Results
+
+When you run Visual QA Mode now:
+1. ✅ Bot should play through level with logging
+2. ✅ CardRoulette should advance (cards should be selected)
+3. ✅ Pickups should be collected and logged
+4. ✅ On exit, comprehensive diagnostic report printed
+5. ✅ Report saved to `Logs/bot-tests/bot-test-{levelId}-{timestamp}.txt`
+
+### Files Modified
+- `Scenes\CardRouletteScene.cs` — Fixed input condition + added logging
+- `Scenes\IslandScene.cs` — Added pickup collection logging to SessionStats
+- `Scenes\BotPlayLevelScene.cs` — Added event tracking fields
+- `Tests\BotComprehensiveTestLogger.cs` — NEW comprehensive logger
+
+### Next Steps for QA Tester
+1. **Run Visual QA Mode** (key 2)
+2. **Check Console** for diagnostic logs
+3. **Review Report** file in `Logs/bot-tests/`
+4. **Fix Issues** identified in recommendations
+5. **Verify** entire game pipeline works (level → CardRoulette → CourseClear → next level)
+
+---
+
+
 
 **Date/Time:** Current Session  
 **Build Status:** ✅ 0 errors, 0 warnings  
