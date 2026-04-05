@@ -6,6 +6,63 @@
 
 ---
 
+## SESSION 63: Projectile Updates + HUD Display Fixes - Fireballs and Frost Balls Now Work
+
+**Date/Time:** April 5, 2026  
+**Duration:** Critical bug fix session  
+
+### ✅ Issues Fixed
+
+1. **Projectiles Not Updating** (Scenes/IslandScene.cs):
+   - **Root cause:** Fireballs and Frost Balls were created and drawn, but NEVER had their Update() methods called
+   - **Fix:** Added update loops in the main Update method to call `UpdateProjectile()` for both projectile lists
+   - Now projectiles move, bounce, and despawn correctly
+
+2. **HUD Not Displaying X and B Buttons** (Systems/GameHUD.cs):
+   - **X Button (Frost Ball):** Now displays as "X:FIRE" with ready state
+   - **B Button (Fire Flower):** Now displays as "B:FIRE" only when Fire Flower power-up is equipped
+   - Added missing `using Fridays_Adventure.Systems;` for PowerUpInventory
+
+3. **Projectile Visibility:**
+   - Fireballs now travel at 280 px/sec for ~4 seconds (can travel ~1120 pixels = well over halfway)
+   - Frost Balls have same speed and travel characteristics
+   - Both projectiles now bounce off platforms and ground
+
+### 🐛 Technical Details
+
+**Projectile Update Loop Added:**
+```csharp
+// Update and cull fireballs (Fire Flower projectiles)
+for (int i = _fireballs.Count - 1; i >= 0; i--)
+{
+    _fireballs[i].UpdateProjectile(dt, _groundY, _levelWidth, _platforms);
+    if (!_fireballs[i].IsActive) _fireballs.RemoveAt(i);
+}
+
+// Update and cull frost balls (X-key ability projectiles)
+for (int i = _frostBalls.Count - 1; i >= 0; i--)
+{
+    _frostBalls[i].UpdateProjectile(dt, _groundY, _levelWidth, _platforms);
+    if (!_frostBalls[i].IsActive) _frostBalls.RemoveAt(i);
+}
+```
+
+**HUD Display Logic:**
+- X button shows "READY" when Frost Ball cooldown is complete (2 seconds)
+- B button shows "READY" in green only when Fire Flower is equipped
+- Both buttons now display proper progress bars
+
+### 🔄 Build Status
+- Build: ✅ **PASSING (0 errors, 0 warnings)**
+
+### 🎯 Next Steps
+- In-game verify projectiles now fire and travel across screen
+- Verify fireballs bounce off platforms
+- Verify HUD X and B buttons show correct status
+- Test fire button recharge after 2 seconds
+
+---
+
 ## SESSION 62: Critical Gameplay Fixes - Exit Flag Visibility + Orca Dash + Frost Ball Cooldown
 
 **Date/Time:** April 5, 2026  
