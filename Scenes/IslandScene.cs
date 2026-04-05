@@ -364,6 +364,8 @@ namespace Fridays_Adventure.Scenes
             {
                 b.X *= LevelScale;
                 b.Y *= LevelScale;
+                b.Width  = (int)(b.Width  * LevelScale);
+                b.Height = (int)(b.Height * LevelScale);
                 // Re-anchor the bob origin to the scaled Y so the
                 // berry's bobbing animation starts from the correct position.
                 b.SyncBaseY();

@@ -23,8 +23,8 @@ namespace Fridays_Adventure.Hazards
 
         public override void ApplyEffect(Character c, float dt)
         {
-            c.ApplyEffect(StatusEffect.Burning, 0.3f);
-            c.TakeDamage((int)(12 * dt));
+            // Fire sources are visual hazards that melt ice walls.
+            // They no longer damage the player — damage comes only from enemy contact.
         }
 
         public override void Draw(Graphics g)

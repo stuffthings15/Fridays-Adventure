@@ -64,6 +64,9 @@ namespace Fridays_Adventure.Scenes
             // Always-visible resume button so it's obvious how to close options.
             _rows.Add(new Row { Type = RowType.BackBtn, Label = "RESUME GAME" });
 
+            // Quick inventory access from the options/pause menu.
+            _rows.Add(new Row { Type = RowType.ToolAction, Label = "Inventory (I)", ToolAction = OpenInventory });
+
             _rows.Add(new Row { Type = RowType.Header,   Label = "AUDIO" });
             _rows.Add(new Row { Type = RowType.MusicVol, Label = "Music Volume" });
             _rows.Add(new Row { Type = RowType.SfxVol,   Label = "SFX Volume"   });
@@ -118,6 +121,19 @@ namespace Fridays_Adventure.Scenes
         {
             Game.Instance.CrtFilterEnabled = !Game.Instance.CrtFilterEnabled;
             SMB3Hud.ShowToast(Game.Instance.CrtFilterEnabled ? "CRT Filter: ON" : "CRT Filter: OFF");
+        }
+
+        /// <summary>
+        /// Opens the inventory screen from the options/pause menu.
+        /// Attempts to find the active gameplay player; if none, shows a toast.
+        /// </summary>
+        private static void OpenInventory()
+        {
+            var player = Game.Instance.GetActiveScenePlayer();
+            if (player != null)
+                Game.Instance.Scenes.Push(new InventoryScene(player));
+            else
+                SMB3Hud.ShowToast("Inventory requires an active level.");
         }
 
         /// <summary>
