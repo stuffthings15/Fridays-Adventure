@@ -323,6 +323,7 @@
     <None Include="docs\SESSION_67_SUMMARY.md" />
     <None Include="docs\SESSION_6_FEATURES_IMPLEMENTED.md" />
     <None Include="docs\SESSION_7_PROGRESS.md" />
+    <None Include="docs\TESTING_QUICK_REFERENCE.md" />
     <None Include="docs\TEST_LOGGING_GUIDE.md" />
     <None Include="docs\THIRD_PARTY_ASSETS.md" />
     <None Include="docs\WEEK_10_LOG_TEMPLATE.md" />
