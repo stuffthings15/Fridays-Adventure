@@ -110,7 +110,7 @@ namespace Fridays_Adventure.Scenes
             SMB3Hud.ShowWorldLabel(
                 $"WORLD {Game.Instance.WorldNumber}-{Game.Instance.LevelNumber}  {_islandName.ToUpper()}");
 
-            Game.Instance.Audio.ContinuationOrPlay("island");
+            Game.Instance.Audio.PlayIsland();
         }
 
         public override void OnExit()
@@ -1031,9 +1031,7 @@ namespace Fridays_Adventure.Scenes
 
             // ── PHASE 3: Update new SMB3 entity types ─────────────────────────
             BlockManager.Update(dt, _player);
-            UpdateSMB3Enemies(dt);
-            // UpdateFireballs(dt);  // TODO: implement
-            UpdateFrostBalls(dt);
+            // SMB3 enemies handled in UpdateEnemies
 
             _combo.Update(dt, _player, _enemies);
             CheckCombat();
@@ -1670,7 +1668,7 @@ namespace Fridays_Adventure.Scenes
                 int     dead = _deathCount;
 
                 // The card roulette runs first; when it finishes it pushes CourseClearScene.
-                Game.Instance.Scenes.Push(new CardRouletteScene(onContinuation: () =>
+                Game.Instance.Scenes.Push(new CardRouletteScene(() =>
                 {
                     // Pop CardRoulette, then push CourseClear on top of IslandScene
                     Game.Instance.Scenes.Pop();

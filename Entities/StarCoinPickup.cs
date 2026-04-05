@@ -28,6 +28,9 @@ namespace Fridays_Adventure.Entities
     public sealed class StarCoinPickup
     {
         // ── Position & dimensions ─────────────────────────────────────────────
+        private const int W  = 24;
+        private const int H  = 24;
+
         public float X       { get; private set; }
         public float Y       { get; private set; }
         private float _width = W;
@@ -47,6 +50,15 @@ namespace Fridays_Adventure.Entities
         {
             X = x;
             Y = y;
+            _width = W;
+            _height = H;
+        }
+
+        // Internal setter for scaling
+        private void SetPosition(float x, float y)
+        {
+            X = x;
+            Y = y;
         }
 
         /// <summary>
@@ -54,8 +66,7 @@ namespace Fridays_Adventure.Entities
         /// </summary>
         public void ApplyLevelScale(float scale)
         {
-            X *= scale;
-            Y *= scale;
+            SetPosition(X * scale, Y * scale);
             _width *= scale;
             _height *= scale;
         }
