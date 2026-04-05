@@ -302,6 +302,7 @@
     <None Include="docs\FIXES_APPLIED.md" />
     <None Include="docs\IMPLEMENTATION_START_HERE.md" />
     <None Include="docs\INITIALIZATION_WIRING_VERIFICATION.md" />
+    <None Include="docs\INTEGRATION_TEST_COMPLETE.md" />
     <None Include="docs\IN_GAME_VERIFICATION_CHECKLIST.md" />
     <None Include="docs\ISLAND_COMPLETION_CHANGES.md" />
     <None Include="docs\MASTER_DOCUMENTATION_INDEX.md" />
