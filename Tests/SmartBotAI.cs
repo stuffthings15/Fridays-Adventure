@@ -305,10 +305,25 @@ namespace Fridays_Adventure.Tests
         {
             ShouldMoveRight = true;
             ShouldAttack = true;                    // Keep attacking
-            ShouldJump = (enemy.Y < botY - 50f);   // Jump if enemy is above
+
+            // ── STOMP DETECTION: Jump on enemy head if enemy is below ─────
+            // Classic platformer stomp: jump on enemy's head to defeat them
+            if (enemy.Y > botY - 30f)  // Enemy head is roughly at same level or below
+            {
+                ShouldJump = true;      // Jump to stomp!
+                System.Diagnostics.Debug.WriteLine($"[SMART_BOT] STOMP ATTACK - Jumping on {enemy.Type} head!");
+            }
+            else if (enemy.Y < botY - 50f)  // Enemy is above
+            {
+                ShouldJump = true;      // Jump to reach it
+            }
+            else
+            {
+                ShouldJump = false;     // Enemy is at level, don't jump
+            }
 
             // Move toward enemy if far
-            if (enemy.Distance > 120f)
+
             {
                 TargetX = enemy.X;
             }

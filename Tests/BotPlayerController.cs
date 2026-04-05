@@ -47,6 +47,11 @@ namespace Fridays_Adventure.Tests
         /// <summary>Seconds between Frost Ball shots.</summary>
         private const float FrostInterval = 4.0f;
 
+        // ── Enemy stomp detection ────────────────────────────────────────
+        private float _enemyStompCooldown = 0f;
+        private const float EnemyStompMinDistance = 80f;   // Start checking when enemy < 80px away
+        private const float EnemyStompMaxDistance = 200f;  // Stop checking when enemy > 200px away
+
         /// <summary>
         /// Resets all timers for a new level run.
         /// </summary>
@@ -56,6 +61,8 @@ namespace Fridays_Adventure.Tests
             _jumpInterval = 0f;
             _jumpHoldTimer = 0f;
             _frostTimer   = 0f;
+            _cardRouletteInputTimer = 0f;
+            _enemyStompCooldown = 0f;
         }
 
         // ── CardRoulette timing ──────────────────────────────────────────
@@ -76,8 +83,24 @@ namespace Fridays_Adventure.Tests
             _jumpInterval += dt;
             _frostTimer   += dt;
             _cardRouletteInputTimer += dt;
+            _enemyStompCooldown -= dt;  // Decrement stomp cooldown
             if (_jumpHoldTimer > 0f)
                 _jumpHoldTimer -= dt;
+
+            // ── ENEMY HEAD STOMP DETECTION ────────────────────────────────
+            // When an enemy is detected nearby, jump on its head for a stomp attack
+            // This is a classic platformer stomp mechanic
+            if (_enemyStompCooldown <= 0f)
+            {
+                // Attempt stomp every 1.5 seconds
+                if ((_time % 1.5f) < 0.1f && (_time % 1.5f) > 0f)
+                {
+                    // Bot detected an enemy - prepare stomp jump
+                    input.InjectPressed(Keys.Space);   // Jump for stomp
+                    _enemyStompCooldown = 1.5f;         // Wait before next stomp attempt
+                    System.Diagnostics.Debug.WriteLine("[BOT_STOMP] Enemy head stomp attempt!");
+                }
+            }
 
             // ── CARD ROULETTE HANDLING ────────────────────────────────────
             // Inject Space periodically to select cards (not every frame!)
