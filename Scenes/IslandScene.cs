@@ -878,7 +878,30 @@ namespace Fridays_Adventure.Scenes
 
         private void LoadBackground()
         {
-            _bg = LoadBackgroundForIsland(_islandId);
+            var raw = LoadBackgroundForIsland(_islandId);
+            if (raw != null)
+            {
+                // Pre-scale background to screen size once at high quality so the
+                // fast NearestNeighbor runtime renderer draws a 1:1 bitmap.
+                int sw = Game.Instance.CanvasWidth;
+                int sh = Game.Instance.CanvasHeight;
+                if (sw > 0 && sh > 0 && (raw.Width != sw || raw.Height != sh))
+                {
+                    var scaled = new Bitmap(sw, sh);
+                    using (var sg = Graphics.FromImage(scaled))
+                    {
+                        sg.InterpolationMode  = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+                        sg.CompositingQuality = System.Drawing.Drawing2D.CompositingQuality.HighQuality;
+                        sg.DrawImage(raw, 0, 0, sw, sh);
+                    }
+                    raw.Dispose();
+                    _bg = scaled;
+                }
+                else
+                {
+                    _bg = raw;
+                }
+            }
             BuildParallax();
         }
 

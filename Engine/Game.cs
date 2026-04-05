@@ -521,14 +521,14 @@ namespace Fridays_Adventure.Engine
         {
             try
             {
-                // ── High-definition rendering pipeline ───────────────────────────
-                // Use high-quality bicubic interpolation for sprite scaling so
-                // character art and backgrounds stay sharp at any resolution.
-                g.InterpolationMode   = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
-                g.SmoothingMode       = System.Drawing.Drawing2D.SmoothingMode.HighQuality;
-                g.PixelOffsetMode     = System.Drawing.Drawing2D.PixelOffsetMode.HighQuality;
-                g.CompositingQuality  = System.Drawing.Drawing2D.CompositingQuality.HighQuality;
-                g.CompositingMode     = System.Drawing.Drawing2D.CompositingMode.SourceOver;
+                // ── Fast per-frame rendering with crisp text ──────────────────────
+                // Sprites are pre-scaled at high quality by SpriteManager.GetScaled()
+                // once at load time, so runtime rendering uses fast NearestNeighbor.
+                // ClearType text is cheap and dramatically improves readability.
+                g.InterpolationMode   = System.Drawing.Drawing2D.InterpolationMode.NearestNeighbor;
+                g.SmoothingMode       = System.Drawing.Drawing2D.SmoothingMode.None;
+                g.PixelOffsetMode     = System.Drawing.Drawing2D.PixelOffsetMode.Half;
+                g.CompositingQuality  = System.Drawing.Drawing2D.CompositingQuality.HighSpeed;
                 g.TextRenderingHint   = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
 
                 // Apply screen shake translation before drawing scene.
