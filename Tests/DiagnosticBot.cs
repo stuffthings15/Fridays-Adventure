@@ -14,8 +14,12 @@ namespace Fridays_Adventure.Tests
     {
         private Player _player;
         private Scene _scene;
+        private InputManager _input;
         private float _elapsedTime = 0f;
         private int _frameCount = 0;
+
+        // Detection systems
+        private RealDialogueDetector _dialogueDetector;
 
         // Detection results
         private List<Enemy> _enemies = new List<Enemy>();
@@ -24,7 +28,7 @@ namespace Fridays_Adventure.Tests
         private float _nearestEnemyDistance = float.MaxValue;
         private HealthPickup _nearestPickup = null;
         private float _nearestPickupDistance = float.MaxValue;
-        
+
         // Gap detection
         private bool _isFalling = false;
         private float _platformHeightEstimate = 300f;
@@ -34,11 +38,15 @@ namespace Fridays_Adventure.Tests
         public bool ShouldAttack { get; private set; }
         public bool ShouldMoveRight { get; private set; } = true;
 
-        public DiagnosticBot(Player player, Scene scene)
+        public DiagnosticBot(Player player, Scene scene, InputManager input = null)
         {
             _player = player ?? throw new ArgumentNullException(nameof(player));
             _scene = scene ?? throw new ArgumentNullException(nameof(scene));
+            _input = input;
             _platformHeightEstimate = player.Y;
+
+            // Initialize dialogue detector
+            _dialogueDetector = new RealDialogueDetector(scene, input);
 
             PrintHeader();
         }
@@ -57,6 +65,19 @@ namespace Fridays_Adventure.Tests
         {
             _elapsedTime += dt;
             _frameCount++;
+
+            // PRIORITY 0: Handle dialogue FIRST
+            _dialogueDetector.Update(dt);
+            if (_dialogueDetector.IsDialogueActive)
+            {
+                if (_frameCount % 30 == 0)  // Log every ~500ms
+                {
+                    Console.ForegroundColor = ConsoleColor.Magenta;
+                    Console.WriteLine($"[FRAME {_frameCount}] DIALOGUE HANDLING: {_dialogueDetector.GetStatus()}");
+                    Console.ResetColor();
+                }
+                return;  // Don't process game logic while dialogue is active
+            }
 
             // Reset
             _nearestEnemy = null;

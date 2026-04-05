@@ -281,6 +281,7 @@
     <Compile Include="Tests\LevelTestRunner.cs" />
     <Compile Include="Tests\ObservableBotAI.cs" />
     <Compile Include="Tests\RealDiagnosticLogger.cs" />
+    <Compile Include="Tests\RealDialogueDetector.cs" />
     <Compile Include="Tests\RealSmartBotAI.cs" />
     <Compile Include="Tests\SmartBotAI.cs" />
     <Compile Include="Tests\SmartPathfinder.cs" />
@@ -349,6 +350,7 @@
     <None Include="docs\QA_TEST_LOGGING_SYSTEM_GUIDE.md" />
     <None Include="docs\QA_VERIFICATION_PROTOCOL.md" />
     <None Include="docs\REAL_DIAGNOSTIC_BOT_SYSTEM.md" />
+    <None Include="docs\REAL_DIALOGUE_DETECTION_HANDLING.md" />
     <None Include="docs\REAL_SMART_BOT_AI_REWRITE.md" />
     <None Include="docs\RUNTIME_WIRING_VERIFICATION.md" />
     <None Include="docs\SESSION_2_SUMMARY.md" />
