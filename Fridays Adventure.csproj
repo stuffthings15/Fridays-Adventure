@@ -298,6 +298,7 @@
     <None Include="docs\COMPREHENSIVE_TEAM_FEATURE_AUDIT.md" />
     <None Include="docs\DOCUMENTATION_INDEX.md" />
     <None Include="docs\FEATURE_COMPLETION_AUDIT.md" />
+    <None Include="docs\FINAL_BUILD_EXECUTABLE_SUMMARY.md" />
     <None Include="docs\FINAL_VERIFICATION_REPORT.md" />
     <None Include="docs\FIXES_APPLIED.md" />
     <None Include="docs\IMPLEMENTATION_START_HERE.md" />
