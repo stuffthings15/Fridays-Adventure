@@ -47,6 +47,7 @@ namespace Fridays_Adventure.Scenes
         // ── PHASE 3: SMB3 interactive entities ────────────────────────────────
         // Team 4 (Lead Game Designer) — question blocks, brick blocks, new enemies
         private List<Fireball>         _fireballs        = new List<Fireball>();
+        private List<FrostBallProjectile> _frostBalls      = new List<FrostBallProjectile>();
         private List<GoombaEnemy>      _goombas          = new List<GoombaEnemy>();
         private List<KoopaEnemy>       _koopas           = new List<KoopaEnemy>();
         private List<PiranhaPlant>     _piranhaPlants    = new List<PiranhaPlant>();
@@ -109,7 +110,7 @@ namespace Fridays_Adventure.Scenes
             SMB3Hud.ShowWorldLabel(
                 $"WORLD {Game.Instance.WorldNumber}-{Game.Instance.LevelNumber}  {_islandName.ToUpper()}");
 
-            Game.Instance.Audio.ContinueOrPlay("island");
+            Game.Instance.Audio.ContinuationOrPlay("island");
         }
 
         public override void OnExit()
@@ -183,7 +184,7 @@ namespace Fridays_Adventure.Scenes
         // ── Level construction ──────────────────────────────────────────────
 
         /// <summary>
-        /// PHASE 2 — Applies island-specific enemy archetypes after the base level is built.
+        /// PHASE 2 — Team 14: Applies island-specific enemy archetypes after the base level is built.
         /// Each island has a themed enemy type with unique HP, speed, and score value.
         /// Keeps level layout code clean while giving every island a distinct feel.
         /// </summary>
@@ -275,6 +276,7 @@ namespace Fridays_Adventure.Scenes
 
             // Phase 3 entities are per-level; always reset on build.
             _fireballs     = new List<Fireball>();
+            _frostBalls    = new List<FrostBallProjectile>();
             _starCoins     = new List<StarCoinPickup>();
             _goombas       = new List<GoombaEnemy>();
             _koopas        = new List<KoopaEnemy>();
@@ -1033,7 +1035,7 @@ namespace Fridays_Adventure.Scenes
             BlockManager.Update(dt, _player);
             UpdateSMB3Enemies(dt);
             // UpdateFireballs(dt);  // TODO: implement
-            // UpdateStarCoins(dt);  // TODO: implement
+            UpdateFrostBalls(dt);
 
             _combo.Update(dt, _player, _enemies);
             CheckCombat();
@@ -1219,20 +1221,15 @@ namespace Fridays_Adventure.Scenes
                 }
             }
 
-            if (input.PausePressed)
-                Game.Instance.Scenes.Push(new PauseScene());
-
-            // ── I key — quick-open inventory during gameplay ──────────────────
-            if (input.InventoryPressed)
-                Game.Instance.Scenes.Push(new InventoryScene(_player));
-
-            // ── PHASE 3: Warp Whistle use (Tab key) ──────────────────────────
-            if (input.IsPressed(System.Windows.Forms.Keys.Tab) && Game.Instance.WarpWhistleCount > 0)
+            // ── B — Frost Ball ────────────────────────────────────────────────
+            if (input.FrostBallPressed)
             {
-                if (Game.Instance.UseWarpWhistle(Game.Instance.WorldNumber + 1))
+                if (_player.TryShootFrostBall())
                 {
-                    Game.Instance.LevelJustCompleted = true;
-                    Game.Instance.Scenes.Pop();
+                    float fx = _player.FacingRight ? _player.X + _player.Width + 4 : _player.X - 18;
+                    float fy = _player.Y + _player.Height * 0.55f;
+                    _frostBalls.Add(new FrostBallProjectile(fx, fy, _player.FacingRight));
+                    Game.Instance.Audio.BeepFireball(); // reuse fireball sound
                 }
             }
         }
@@ -1680,7 +1677,7 @@ namespace Fridays_Adventure.Scenes
                 int     dead = _deathCount;
 
                 // The card roulette runs first; when it finishes it pushes CourseClearScene.
-                Game.Instance.Scenes.Push(new CardRouletteScene(onContinue: () =>
+                Game.Instance.Scenes.Push(new CardRouletteScene(onContinuation: () =>
                 {
                     // Pop CardRoulette, then push CourseClear on top of IslandScene
                     Game.Instance.Scenes.Pop();
@@ -1760,6 +1757,7 @@ namespace Fridays_Adventure.Scenes
             foreach (var pu in _powerUps)  pu.Draw(g);
             foreach (var sc in _starCoins) sc.Draw(g, _cameraX);
             foreach (var fb in _fireballs) fb.Draw(g);
+            foreach (var fb in _frostBalls) fb.Draw(g);
             _combo.Draw(g);
             _player.Draw(g);
             if (_player.IsAttacking) DrawAttackArc(g);
@@ -2068,7 +2066,7 @@ namespace Fridays_Adventure.Scenes
                 g.DrawString($"{_player.IceReserve}/{_player.MaxIceReserve}", _infoFont, Brushes.Cyan, 318, 38);
             }
 
-            // ── Ability cooldown panels (Mega Man sub-weapon bars) ─────────────
+            // ── Ability cooldown panels (Mega Man sub-weapon bars) ──────────────
             DrawAbilityIcon(g, 510, 4, "Q:Wall",   _player.IceWallCooldownProgress,      _player.IsSuppressed, _player.IceWallCooldownRemaining);
             DrawAbilityIcon(g, 604, 4, "E:Freeze", _player.FlashFreezeCooldownProgress,  _player.IsSuppressed, _player.FlashFreezeCooldownRemaining);
             DrawAbilityIcon(g, 698, 4, "R:Break",  _player.BreakWallCooldownProgress,    false,                _player.BreakWallCooldownRemaining);
@@ -2483,56 +2481,6 @@ namespace Fridays_Adventure.Scenes
                     float bsz = 3 + (i % 4);
                     g.DrawEllipse(pen, bx - bsz / 2f, by - bsz / 2f, bsz, bsz);
                 }
-            }
-        }
-
-        // ── PHASE 3: SMB3 entity update helpers ───────────────────────────────
-
-        /// <summary>
-        /// PHASE 3 - Team 4: Lead Game Designer
-        /// Updates all Phase 3 SMB3 enemy types each frame.
-        /// Goombas and Koopas patrol platforms; Piranha Plants cycle in/out;
-        /// Thwomps fall on the player; Hammer Bros patrol and throw hammers.
-        /// </summary>
-        private void UpdateSMB3Enemies(float dt)
-        {
-            // Goombas — simple patrol with stomp kill
-            foreach (var g in _goombas)
-            {
-                g.UpdateEnemy(dt, _platforms, _groundY);
-                if (g.CheckPlayerInteraction(_player))
-                {
-                    // Bounce the player on successful stomp
-                    _player.VelocityY = _player.JumpForce * 0.45f;
-                    BountySystem.Award(GoombaEnemy.Score);
-                }
-            }
-
-            // Koopas — stomp turns them into a kickable shell
-            foreach (var k in _koopas)
-            {
-                k.UpdateEnemy(dt, _platforms, _groundY, _goombas);
-                if (k.CheckPlayerInteraction(_player))
-                    _player.VelocityY = _player.JumpForce * 0.45f;
-            }
-
-            // Piranha Plants — cycle in and out of pipes
-            foreach (var pp in _piranhaPlants)
-            {
-                pp.UpdatePlant(dt);
-                pp.CheckPlayerContact(_player);
-            }
-
-            // Thwomps — fall when player is below, handled entirely in UpdateThwomp
-            foreach (var t in _thwomps)
-                t.UpdateThwomp(dt, _player, _groundY);
-
-            // Hammer Bros — patrol, hop, and throw hammers
-            foreach (var hb in _hammerBros)
-            {
-                hb.UpdateEnemy(dt, _platforms, _groundY, _player);
-                if (hb.CheckPlayerInteraction(_player))
-                    _player.VelocityY = _player.JumpForce * 0.45f;
             }
         }
     }

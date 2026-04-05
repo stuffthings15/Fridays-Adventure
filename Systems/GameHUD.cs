@@ -278,8 +278,8 @@ namespace Fridays_Adventure.Systems
         // ── Center: ability cooldowns Q / E / R ───────────────────────────────
         private static void DrawAbilityRow(Graphics g, Player player, int W)
         {
-            // Three slots of 94px each, centered on W/2
-            int totalW = 3 * 94 + 2 * 4;   // 3 slots + 2 gaps
+            // Six slots: Q, E, R, X, C, B
+            int totalW = 6 * 94 + 5 * 4;   // 6 slots + 5 gaps
             int startX = W / 2 - totalW / 2;
             int y = 42;
 
@@ -287,6 +287,7 @@ namespace Fridays_Adventure.Systems
             string eLabel = "E:FREEZE";
             if (player.Archetype == Engine.PlayableCharacter.Orca) eLabel = "E:SLAM";
             else if (player.Archetype == Engine.PlayableCharacter.Swan) eLabel = "E:DASH";
+
             DrawAbilitySlot(g, "Q:WALL",    player.IceWallCooldownProgress,
                             player.IceWallCooldownRemaining,   player.IceWallReady,
                             startX,          y);
@@ -296,6 +297,21 @@ namespace Fridays_Adventure.Systems
             DrawAbilitySlot(g, "R:BREAK",   player.BreakWallCooldownProgress,
                             player.BreakWallCooldownRemaining,  player.BreakWallReady,
                             startX + 196,    y);
+            // X: Dodge (cooldown-based)
+            float dodgeProgress = 1f - (player.DodgeCooldown / 0.9f);
+            bool dodgeReady = player.DodgeCooldown <= 0;
+            DrawAbilitySlot(g, "X:DODGE",   dodgeProgress,
+                            player.DodgeCooldown,  dodgeReady,
+                            startX + 294,    y);
+            // C: Air Dash (available if not used this jump)
+            bool airDashReady = !player.AirDashUsed && player.IsGrounded;
+            DrawAbilitySlot(g, "C:DASH",    airDashReady ? 1f : 0f,
+                            airDashReady ? 0f : 1f,  airDashReady,
+                            startX + 392,    y);
+            // B: Frost Ball
+            DrawAbilitySlot(g, "B:FIRE",   player.FrostBallCooldownProgress,
+                            player.FrostBallCooldownRemaining, player.FrostBallReady,
+                            startX + 490,    y);
         }
 
         private static void DrawAbilitySlot(Graphics g, string label,

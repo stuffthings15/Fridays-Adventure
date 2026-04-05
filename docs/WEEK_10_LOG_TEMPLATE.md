@@ -1456,7 +1456,7 @@
 - Build: ✅ PASSING
 
 ### 🎯 Next Steps
-- Verify in-game flow on a fresh/legacy slot:
+- In-game verify flow on a fresh/legacy slot:
   - First entry → Character Select
   - Later entries on same slot → direct map load
 

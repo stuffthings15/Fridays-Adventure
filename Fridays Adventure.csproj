@@ -73,6 +73,7 @@
     <Compile Include="Abilities\Ability.cs" />
     <Compile Include="Abilities\BreakWall.cs" />
     <Compile Include="Abilities\FlashFreeze.cs" />
+    <Compile Include="Abilities\FrostBall.cs" />
     <Compile Include="Abilities\IceWall.cs" />
     <Compile Include="Abilities\TidalSlam.cs" />
     <Compile Include="Abilities\WingDash.cs" />
@@ -102,6 +103,7 @@
     <Compile Include="Entities\Enemy.cs" />
     <Compile Include="Entities\Entity.cs" />
     <Compile Include="Entities\Fireball.cs" />
+    <Compile Include="Entities\FrostBallProjectile.cs" />
     <Compile Include="Entities\HealthPickup.cs" />
     <Compile Include="Entities\Item.cs" />
     <Compile Include="Entities\LevelEntities.cs" />

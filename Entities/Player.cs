@@ -64,6 +64,8 @@ namespace Fridays_Adventure.Entities
         // Character-unique E-key abilities (null for MissFriday who uses FlashFreeze)
         private readonly TidalSlam   _tidalSlam = new TidalSlam();
         private readonly WingDash    _wingDash  = new WingDash();
+        // Frost Ball — blue ice projectile on X key (1s cooldown, all characters)
+        private readonly FrostBall   _frostBall = new FrostBall();
 
         public float IceWallCooldownProgress     => _iceWall.Progress;
         public float FlashFreezeCooldownProgress =>
@@ -83,6 +85,14 @@ namespace Fridays_Adventure.Entities
             Archetype == PlayableCharacter.Swan  ? _wingDash.IsReady  :
             _flash.IsReady;
         public bool  BreakWallReady  => _breakWall.IsReady;
+
+        // ── Frost Ball HUD properties ─────────────────────────────────────────
+        /// <summary>Cooldown fill progress for Frost Ball (0=empty, 1=ready).</summary>
+        public float FrostBallCooldownProgress  => _frostBall.Progress;
+        /// <summary>Seconds remaining on Frost Ball cooldown.</summary>
+        public float FrostBallCooldownRemaining => _frostBall.Cooldown;
+        /// <summary>True when Frost Ball is ready to fire.</summary>
+        public bool  FrostBallReady             => _frostBall.IsReady;
 
         /// <summary>Radius of Orca's Tidal Slam AOE.</summary>
         public float TidalSlamRadius => _tidalSlam.Radius;
@@ -434,6 +444,19 @@ namespace Fridays_Adventure.Entities
                     _flash.TryUse(this);
                     return true;
             }
+        }
+
+        /// <summary>
+        /// Attempts to fire a Frost Ball projectile (X key).
+        /// Returns true if the frost ball was successfully fired.
+        /// 1-second cooldown, available to all characters.
+        /// </summary>
+        public bool TryShootFrostBall()
+        {
+            if (!_frostBall.IsReady) return false;
+            _frostBall.TryUse(this);
+            AbilityCastGlowTimer = 0.3f;
+            return true;
         }
 
         /// <summary>
