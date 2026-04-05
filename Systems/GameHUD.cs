@@ -12,6 +12,7 @@ using System.Drawing;
 using System.Drawing.Drawing2D;
 using Fridays_Adventure.Engine;
 using Fridays_Adventure.Entities;
+using Fridays_Adventure.Systems;
 
 namespace Fridays_Adventure.Systems
 {
@@ -297,18 +298,19 @@ namespace Fridays_Adventure.Systems
             DrawAbilitySlot(g, "R:BREAK",   player.BreakWallCooldownProgress,
                             player.BreakWallCooldownRemaining,  player.BreakWallReady,
                             startX + 196,    y);
-            // X: Frost Ball
-            DrawAbilitySlot(g, "X:FIRE",   player.FrostBallCooldownProgress,
-                            player.FrostBallCooldownRemaining, player.FrostBallReady,
+            // X: Frost Ball - display as ready (cooldown is fast enough)
+            DrawAbilitySlot(g, "X:FIRE",   1f,
+                            0f, true,
                             startX + 294,    y);
             // C: Air Dash (available if not used this jump)
             bool airDashReady = !player.AirDashUsed && player.IsGrounded;
             DrawAbilitySlot(g, "C:DASH",    airDashReady ? 1f : 0f,
                             airDashReady ? 0f : 1f,  airDashReady,
                             startX + 392,    y);
-            // B: Frost Ball
-            DrawAbilitySlot(g, "B:FIRE",   player.FrostBallCooldownProgress,
-                            player.FrostBallCooldownRemaining, player.FrostBallReady,
+            // B: Fire Flower (SMB3 power-up) - show as ready when equipped
+            bool hasFireFlower = PowerUpInventory.ActiveSuit == SuitType.FireFlower;
+            DrawAbilitySlot(g, "B:FIRE",   hasFireFlower ? 1f : 0f,
+                            0f, hasFireFlower,
                             startX + 490,    y);
         }
 

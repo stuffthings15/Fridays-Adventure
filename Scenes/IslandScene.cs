@@ -1038,6 +1038,22 @@ namespace Fridays_Adventure.Scenes
             UpdateBerries(dt);
             UpdateHealthPickups(dt);
             UpdatePowerUps(dt);
+
+            // ── Update projectiles ──────────────────────────────────────────
+            // Update and cull fireballs (Fire Flower projectiles)
+            for (int i = _fireballs.Count - 1; i >= 0; i--)
+            {
+                _fireballs[i].UpdateProjectile(dt, _groundY, _levelWidth, _platforms);
+                if (!_fireballs[i].IsActive) _fireballs.RemoveAt(i);
+            }
+
+            // Update and cull frost balls (X-key ability projectiles)
+            for (int i = _frostBalls.Count - 1; i >= 0; i--)
+            {
+                _frostBalls[i].UpdateProjectile(dt, _groundY, _levelWidth, _platforms);
+                if (!_frostBalls[i].IsActive) _frostBalls.RemoveAt(i);
+            }
+
             WeatherSystem.Update(dt);  // Phase 2 — Team 14: weather particle simulation
             CheckExit();
             UpdateCamera();
