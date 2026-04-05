@@ -119,7 +119,6 @@ namespace Fridays_Adventure.Scenes
                     Game.Instance.LevelNumber = 1;
                     Game.Instance.Scenes.Push(new WorldTitleScene(worldNum, wName, () =>
                     {
-                        Game.Instance.Scenes.Pop();  // pop WorldTitleScene → back to overworld
                         Game.Instance.Audio.ContinueOrPlay("overworld");
                     }));
                     _pendingNode = null;

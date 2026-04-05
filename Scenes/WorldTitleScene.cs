@@ -79,6 +79,8 @@ namespace Fridays_Adventure.Scenes
 
         // ── Update ─────────────────────────────────────────────────────────────
 
+        private bool _hasTransitioned;
+
         public override void Update(float dt)
         {
             _timer        += dt;
@@ -96,15 +98,17 @@ namespace Fridays_Adventure.Scenes
             }
 
             float totalDuration = FadeInDuration + HoldDuration + FadeOutDuration;
-            if (_timer >= totalDuration)
+            if (_timer >= totalDuration && !_hasTransitioned)
             {
+                _hasTransitioned = true;
                 Game.Instance.Scenes.Pop();
                 _onDone?.Invoke();
             }
 
             // Skip on interact press
-            if (Game.Instance.Input.InteractPressed || Game.Instance.Input.JumpPressed)
+            if ((Game.Instance.Input.InteractPressed || Game.Instance.Input.JumpPressed) && !_hasTransitioned)
             {
+                _hasTransitioned = true;
                 Game.Instance.Scenes.Pop();
                 _onDone?.Invoke();
             }

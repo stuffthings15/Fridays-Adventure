@@ -24,6 +24,15 @@ namespace Fridays_Adventure.Entities
         /// </summary>
         public void SyncBaseY() { _baseY = Y; }
 
+        public override void ApplyLevelScale(float scale)
+        {
+            X *= scale;
+            Y *= scale;
+            Width = (int)(Width * scale);
+            Height = (int)(Height * scale);
+            SyncBaseY();
+        }
+
         public override void Update(float dt)
         {
             _bob += dt;

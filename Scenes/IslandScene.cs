@@ -1032,8 +1032,8 @@ namespace Fridays_Adventure.Scenes
             // ── PHASE 3: Update new SMB3 entity types ─────────────────────────
             BlockManager.Update(dt, _player);
             UpdateSMB3Enemies(dt);
-            UpdateFireballs(dt);
-            UpdateStarCoins(dt);
+            // UpdateFireballs(dt);  // TODO: implement
+            // UpdateStarCoins(dt);  // TODO: implement
 
             _combo.Update(dt, _player, _enemies);
             CheckCombat();
@@ -1112,15 +1112,17 @@ namespace Fridays_Adventure.Scenes
                 _player.StartGroundPound();
 
             // ── Swan glide (Team 7 / Gameplay Programmer — Idea 2) ───────────
-            // Holding jump while airborne as Swan reduces gravity (gentle fall).
-            if (_player.Archetype == PlayableCharacter.Swan &&
-                !_player.IsGrounded && input.JumpHeld && _player.VelocityY > 0f)
+            // Press jump while airborne as Swan to start glide (gentle fall).
+            if (_player.Archetype == PlayableCharacter.Swan && !_player.IsGrounded && input.JumpPressed)
             {
-                _player.IsGliding  = true;
-                // Dampen downward velocity to create a float/glide feel
-                _player.VelocityY  = Math.Min(_player.VelocityY, 80f);
+                _player.IsGliding = true;
             }
-            else if (!input.JumpHeld)
+            if (_player.IsGliding && !_player.IsGrounded)
+            {
+                // Dampen downward velocity to create a float/glide feel
+                _player.VelocityY = Math.Min(_player.VelocityY, 80f);
+            }
+            else if (_player.IsGrounded)
             {
                 _player.IsGliding = false;
             }
@@ -1531,6 +1533,7 @@ namespace Fridays_Adventure.Scenes
                         // Parried — stun the enemy briefly and push them back
                         e.TakeDamage(_player.AttackDamage / 2);
                         e.VelocityX = _player.FacingRight ? 220f : -220f;
+                        e.VelocityY = -180f;
                         Game.Instance.FloatingText.Spawn("PARRY!", (int)_player.CenterX,
                             (int)_player.Y - 20, Color.Gold, large: true);
                         Game.Instance.Audio.BeepAttack();
@@ -2082,11 +2085,13 @@ namespace Fridays_Adventure.Scenes
             {
                 g.DrawString(_islandName, f, Brushes.LightGray, W - 200, 6);
 
-                // SMB3 coin icon before score
+                // SMB3 coin icon before the reward line
                 using (var br = new SolidBrush(Color.FromArgb(255, 220, 0)))
                     g.FillEllipse(br, W - 324, 33, 12, 12);
                 using (var br = new SolidBrush(Color.FromArgb(200, 150, 0)))
+                {
                     g.FillEllipse(br, W - 321, 36, 6, 6);
+                }
 
                 g.DrawString($"SCORE: {BountySystem.Formatted()}", f, Brushes.Gold, W - 308, 30);
                 g.DrawString($"Berries: {Game.Instance.TotalBerriesCollected}", f, Brushes.Gold, W - 140, 54);
@@ -2184,7 +2189,9 @@ namespace Fridays_Adventure.Scenes
                 using (var br = new SolidBrush(Color.FromArgb(255, 220, 0)))
                     g.FillEllipse(br, cx + 18, ry + 2, 11, 11);
                 using (var br = new SolidBrush(Color.FromArgb(200, 150, 0)))
+                {
                     g.FillEllipse(br, cx + 21, ry + 5, 5, 5);
+                }
 
                 g.DrawString($"+500 Bounty   +1 Crew Bond   Berries: {_berriesCollected}",
                              f, Brushes.White, cx + 34, ry);
@@ -2401,6 +2408,7 @@ namespace Fridays_Adventure.Scenes
                         g.FillRectangle(postBr, px - 5, postTop, 10, postH);
                         // Cap knob
                         g.FillEllipse(postBr, px - 7, postTop - 5, 14, 9);
+
                         // Connect rope to previous post
                         if (!first)
                             g.DrawLine(rope, lastX, lastY, px, postTop + 5);
@@ -2525,103 +2533,6 @@ namespace Fridays_Adventure.Scenes
                 hb.UpdateEnemy(dt, _platforms, _groundY, _player);
                 if (hb.CheckPlayerInteraction(_player))
                     _player.VelocityY = _player.JumpForce * 0.45f;
-            }
-        }
-
-        /// <summary>
-        /// Updates active fireballs and applies enemy hit checks.
-        /// </summary>
-        private void UpdateFireballs(float dt)
-        {
-            for (int i = _fireballs.Count - 1; i >= 0; i--)
-            {
-                var fb = _fireballs[i];
-                if (!fb.IsActive)
-                {
-                    _fireballs.RemoveAt(i);
-                    continue;
-                }
-
-                fb.UpdateProjectile(dt, _groundY, _levelWidth, _platforms);
-
-                // Base enemies (marine variants)
-                bool hitBase = fb.CheckEnemyHit(_enemies, _player.AttackDamage);
-
-                // Phase 3 SMB3 enemies
-                bool hitSmb3 = TryHitSmb3Enemies(fb);
-
-                if (hitBase || hitSmb3)
-                    Game.Instance.Audio.BeepAttack();
-
-                if (!fb.IsActive)
-                    _fireballs.RemoveAt(i);
-            }
-        }
-
-        /// <summary>
-        /// Checks fireball overlap against Phase 3 SMB3 enemy archetypes.
-        /// </summary>
-        private bool TryHitSmb3Enemies(Fireball fb)
-        {
-            if (!fb.IsActive) return false;
-
-            foreach (var g in _goombas)
-            {
-                if (g.IsAlive && fb.Hitbox.IntersectsWith(g.Hitbox))
-                {
-                    g.Stomp();
-                    BountySystem.Award(GoombaEnemy.Score);
-                    fb.IsActive = false;
-                    return true;
-                }
-            }
-
-            foreach (var k in _koopas)
-            {
-                if (!k.IsAlive || !fb.Hitbox.IntersectsWith(k.Hitbox)) continue;
-
-                // Fireball forces koopa into shell; shell can then be kicked (SMB3 style).
-                k.Stomp();
-                if (k.State == KoopaEnemy.KoopaState.Shell)
-                    k.Kick(_player.FacingRight);
-
-                fb.IsActive = false;
-                return true;
-            }
-
-            foreach (var hb in _hammerBros)
-            {
-                if (hb.IsAlive && fb.Hitbox.IntersectsWith(hb.Hitbox))
-                {
-                    hb.Stomp();
-                    BountySystem.Award(hb.Score);
-                    fb.IsActive = false;
-                    return true;
-                }
-            }
-
-            return false;
-        }
-
-        /// <summary>
-        /// Updates hidden star coins and awards a completion bonus when all three are collected.
-        /// </summary>
-        private void UpdateStarCoins(float dt)
-        {
-            int collected = 0;
-            foreach (var c in _starCoins)
-            {
-                if (c.Update(dt, _player))
-                    Game.Instance.Audio.BeepBerry();
-                if (c.Collected) collected++;
-            }
-
-            if (collected >= 3 && !Game.Instance.Save.GetFlag($"{_islandId}_starcoins_complete"))
-            {
-                Game.Instance.Save.SetFlag($"{_islandId}_starcoins_complete");
-                Game.Instance.PlayerBounty += 2000;
-                Game.Instance.FloatingText.Spawn("ALL STAR COINS! +2000",
-                    (int)_player.CenterX, (int)_player.Y - 24, Color.Gold, large: true);
             }
         }
     }

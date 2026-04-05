@@ -48,5 +48,10 @@ namespace Fridays_Adventure.Entities
         {
             g.FillRectangle(Brushes.Magenta, X, Y, Width, Height);
         }
+
+        public virtual void ApplyLevelScale(float scale)
+        {
+            // Default: no scaling for entities that don't need it
+        }
     }
 }

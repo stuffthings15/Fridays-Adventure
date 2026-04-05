@@ -1404,8 +1404,7 @@
 - Release Build: ✅ PASSING (`0 errors`, `1 warning` in `BossRushScene` unused field)
 
 ### 🎯 Next Steps
-- Commit and push release readiness changes to GitHub.
-- Optional: remove remaining build warning (`BossRushScene._startHp` unused).
+- Optional cleanup: remove/consume `_startHp` warning in `BossRushScene`.
 
 ---
 
@@ -1738,7 +1737,7 @@
 - **Berry position fix** (Entities/Berries.cs + Scenes/IslandScene.cs):
   - Made `_baseY` mutable and added `SyncBaseY()` method.
   - Called `SyncBaseY()` after level-scale pass in `ApplyLevelScale()`.
-  - Root cause: `LevelScale = 1.5f` scaled `b.Y` but not `_baseY`, so every `Update()` reset coins to unscaled positions — making them appear to stick near the player and be uncollectable.
+  - Root cause of "random damage": player walking through invisible-seeming fire torches placed along level paths, especially dense in Blade Nation (every 350 px).
 - **Dialogue consistency for Orca and Swan** (Data/DialogueLine.cs):
   - Added `PlayerName` property that returns the selected character's display name.
   - Replaced all hardcoded `"MISS FRIDAY"` speaker names with dynamic `PlayerName`.
@@ -1767,7 +1766,7 @@
 - Git: ✅ Pushed to `origin/master`
 
 ### 🎯 Next Steps
-- In-game verify coin pickup on all island types.
+- In-game verify berry collection on all island types.
 - Verify dialogue shows character-appropriate names for Orca/Swan.
 - Verify Esc closes Options from any scene.
 
@@ -1794,7 +1793,7 @@
 
 ### 🐛 Bugs Fixed
 - Fixed "random" damage when not touching enemies — fire sources were dealing per-frame burn damage on overlap.
-- Fixed coins after the first two being uncollectable — berry hitbox dimensions weren't scaled with the level.
+- Fixed berries after the first two being uncollectable and appearing to move on the map — now properly scaled and positioned.
 - Fixed inventory not accessible from Options/pause menu.
 
 ### 📋 Documentation Updated
@@ -1957,6 +1956,68 @@
 ### 🎯 Next Steps
 - In-game verify Yes click deletes the save and No click cancels.
 - Verify Y/N keyboard hotkeys still work.
+
+---
+
+## SESSION 54: Berry Positioning + Swan Glide Fixes
+
+**Date/Time:** April 5, 2026  
+**Duration:** Bugfix session  
+
+### ✅ Features Implemented
+- **Berry positioning fix** (Entities/Berries.cs + Entities/Entity.cs):
+  - Added virtual `ApplyLevelScale(float scale)` to Entity base class.
+  - Overrode in Berries to scale X, Y, Width, Height, and re-sync bob origin.
+  - Root cause: berries were placed at 1x coordinates in a 1.5x scaled world, making them appear to move with player/camera and uncollectable due to mismatched hitboxes.
+- **Swan glide improvement** (Scenes/IslandScene.cs):
+  - Changed glide to start on jump press in air (not require holding).
+  - Glide persists until player lands (grounded).
+  - Root cause: glide required holding jump, which users might release immediately.
+
+### 🐛 Bugs Fixed
+- Fixed berries after first two being uncollectable and appearing to move on the map — now properly scaled and positioned.
+- Fixed Swan's ability cancelling immediately — now starts on press and lasts until landing.
+
+### 📋 Documentation Updated
+- `docs/WEEK_10_LOG_TEMPLATE.md` updated with Session 54 details.
+
+### 🏗️ Build Status
+- Build: ✅ PASSING
+- Git: ✅ Pushed to `origin/master`
+
+### 🎯 Next Steps
+- In-game verify berry collection works for all coins.
+- Verify Swan glide activates on jump press and lasts until landing.
+
+---
+
+## SESSION 55: Game Completion Flow Verification
+
+**Date/Time:** April 5, 2026  
+**Duration:** Verification session  
+
+### ✅ Features Verified
+- **Game ending flow** (Scenes/OverworldScene.cs + Scenes/VictoryScene.cs + Scenes/CreditsScene.cs):
+  - AllIslandsCompleted() checks 11 island nodes: dino, sky, wano, harbor, coral, tundra, dive_gate, sunken_gate, kelp, boiling_vent, abyss.
+  - Islands marked visited on Travel() → node.Visited = true.
+  - After level completion, OnResume() unlocks linked nodes and checks AllIslandsCompleted().
+  - If all islands visited, replaces with VictoryScene.
+  - VictoryScene "Continue" → CreditsScene.
+  - CreditsScene "Continue" → TitleScene.
+  - Flow requires completing all island levels to reach ending screen.
+
+### 🐛 Bugs Fixed
+- None (verification session).
+
+### 📋 Documentation Updated
+- `docs/WEEK_10_LOG_TEMPLATE.md` updated with Session 55 details.
+
+### 🏗️ Build Status
+- Build: ✅ PASSING
+
+### 🎯 Next Steps
+- In-game test full playthrough from start to credits.
+- Confirm all 11 islands must be completed for victory.
 
 ---
 
