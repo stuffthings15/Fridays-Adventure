@@ -50,13 +50,30 @@ namespace Fridays_Adventure.Data
 
     public static class Dialogues
     {
+        /// <summary>
+        /// Returns the display name for the currently selected playable character,
+        /// ensuring all dialogue sequences reference the active crew member.
+        /// </summary>
+        private static string PlayerName
+        {
+            get
+            {
+                switch (Fridays_Adventure.Engine.Game.Instance.SelectedCharacter)
+                {
+                    case Fridays_Adventure.Engine.PlayableCharacter.Orca: return "ORCA";
+                    case Fridays_Adventure.Engine.PlayableCharacter.Swan: return "SWAN";
+                    default: return "MISS FRIDAY";
+                }
+            }
+        }
+
         public static DialogueSequence MeetFinn() => new DialogueSequence
         {
             Lines = {
                 new DialogueLine("FINN",        "Hey — you made it off that island alive. Most people don't."),
-                new DialogueLine("MISS FRIDAY",  "..."),
+                new DialogueLine(PlayerName,     "..."),
                 new DialogueLine("FINN",        "I'm Finn. You don't have to talk. But you're on our ship now."),
-                new DialogueLine("MISS FRIDAY",  "I didn't ask to be."),
+                new DialogueLine(PlayerName,     "I didn't ask to be."),
                 new DialogueLine("FINN",        "No. But you're here. That counts for something.")
             },
             Choices = {
@@ -69,9 +86,9 @@ namespace Fridays_Adventure.Data
         {
             Lines = {
                 new DialogueLine("CAPTAIN AMELIA", "You survived Dinosaur Island with an Ice Devil Fruit? Impressive."),
-                new DialogueLine("MISS FRIDAY",    "It was luck."),
+                new DialogueLine(PlayerName,        "It was luck."),
                 new DialogueLine("CAPTAIN AMELIA", "Luck runs out. Skills don't. I want you on this crew."),
-                new DialogueLine("MISS FRIDAY",    "Why?"),
+                new DialogueLine(PlayerName,        "Why?"),
                 new DialogueLine("CAPTAIN AMELIA", "Because you know what it means to have nothing. So do we.")
             },
             Choices = {
@@ -84,8 +101,8 @@ namespace Fridays_Adventure.Data
         {
             Lines = {
                 new DialogueLine("MARINE CAPTAIN", "Halt! Sea Serpent pirates — by order of the World Government!"),
-                new DialogueLine("CAPTAIN AMELIA", "Friday. We need the path clear. Can you hold them?"),
-                new DialogueLine("MISS FRIDAY",    "I'll freeze everything in reach."),
+                new DialogueLine("CAPTAIN AMELIA", PlayerName + ". We need the path clear. Can you hold them?"),
+                new DialogueLine(PlayerName,        "I'll freeze everything in reach."),
                 new DialogueLine("FINN",           "Watch the water — don't let them corner you near the edge!")
             },
             Choices = {
@@ -100,8 +117,8 @@ namespace Fridays_Adventure.Data
                 new DialogueLine("BLADE GUARDIAN", "Outsiders are not welcome in Blade Nation. State your purpose."),
                 new DialogueLine("CAPTAIN AMELIA", "We seek passage. Nothing more."),
                 new DialogueLine("BLADE GUARDIAN", "Prove your worth in the trial of steel. Or turn back."),
-                new DialogueLine("MISS FRIDAY",    "I'll handle this."),
-                new DialogueLine("FINN",           "Friday — there's SeaStone in the trial arena. Be careful.")
+                new DialogueLine(PlayerName,        "I'll handle this."),
+                new DialogueLine("FINN",           PlayerName + " — there's SeaStone in the trial arena. Be careful.")
             },
             Choices = {
                 new DialogueChoice("Accept the trial",                       bondChange: 1, flagToSet: "blade_trial"),
@@ -113,9 +130,9 @@ namespace Fridays_Adventure.Data
         {
             Lines = {
                 new DialogueLine("ZARA",         "Got you — don't you dare sink on my watch."),
-                new DialogueLine("MISS FRIDAY",   "You... pulled me out."),
+                new DialogueLine(PlayerName,      "You... pulled me out."),
                 new DialogueLine("ZARA",         "That's what crew does. Even for people who hate crew."),
-                new DialogueLine("MISS FRIDAY",   "I don't hate you."),
+                new DialogueLine(PlayerName,      "I don't hate you."),
                 new DialogueLine("ZARA",         "High praise. I'll take it.")
             },
             Choices = {
@@ -129,10 +146,10 @@ namespace Fridays_Adventure.Data
         public static DialogueSequence MeetOrca() => new DialogueSequence
         {
             Lines = {
-                new DialogueLine("ORCA",        "You're the one they call Miss Friday? You're smaller than I expected."),
-                new DialogueLine("MISS FRIDAY",  "..."),
+                new DialogueLine("ORCA",        "You're the one they call " + PlayerName + "? You're smaller than I expected."),
+                new DialogueLine(PlayerName,     "..."),
                 new DialogueLine("ORCA",        "Relax. I meant it as a compliment. Small fighters are hard to hit."),
-                new DialogueLine("MISS FRIDAY",  "Why are you following us?"),
+                new DialogueLine(PlayerName,     "Why are you following us?"),
                 new DialogueLine("ORCA",        "Same reason as you, I'd guess. Nowhere else worth going.")
             },
             Choices = {
@@ -146,7 +163,7 @@ namespace Fridays_Adventure.Data
             Lines = {
                 new DialogueLine("CAPTAIN AMELIA", "Orca. You've proven yourself out there. The offer stands."),
                 new DialogueLine("ORCA",           "I don't do crews. Never have."),
-                new DialogueLine("MISS FRIDAY",    "Neither did I."),
+                new DialogueLine(PlayerName,        "Neither did I."),
                 new DialogueLine("ORCA",           "...Fair point."),
                 new DialogueLine("FINN",           "Welcome aboard. Try not to sink the ship.")
             },
@@ -160,9 +177,9 @@ namespace Fridays_Adventure.Data
         {
             Lines = {
                 new DialogueLine("SWAN",        "You have an Ice Devil Fruit. I've never seen one in person."),
-                new DialogueLine("MISS FRIDAY",  "It's not as impressive as it sounds."),
+                new DialogueLine(PlayerName,     "It's not as impressive as it sounds."),
                 new DialogueLine("SWAN",        "You froze three Marines in under a second. It's exactly as impressive as it sounds."),
-                new DialogueLine("MISS FRIDAY",  "...What do you want?"),
+                new DialogueLine(PlayerName,     "...What do you want?"),
                 new DialogueLine("SWAN",        "To travel with someone who knows what they're doing, for once.")
             },
             Choices = {
@@ -175,9 +192,9 @@ namespace Fridays_Adventure.Data
         {
             Lines = {
                 new DialogueLine("SWAN",           "I've been thinking about what you said. About trust."),
-                new DialogueLine("MISS FRIDAY",    "I said a lot of things."),
+                new DialogueLine(PlayerName,        "I said a lot of things."),
                 new DialogueLine("SWAN",           "You said it doesn't come free. That you have to earn it every day."),
-                new DialogueLine("MISS FRIDAY",    "I remember."),
+                new DialogueLine(PlayerName,        "I remember."),
                 new DialogueLine("SWAN",           "Then I want to keep earning it. With your crew.")
             },
             Choices = {

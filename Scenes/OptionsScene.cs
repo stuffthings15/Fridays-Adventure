@@ -60,6 +60,10 @@ namespace Fridays_Adventure.Scenes
         private void Rebuild()
         {
             _rows.Clear();
+
+            // Always-visible resume button so it's obvious how to close options.
+            _rows.Add(new Row { Type = RowType.BackBtn, Label = "RESUME GAME" });
+
             _rows.Add(new Row { Type = RowType.Header,   Label = "AUDIO" });
             _rows.Add(new Row { Type = RowType.MusicVol, Label = "Music Volume" });
             _rows.Add(new Row { Type = RowType.SfxVol,   Label = "SFX Volume"   });
@@ -369,9 +373,14 @@ namespace Fridays_Adventure.Scenes
                     if (sel) Highlight(g, W, y, 34);
                     using (var f = new Font("Courier New", 12, FontStyle.Bold))
                     {
-                        SizeF sz = g.MeasureString("[ Back ]", f);
-                        Brush br = sel ? Brushes.Yellow : Brushes.White;
-                        g.DrawString("[ Back ]", f, br, (W - sz.Width) / 2f, y + 4);
+                        string label = "[ " + row.Label + " ]";
+                        SizeF sz = g.MeasureString(label, f);
+                        // Use a green tint for "RESUME GAME" to make it stand out.
+                        Brush br = sel ? Brushes.Yellow
+                                  : row.Label.IndexOf("RESUME", StringComparison.OrdinalIgnoreCase) >= 0
+                                      ? Brushes.LimeGreen
+                                      : Brushes.White;
+                        g.DrawString(label, f, br, (W - sz.Width) / 2f, y + 4);
                     }
                     y += 34;
                     break;

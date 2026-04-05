@@ -822,9 +822,15 @@ namespace Fridays_Adventure.Engine
                 return true;
             }
 
-            // Pause/options hotkey (Esc): open options overlay from anywhere.
-            if (Input.PausePressed && !(scene is OptionsScene))
+            // Pause/options hotkey (Esc): open options overlay from anywhere,
+            // or close it if already on the OptionsScene.
+            if (Input.PausePressed)
             {
+                if (scene is OptionsScene)
+                {
+                    Scenes.Pop();
+                    return true;
+                }
                 OpenOptionsOverlay();
                 return true;
             }

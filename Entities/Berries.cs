@@ -10,12 +10,19 @@ namespace Fridays_Adventure.Entities
     public sealed class Berries : Item
     {
         private float _bob;
-        private readonly float _baseY;
+        private float _baseY;
 
         public Berries(float x, float y) : base(x, y, 16, 16, 10)
         {
             _baseY = y;
         }
+
+        /// <summary>
+        /// Re-anchors the berry's bob origin to the current Y position.
+        /// Must be called after any external position scaling (e.g. LevelScale)
+        /// so the bob animation stays aligned to the new world coordinates.
+        /// </summary>
+        public void SyncBaseY() { _baseY = Y; }
 
         public override void Update(float dt)
         {

@@ -27,7 +27,8 @@ namespace Fridays_Adventure.Scenes
         private bool   _nameActive;
         private string _nameInput = "";
         private float  _nameCursor;
-        private const string SecretPassword = "Luffy";
+        // Both "Luffy" and "Loofy" (case-insensitive) unlock the dev menu.
+        private static readonly string[] SecretPasswords = { "Luffy", "Loofy" };
 
         public override void OnEnter()
         {
@@ -80,7 +81,13 @@ namespace Fridays_Adventure.Scenes
 
                 if (input.IsPressed(System.Windows.Forms.Keys.Return) && _nameInput.Length > 0)
                 {
-                    if (string.Equals(_nameInput, SecretPassword, StringComparison.OrdinalIgnoreCase))
+                    // Check all accepted secret passwords (case-insensitive).
+                    bool isSecret = false;
+                    foreach (string pw in SecretPasswords)
+                        if (string.Equals(_nameInput, pw, StringComparison.OrdinalIgnoreCase))
+                        { isSecret = true; break; }
+
+                    if (isSecret)
                     {
                         Game.Instance.GodMode   = true;
                         Game.Instance.PlayerName = _nameInput;

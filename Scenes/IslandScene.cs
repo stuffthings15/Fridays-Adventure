@@ -364,6 +364,9 @@ namespace Fridays_Adventure.Scenes
             {
                 b.X *= LevelScale;
                 b.Y *= LevelScale;
+                // Re-anchor the bob origin to the scaled Y so the
+                // berry's bobbing animation starts from the correct position.
+                b.SyncBaseY();
             }
 
             foreach (var hp in _healthPickups)
