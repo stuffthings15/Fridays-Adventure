@@ -6,6 +6,44 @@
 
 ---
 
+## SESSION 61: Enhanced Level Exit Indicators - Make Goal Flag Clearly Visible
+
+**Date/Time:** April 5, 2026  
+**Duration:** UX improvement session  
+
+### ✅ Features Implemented
+- **Enhanced DrawExitFlag() rendering** (Scenes/IslandScene.cs):
+  - Added animated golden glowing halo around exit flag that pulses in/out
+  - Added ">>> GO <<<" text indicator above the flag
+  - Added animated descending arrows pointing to the goal flag
+  - Enlarged the flag itself (32x22 from 24x16)
+  - Made pole brighter and more visible (from gray to light gray)
+  - Increased gold ball on top significantly (20x20 from 12x12)
+  - Added prominent gold border highlight around flag
+  - All animations use `Environment.TickCount` for smooth, consistent motion
+
+### 🐛 Issues Fixed
+- Goal flag was difficult to spot in the level
+- Players unclear where the end/exit of levels was located
+- Flag too small and blended in with the level
+
+### 📋 Visual Improvements
+- **Glow Halo:** Animated with sine wave, alpha between 50-150
+- **Arrows:** 3 animated arrows descend from above the flag continuously
+- **Text Labels:** ">>> GO <<<" in bold gold above flag, "GOAL" text on flag itself
+- **Size:** Flag enlarged and gold ball enlarged for better visibility
+- **Color:** Increased brightness and saturation of all components
+
+### 🔄 Build Status
+- Build: ✅ **PASSING (0 errors, 0 warnings)**
+
+### 🎯 Next Steps
+- In-game verify exit flag is now clearly visible and draws attention
+- Test that animated indicators don't distract too much from gameplay
+- Can be adjusted further if needed
+
+---
+
 ## SESSION 60: Critical Compilation Fixes - Code Actually Compiles Now
 
 **Date/Time:** April 5, 2026  
