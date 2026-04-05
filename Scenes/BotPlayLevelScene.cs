@@ -69,6 +69,9 @@ namespace Fridays_Adventure.Scenes
         // Saves the host GodMode flag so we can restore it when the scene exits
         private bool _previousGodMode;
 
+        // ── Real AI - Initialize ONCE on first frame ────────────────────
+        private bool _aiInitialized = false;
+
         // ── Diagnostics system for comprehensive bot action tracking ───────────
         private BotDiagnostics _diagnostics = new BotDiagnostics();
 
@@ -107,6 +110,10 @@ namespace Fridays_Adventure.Scenes
             _elapsed    = 0f;
             _innerCompleted = false;
             _completionHoldTimer = 0f;
+            _aiInitialized = false;  // Reset AI init flag
+
+            // Start AI verification logging
+            BotAIVerificationTool.Enable();
 
             // DISABLED: GodMode was making bot invincible - enemies never hurt it
             // This prevents proper testing of health/damage mechanics
@@ -125,6 +132,13 @@ namespace Fridays_Adventure.Scenes
 
             // Enter the inner scene so it initialises (loads level, spawns player, etc.)
             _inner.OnEnter();
+
+            // Quick test to verify AI can see entities
+            Player player = GetPlayerFromScene(_inner);
+            if (player != null)
+            {
+                BotAIVerificationTool.QuickTest(_inner, player);
+            }
         }
 
         public override void OnExit()
@@ -132,6 +146,10 @@ namespace Fridays_Adventure.Scenes
             _inner.OnExit();
             _hudFont?.Dispose();
             _labelFont?.Dispose();
+
+            // Stop AI verification
+            BotAIVerificationTool.Disable();
+
             // Restore whatever GodMode was before the bot started
             Game.Instance.GodMode = _previousGodMode;
 
@@ -216,21 +234,27 @@ namespace Fridays_Adventure.Scenes
             _diagnostics.Update(dt);
 
             // ════════════════════════════════════════════════════════════════════
-            // BATCH 3: SMART BOT AI INTEGRATION - Real-time decision making
-            // Get the player from the inner scene to query detection
-            Player player = GetPlayerFromScene(_inner);
-            if (player != null)
+            // INITIALIZE REAL AI - ONE TIME ONLY!
+            // ════════════════════════════════════════════════════════════════════
+            if (!_aiInitialized)
             {
-                // Initialize RealSmartBotAI on first run
-                if (_bot != null)
+                Player player = GetPlayerFromScene(_inner);
+                if (player != null && _bot != null)
                 {
-                    _bot.InitializeForScene(player, _inner, input);
+                    _bot.InitializeForScene(player, _inner, Game.Instance.Input);
+                    _aiInitialized = true;
+                    System.Diagnostics.Debug.WriteLine("[BOT_PLAY_SCENE] ✅ RealSmartBotAI initialized!");
                 }
             }
 
-            // ────────────────────────────────────────────────────────────────
+            // ── Now inject bot input using REAL AI ─────────────────────
+            _bot.InjectInput(Game.Instance.Input, dt);
 
-            _bot.InjectInput(input, dt);
+            // Verify AI is making decisions
+            if (_bot._realAI != null)
+            {
+                BotAIVerificationTool.VerifyAIFrame(_bot._realAI, dt);
+            }
 
             // Log what the bot is injecting for diagnostics
             if (input.IsHeld(Keys.Right))

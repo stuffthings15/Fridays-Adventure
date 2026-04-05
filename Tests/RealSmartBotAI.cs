@@ -94,21 +94,21 @@ namespace Fridays_Adventure.Tests
         {
             _elapsedTime += dt;
             _debugLog.Clear();
-            
+
             // 1. Gather environmental data (REAL detection, not timers)
             GatherEnvironmentalData();
-            
+
             // 2. Check for stuck condition
             UpdateStuckDetection(dt);
-            
+
             // 3. Make decisions based on ACTUAL game state
             MakeIntelligentDecisions(dt);
-            
+
             // 4. Execute actions
             ExecuteActions();
-            
-            // Log diagnostics
-            if (_enableLogging && _elapsedTime % 1f < 0.016f)
+
+            // Log diagnostics every second
+            if ((int)_elapsedTime % 1 == 0 && _elapsedTime % 1 < dt + 0.016f)
             {
                 LogState();
             }
@@ -444,9 +444,15 @@ namespace Fridays_Adventure.Tests
 
         private void LogState()
         {
-            foreach (var log in _debugLog)
+            var log = $"[REAL_AI] State={CurrentState} | Enemies={_nearbyEnemies.Count} | Pickups={_nearbyPickups.Count} " +
+                     $"| Jump={ShouldJump} | Attack={ShouldAttack} | Move={ShouldMoveRight}";
+
+            System.Diagnostics.Debug.WriteLine(log);
+
+            // Also log each detected object
+            foreach (var log2 in _debugLog)
             {
-                Debug.WriteLine($"[REAL_AI] {log}");
+                System.Diagnostics.Debug.WriteLine($"  → {log2}");
             }
         }
 

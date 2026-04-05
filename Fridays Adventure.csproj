@@ -265,6 +265,7 @@
     <Compile Include="Systems\WeatherSystem.cs" />
     <Compile Include="Tests\AdvancedSceneDetector.cs" />
     <Compile Include="Tests\AutoTestBot.cs" />
+    <Compile Include="Tests\BotAIVerificationTool.cs" />
     <Compile Include="Tests\BotComprehensiveTestLogger.cs" />
     <Compile Include="Tests\BotDiagnostics.cs" />
     <Compile Include="Tests\BotDialogueHandler.cs" />
@@ -297,6 +298,7 @@
     <None Include="docs\ART_ASSETS_NEEDED.md" />
     <None Include="docs\AUTOMATED_TEST_USER_GUIDE.md" />
     <None Include="docs\AUTOMATION_QUICK_START.md" />
+    <None Include="docs\BOT_AI_WIRING_VERIFICATION.md" />
     <None Include="docs\BOT_DIAGNOSTICS_GUIDE.md" />
     <None Include="docs\BOT_QA_TESTING_COMPLETE_GUIDE.md" />
     <None Include="docs\COMPREHENSIVE_TEAM_FEATURE_AUDIT.md" />

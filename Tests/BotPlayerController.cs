@@ -34,7 +34,7 @@ namespace Fridays_Adventure.Tests
         private GameDialogueHandler _dialogueHandler;
 
         // ── REAL AI (Replaces fake periodic timers) ──────────────────────
-        private RealSmartBotAI _realAI = null;  // Initialized when scene loads
+        public RealSmartBotAI _realAI = null;  // Initialized when scene loads
         private bool _useRealAI = true;  // ALWAYS use real AI
 
         // ── Tuning ────────────────────────────────────────────────────────
