@@ -87,20 +87,69 @@ namespace Fridays_Adventure.Tests
             if (_jumpHoldTimer > 0f)
                 _jumpHoldTimer -= dt;
 
-            // ── ENEMY HEAD STOMP DETECTION ────────────────────────────────
-            // When an enemy is detected nearby, jump on its head for a stomp attack
-            // This is a classic platformer stomp mechanic
-            if (_enemyStompCooldown <= 0f)
+            // ════════════════════════════════════════════════════════════════════
+            // CRITICAL: USE SMARTBOTAI DECISIONS - NOT HARD-CODED TIMERS!
+            // ════════════════════════════════════════════════════════════════════
+            if (_useSmartAI)
             {
-                // Attempt stomp every 1.5 seconds
-                if ((_time % 1.5f) < 0.1f && (_time % 1.5f) > 0f)
+                // GET SMARTBOTAI DECISIONS
+                var behavior = _smartAI.CurrentBehavior;
+                bool shouldJump = _smartAI.ShouldJump;
+                bool shouldAttack = _smartAI.ShouldAttack;
+                bool shouldDodge = _smartAI.ShouldDodge;
+
+                // ── APPLY SMARTBOTAI DECISIONS TO INPUT ──────────────────
+
+                // Always sprint/move right (from SmartBotAI)
+                if (_smartAI.ShouldMoveRight)
                 {
-                    // Bot detected an enemy - prepare stomp jump
-                    input.InjectPressed(Keys.Space);   // Jump for stomp
-                    _enemyStompCooldown = 1.5f;         // Wait before next stomp attempt
-                    System.Diagnostics.Debug.WriteLine("[BOT_STOMP] Enemy head stomp attempt!");
+                    input.InjectHeld(Keys.Right);
+                    input.InjectHeld(Keys.ShiftKey);  // Sprint
                 }
+
+                // Jump based on AI decision
+                if (shouldJump)
+                {
+                    input.InjectPressed(Keys.Space);
+                    _jumpHoldTimer = JumpHoldTime;
+                    System.Diagnostics.Debug.WriteLine($"[BOT_AI_INPUT] JUMP - Behavior: {behavior}");
+                }
+
+                // Hold jump if in hold window
+                if (_jumpHoldTimer > 0f)
+                {
+                    input.InjectHeld(Keys.Space);
+                }
+
+                // Attack based on AI decision
+                if (shouldAttack)
+                {
+                    input.InjectPressed(Keys.Z);
+                    System.Diagnostics.Debug.WriteLine($"[BOT_AI_INPUT] ATTACK - Behavior: {behavior}");
+                }
+
+                // Dodge/special moves
+                if (shouldDodge)
+                {
+                    input.InjectPressed(Keys.X);  // Dodge key
+                    System.Diagnostics.Debug.WriteLine($"[BOT_AI_INPUT] DODGE - Behavior: {behavior}");
+                }
+
+                // ── CARD ROULETTE HANDLING (SPECIAL CASE) ────────────────
+                // When in CardRoulette, use periodic Space for card selection
+                if (_cardRouletteInputTimer >= CardRouletteInputInterval)
+                {
+                    input.InjectPressed(Keys.Space);
+                    _cardRouletteInputTimer = 0f;
+                    System.Diagnostics.Debug.WriteLine("[BOT_AI_INPUT] CARD ROULETTE - Select card");
+                }
+
+                return;  // ← CRITICAL: Exit here and DON'T use fallback logic below
             }
+
+            // ════════════════════════════════════════════════════════════════════
+            // FALLBACK: Manual/testing mode (when SmartAI disabled)
+            // ════════════════════════════════════════════════════════════════════
 
             // ── CARD ROULETTE HANDLING ────────────────────────────────────
             // Inject Space periodically to select cards (not every frame!)
@@ -116,27 +165,24 @@ namespace Fridays_Adventure.Tests
 
             // ── Attack pressed with cooldown (not every frame!) ────────────
             // Only inject Z every 0.5 seconds to prevent frost ball spam
-            // Player.TryAttack() has its own cooldown, but we throttle input
-            if ((_time % 0.5f) < 0.05f)  // Press briefly every 0.5s
+            if ((_time % 0.5f) < 0.05f)
             {
                 input.InjectPressed(Keys.Z);
             }
 
             // ── Periodic full-height jump ─────────────────────────────────
-            // Fire a new jump every JumpInterval seconds.
             if (_jumpInterval >= JumpInterval)
             {
-                input.InjectPressed(Keys.Space);   // begin jump
-                _jumpHoldTimer = JumpHoldTime;     // schedule hold window
+                input.InjectPressed(Keys.Space);
+                _jumpHoldTimer = JumpHoldTime;
                 _jumpInterval  = 0f;
             }
 
-            // While inside the hold window, keep Space held so the engine
-            // doesn't cut velocity to the short-hop cap (-120 px/s).
+            // While inside the hold window, keep Space held
             if (_jumpHoldTimer > 0f)
                 input.InjectHeld(Keys.Space);
 
-            // ── Periodic frost ball (ranged coverage) ─────────────────────
+            // ── Periodic frost ball ────────────────────────────────────────
             if (_frostTimer >= FrostInterval)
             {
                 input.InjectPressed(Keys.B);
