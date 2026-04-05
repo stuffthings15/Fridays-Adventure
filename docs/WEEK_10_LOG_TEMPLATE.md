@@ -1773,6 +1773,45 @@
 
 ---
 
+## SESSION 49: Fire Damage Removal + Berry Hitbox Scaling + Inventory in Options
+
+**Date/Time:** April 5, 2026  
+**Duration:** Bugfix + feature session  
+
+### ✅ Features Implemented
+- **Removed fire source damage** (Hazards/FireSource.cs):
+  - `ApplyEffect()` no longer calls `TakeDamage()` or applies Burning status.
+  - Fire sources remain as visual/environmental elements that still melt ice walls.
+  - Root cause of "random damage": player walking through invisible-seeming fire torches placed along level paths, especially dense in Blade Nation (every 350 px).
+- **Scaled berry hitboxes** (Entities/Berries.cs + Scenes/IslandScene.cs):
+  - `ApplyLevelScale()` now scales `b.Width` and `b.Height` by `LevelScale` (1.5×).
+  - Berry Draw method updated to use scaled Width/Height instead of hardcoded 16×16.
+  - Root cause of uncollectable coins: berry hitbox remained 16×16 while the entire world was scaled to 1.5× — making the collision area too small to reliably intersect the (scaled) player.
+- **Inventory access from Options menu** (Scenes/OptionsScene.cs):
+  - Added "Inventory (I)" row right below RESUME GAME button.
+  - Uses `Game.Instance.GetActiveScenePlayer()` to find the gameplay player.
+  - Shows toast if no active level player is found.
+
+### 🐛 Bugs Fixed
+- Fixed "random" damage when not touching enemies — fire sources were dealing per-frame burn damage on overlap.
+- Fixed coins after the first two being uncollectable — berry hitbox dimensions weren't scaled with the level.
+- Fixed inventory not accessible from Options/pause menu.
+
+### 📋 Documentation Updated
+- `docs/WEEK_10_LOG_TEMPLATE.md` updated with Session 49 details.
+
+### 🏗️ Build Status
+- Build: ✅ PASSING
+- Release: ✅ Published to `Release\Fridays Adventure.exe`
+- Git: ✅ Pushed to `origin/master`
+
+### 🎯 Next Steps
+- In-game verify no fire damage on dino island and blade nation.
+- Verify all coins are now collectible on first level.
+- Verify Inventory opens from Options menu during gameplay.
+
+---
+
 ## NOTES & IDEAS
 
 **Recurring Tasks:**

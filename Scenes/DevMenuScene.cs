@@ -196,6 +196,9 @@ namespace Fridays_Adventure.Scenes
 
         /// <summary>
         /// Activates either a level-jump scene or a dev utility action.
+        /// Gameplay levels route through CharacterSelectScene first so the
+        /// player always picks a character before entering any map.
+        /// Tool/QA/dashboard scenes launch directly.
         /// </summary>
         private void ActivateEntry(LevelEntry entry)
         {
@@ -206,7 +209,31 @@ namespace Fridays_Adventure.Scenes
             }
 
             if (entry.Create != null)
-                Game.Instance.Scenes.Replace(entry.Create());
+            {
+                // Tool / dashboard / QA scenes skip character select.
+                bool isToolScene = entry.Label.StartsWith("[PH")  ||
+                                   entry.Label.StartsWith("[QA")  ||
+                                   entry.Label.StartsWith("[TOOL") ||
+                                   entry.Label.StartsWith("[NEW] Save Slot") ||
+                                   entry.Label.StartsWith("[NEW] N-Spade") ||
+                                   entry.Label.StartsWith("[NEW] Card Roulette");
+
+                if (isToolScene)
+                {
+                    Game.Instance.Scenes.Replace(entry.Create());
+                }
+                else
+                {
+                    // Gameplay level — show character select first, then launch.
+                    var factory = entry.Create;
+                    Game.Instance.Scenes.Push(new CharacterSelectScene(onConfirm: () =>
+                    {
+                        // Pop the CharacterSelectScene, then replace DevMenu with the level.
+                        Game.Instance.Scenes.Pop();
+                        Game.Instance.Scenes.Replace(factory());
+                    }));
+                }
+            }
         }
 
         /// <summary>

@@ -12,9 +12,24 @@ namespace Fridays_Adventure.Scenes
     /// Character selection screen — lets the player choose between the three
     /// playable crew members (Miss Friday, Orca, Swan) before entering the
     /// overworld. Shown after the title screen, before gameplay begins.
+    /// When constructed with an optional <c>onConfirm</c> callback, the scene
+    /// invokes that callback instead of pushing the default difficulty/overworld
+    /// flow — used by the Dev Menu to pick a character before any level.
     /// </summary>
     public sealed class CharacterSelectScene : Scene
     {
+        // ── Optional external callback (set by Dev Menu / tests) ─────────────
+        private readonly Action _onConfirmOverride;
+
+        /// <summary>Creates the default character-select (goes to Difficulty → Overworld).</summary>
+        public CharacterSelectScene() { }
+
+        /// <summary>
+        /// Creates a character-select that invokes <paramref name="onConfirm"/>
+        /// after the player picks a character, instead of the default overworld flow.
+        /// </summary>
+        public CharacterSelectScene(Action onConfirm) { _onConfirmOverride = onConfirm; }
+
         // ── Sprites ──────────────────────────────────────────────────────────
         private Bitmap _fridaySprite;   // player_missfriday.png (portrait only)
         private Bitmap _orcaSprite;     // Orca.png (optional)
@@ -131,9 +146,14 @@ namespace Fridays_Adventure.Scenes
             if (input.InteractPressed || input.AttackPressed)
                 ConfirmAndProceed();
 
-            // Back to title
+            // Back — return to previous scene (Dev Menu) or title screen.
             if (input.PausePressed)
-                Game.Instance.Scenes.Replace(new TitleScene());
+            {
+                if (_onConfirmOverride != null)
+                    Game.Instance.Scenes.Pop();   // return to Dev Menu
+                else
+                    Game.Instance.Scenes.Replace(new TitleScene());
+            }
         }
 
         public override void HandleClick(Point p)
@@ -151,8 +171,9 @@ namespace Fridays_Adventure.Scenes
 
         /// <summary>
         /// PHASE 2 - Team 1: Game Director
-        /// Locks in the current selection and transitions to difficulty selection.
-        /// DifficultySelectScene will push OverworldScene once a difficulty is confirmed.
+        /// Locks in the current selection and transitions to the next screen.
+        /// When an override callback was supplied (e.g. from Dev Menu), it is
+        /// invoked instead of the default difficulty → overworld flow.
         /// </summary>
         private void ConfirmAndProceed()
         {
@@ -161,8 +182,16 @@ namespace Fridays_Adventure.Scenes
             Game.Instance.Save.SetInt("runtime.characterSelected", 1);
             Game.Instance.Save.Save();
 
-            // Push difficulty selection — it will Replace itself with OverworldScene on confirm
-            Game.Instance.Scenes.Push(new DifficultySelectScene());
+            if (_onConfirmOverride != null)
+            {
+                // External caller controls the next scene (Dev Menu level launch, etc.).
+                _onConfirmOverride.Invoke();
+            }
+            else
+            {
+                // Default path: push difficulty selection → overworld.
+                Game.Instance.Scenes.Push(new DifficultySelectScene());
+            }
         }
 
         // ── Draw ─────────────────────────────────────────────────────────────

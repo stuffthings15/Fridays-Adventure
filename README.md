@@ -5,92 +5,69 @@ styled after **Super Mario Bros. 3** — gameplay, HUD, power-ups, world map, an
 
 ---
 
-## 🗂 SESSION LOGGING REQUIREMENT ✅ MANDATORY
+## 🎮 How to Play
+
+| Key | Action |
+|-----|--------|
+| Arrow Keys / WASD | Move |
+| Z / Space | Jump (hold for higher jump) |
+| X / Left Ctrl | Attack |
+| Q | Ice Wall ability |
+| E | Character ability (Orca: Tidal Slam, Swan: Wing Dash, Friday: Freeze Flash) |
+| R | Break Wall ability |
+| I | Open Inventory |
+| Esc | Open Options / Pause |
+| 1, 2, 3 | Quick-select character on Character Select screen |
+| Enter / Z | Confirm selection |
+
+**Dev Menu:** Enter the name **"Luffy"** or **"Loofy"** (case-insensitive) on the title screen.
+
+---
+
+## 🗂 SESSION LOGGING REQUIREMENT
 
 After **every** work session, update:  
-`Assets/The Forge/Week10 Log_.docx`  
+`docs/WEEK_10_LOG_TEMPLATE.md`  
 Include: date/time · features implemented · bugs fixed · docs updated · build status · next steps.
 
 See `.github/copilot-instructions.md` for full code comment standards.
 
 ---
 
-## ✅ FEATURE COMPLETION STATUS
+## ✅ Project Status
 
-| Phase | Team Count | Features | Status |
-|-------|-----------|----------|--------|
-| Phase 1 | Core scope | 110 features | ✅ COMPLETE |
-| Phase 2 | Core scope | 110 features | ✅ COMPLETE |
-| Phase 3 | Core scope | 110 features | ✅ COMPLETE |
-| **TOTAL CORE** | — | **330 features** | ✅ ALL IMPLEMENTED |
+**Build:** ✅ PASSING (0 errors, 0 warnings)
 
-**Build Status:** ✅ 0 errors (Release build)  
-**Debuggers:** ✅ Error Log Debugger + Visual Debugger ACTIVE  
-**SMB3 Style:** ✅ HUD · power-ups · world map · flagpole · timer · lives
+### Phase 1 — Core Gameplay (110 features) ✅ COMPLETE
+The actual playable game — platforming, combat, enemies, levels, bosses, HUD, power-ups, world map, character selection, save/load, audio, and all visual effects.
 
-**Recent verification:**
-- App icon updated to Miss Friday artwork (`pirate_ship.ico` regenerated from `Assets\Sprites\player_missfriday.png`)
-- HUD consistency validated across gameplay level scenes using unified `GameHUD.Draw(...)`
-- Standalone Release payload published to `Release\`
+### Phase 2 — Systems & Tools (110 items) ✅ IMPLEMENTED
+Difficulty modifiers, settings menu, hot-reload config, frame histogram, error log rotation, producer dashboards, tech lead tools, design systems, narrative systems, gameplay systems, UI systems, engine systems, and build tools. Most are data-layer / dashboard implementations accessible from the Dev Menu.
+
+### Phase 3 — Expansion Systems (110 items) ✅ IMPLEMENTED
+Producer systems, systems foundations, tech lead systems, director systems, engine systems, design systems, level concepts, narrative systems, and gameplay systems. These are mostly system stubs and validation dashboards accessible from the Dev Menu.
 
 ---
 
-## 🎮 Super Mario Bros. 3 Style Guide
+## 🏗 Architecture
 
-This game **closely mimics SMB3**:
+```
+Fridays Adventure II/
+├── Engine/          — Game singleton, SceneManager, InputManager
+├── Scenes/          — All game screens (Title → Gameplay → Victory)
+├── Entities/        — Player, Enemy, Berries, PowerUp, etc.
+├── Systems/         — HUD, ParticleSystem, AchievementSystem, etc.
+├── Hazards/         — FireSource, WaterPit, SeaStoneZone
+├── Rules/           — DevilFruitRules
+├── Data/            — SaveData, DialogueLine, ContentLoader
+├── Audio/           — AudioManager, ProceduralSfx
+├── Abilities/       — IceWall, WingDash, etc.
+├── docs/            — Session logs, phase trackers, documentation
+└── Assets/          — Sprites, audio, data files
+```
 
-| SMB3 Feature | Implementation |
-|---|---|
-| World map with ship | `OverworldScene` — 11 islands, boss nodes, Toad Houses, Hammer Bros |
-| `WORLD X-X` display | `Game.WorldLevelLabel` — shown on HUD and intro cards |
-| Level timer (300s) | `GameDirectorFeatures.LevelTimeRemaining` — red when ≤ 60s |
-| Lives counter ♥ × N | `UIFeatures.DrawLivesCounter()` — `Game.CurrentLives` |
-| 100 coins = 1UP | `Game.AddCoins()` — awards life at every 100 |
-| Power-up HUD box | `SMB3Hud` — reserve item display |
-| GET READY banner | `SMB3Hud.TriggerGetReady()` |
-| Course Clear banner | `GameDirectorFeatures.TriggerCourseClear()` |
-| P-Meter bar | `SMB3Hud` — speed-charge for Raccoon Leaf flight |
-| Stomp chain → star | `GameplayFeatures.RegisterStomp()` — 5 stomps = Starman |
-| Waving flag | `AnimationFeatures.DrawWavingFlag()` |
-| Parallax sky layers | `EnvironmentFeatures.DrawParallaxClouds()` |
-| Alternating tile border | `UIArtFeatures.DrawSMB3Border()` |
-| Boss HP bar | `SMB3Hud.SetBossBar()` |
-| Star invincibility | `PowerUpFeatureSet.ActivateStarman()` — 10 seconds |
-| Fire Flower | `PowerUpFeatureSet.CollectFireFlower()` |
-| Raccoon Leaf | `PowerUpFeatureSet.CollectRaccoonLeaf()` |
-| Frog Suit | `PowerUpFeatureSet.CollectFrogSuit()` |
-| Hammer Suit | `PowerUpFeatureSet.CollectHammerSuit()` |
-| 1-Up Mushroom | `PowerUpFeatureSet.Grant1Up()` |
-| P-Wing | `Game.UsePWing()` — skip current level |
-| Toad House tracker | `GameDirectorFeatures.MarkToadHouseVisited()` |
-| Hammer Bros. nodes | `GameDirectorFeatures.MarkHammerBrosDefeated()` |
-| Autoscroll segments | `LevelDesignerFeatures.StartAutoscroll()` |
-| Spring pads | `LevelDesignerFeatures.SpringPadForce` |
-| Ice floor sliding | `LevelDesignerFeatures.IceFriction` |
-| Wind zones | `LevelDesignerFeatures.SetWind()` |
-| Question blocks | `LevelDesignerFeatures.ResolveBlockContent()` |
-| Spinning coin VFX | `AnimationFeatures.DrawSpinningCoin()` |
-| Stomp dust puff | `VFXFeatures.SpawnStompPuff()` |
-| Star burst VFX | `VFXFeatures.SpawnStarBurst()` |
-| Hit spark | `VFXFeatures.DrawHitSpark()` |
-| Shockwave ring | `VFXFeatures.DrawShockwaveRing()` |
-| Scanline CRT overlay | `ArtDirectorFeatures.DrawScanlines()` |
-| Vignette overlay | `ArtDirectorFeatures.DrawVignette()` |
-| Per-world sky colors | `ArtDirectorFeatures.GetWorldSkyColor()` |
-| Press-Start blink | `UIArtFeatures.DrawPressStart()` |
-| Arrow cursor blink | `UIArtFeatures.DrawCursor()` |
-| Score pop-up text | `FloatingTextManager.Spawn()` |
-| Day/night tint | `ArtDirectorFeatures.SetDayNight()` |
-| Torch flicker | `EnvironmentFeatures.DrawTorchFlame()` |
-| Star field | `EnvironmentFeatures.DrawStarField()` |
-| Water ripple | `EnvironmentFeatures.DrawWaterSurface()` |
-| Fog gradient | `EnvironmentFeatures.DrawFog()` |
-| Waving flag | `AnimationFeatures.DrawWavingFlag()` |
-| Bounce easing | `AnimationFeatures.EaseBounce()` |
-| Character shadow | `CharacterArtFeatures.DrawCharacterShadow()` |
-| Damage flash | `CharacterArtFeatures.TriggerDamageFlash()` |
-| Combo display | `SystemsFeatures.DrawComboDisplay()` |
-| Frame-time graph | `TechLeadFeatures.DrawFrameGraph()` |
+**Entry point:** `Form1.cs` → `Game.cs` → `SceneManager`  
+**Target:** C# 7.3 · .NET Framework 4.7.2 · WinForms
 
 ---
 
@@ -99,115 +76,26 @@ This game **closely mimics SMB3**:
 **File:** `Systems\ErrorLogDebugger.cs`  
 **Class:** `DebugLogger` (static)
 
-### What it does
-- Writes structured log entries to `Logs\debug-YYYY-MM-DD.log` (daily rotation)
-- Exports JSON report to `Logs\errors.json`
-- Calls `VisualDebugger.RecordError()` automatically on every `LogError`
-- Routes to in-game `DebugConsole` overlay
-- Auto-cleans logs older than 7 days on startup
+- Writes to `Logs\debug-YYYY-MM-DD.log` (daily rotation)
+- Auto-cleans logs older than 7 days
+- Screenshots on error via `VisualDebugger`
 
-### API
 ```csharp
 DebugLogger.LogInfo("Context", "Message");
-DebugLogger.LogWarning("Context", "Message");
-DebugLogger.LogError("Context", "Message or exception");
 DebugLogger.LogError("Context", exception);
-DebugLogger.MinFileLevel    = LogLevel.Info;    // filter threshold
-DebugLogger.MinConsoleLevel = LogLevel.Warning;
-```
-
-### Log Structure
-Each `LogEntry` captures:
-- `Id`, `Timestamp`, `Level` (Debug/Info/Warning/Error/Critical)
-- `Context` (class.method), `Message`, `StackTrace`
-- `MemoryBytes` (GC snapshot), `ScreenshotPath`
-
-### Screenshot Provider (wired in Form1)
-```csharp
-DebugLogger.ScreenshotProvider = () => {
-    var bmp = new Bitmap(_canvas.Width, _canvas.Height);
-    _canvas.DrawToBitmap(bmp, new Rectangle(0,0,W,H));
-    return bmp;
-};
 ```
 
 ---
 
-## 📸 Visual Debugger
+## 📋 Key Documents
 
-**File:** `Systems\VisualDebugger.cs`  
-**Class:** `VisualDebugger` (static)
-
-### What it does
-- Captures a screenshot on every `LogError` call
-- Stores screenshots in `Logs\ErrorShots\`
-- Generates `Logs\visual-report.html` — an HTML gallery linking each error to its screenshot
-- Writes `Logs\qa-availability.log` — session open/close timestamps for QA review
-- Shows last 6 errors in a toggleable F10 overlay
-
-### Toggle
-```
-F10  →  Toggle in-game overlay panel
-```
-
-### API
-```csharp
-VisualDebugger.RecordError("Context", "details", screenshotPath);
-VisualDebugger.RecordInfo("Context", "details");
-VisualDebugger.DrawOverlay(g, W, H);    // call from Game.OnRender
-VisualDebugger.WriteSessionClose();     // call on application exit
-int errors = VisualDebugger.ErrorCount; // for QA badge display
-```
-
-### QA Availability Log
-```
-Logs\qa-availability.log
-  [SESSION OPEN]   2025-01-15 14:32:00  v0.9 build Jan-15
-  ERROR #0001      14:32:04.123  [IslandScene]  shot=ErrorShots\...png
-  [SESSION CLOSE]  14:45:22.001  errors=3  info=12
-```
-
----
-
-## 👥 All 19 Teams — Wave 2 Feature Reference
-
-All features implemented in `Systems\TeamFeatures_Wave2.cs`.
-
-### Team 1 — Game Director / Creative Director (`GameDirectorFeatures`)
-| # | Feature | Key |
-|---|---------|-----|
-| 1 | Animated title logo bounce | `GameDirectorFeatures.LogoBounceOffset` |
-| 2 | Flagpole end-of-level trigger | `GameDirectorFeatures.TriggerCourseClear()` |
-| 3 | World map animated walk icon | `OverworldScene` node animation |
-| 4 | Level timer (300-second SMB3 clock) | `GameDirectorFeatures.LevelTimeRemaining` |
-| 5 | "Course Clear!" banner | `GameDirectorFeatures.CourseClearActive` |
-| 6 | Castle defeat animation | `GameDirectorFeatures.TriggerCourseClear()` |
-| 7 | Anchor item | `GameDirectorFeatures.HasAnchor` |
-| 8 | Hammer Bros. encounter flag | `MarkHammerBrosDefeated()` |
-| 9 | Toad House visited tracker | `MarkToadHouseVisited()` |
-| 10 | Letter seal unlock | `GameDirectorFeatures.HasLetterSeal` |
-
-### Team 2 — Producer / Project Manager (`ProducerFeatures`)
-| # | Feature | Key |
-|---|---------|-----|
-| 1 | Play-time milestone badges | `CheckMilestone()` |
-| 2 | Progress bar (% complete) | `GetCompletionPercent()` |
-| 3 | First-run experience flag | `IsFirstRun`, `MarkTutorialSeen()` |
-| 4 | Daily play streak counter | `UpdateDailyStreak()` |
-| 5 | Session auto-save on completion | SaveData integration |
-| 6 | Playtime limit warning | SessionStats integration |
-| 7 | Rotating loading-screen tips | `GetNextTip()` |
-| 8 | New-game confirmation text | DialogueScene integration |
-| 9 | Quit-to-title confirmation | PauseScene integration |
-| 10 | Per-island high score board | `RecordIslandScore()`, `GetIslandHighScore()` |
-
-### Team 3 — Technical Lead (`TechLeadFeatures`)
-| # | Feature | Key |
-|---|---------|-----|
-| 1 | Live frame-time sparkline graph | `DrawFrameGraph()` |
-| 2 | Asset load-time profiler | `RecordAssetLoad()` |
-| 3 | Scene transition safety guard | SceneManager double-pop protection |
-| 4 | Deterministic replay stub | Architecture stub |
+| Document | Purpose |
+|----------|---------|
+| `docs/WEEK_10_LOG_TEMPLATE.md` | Running session log (update after every prompt) |
+| `docs/AI_DOCS.md` | Architecture reference for AI assistants |
+| `docs/PHASE_2_PROGRESS_TRACKER.md` | Phase 2 checklist |
+| `docs/PHASE_3_IMPLEMENTATION_ROADMAP.md` | Phase 3 checklist |
+| `.github/copilot-instructions.md` | Code standards and session logging rules |
 | 5 | GC gen0/gen1/gen2 counters | `GetGCInfo()` |
 | 6 | Draw-call counter | `ResetDrawCalls()`, `IncrementDrawCalls()` |
 | 7 | Thread-safe singleton guard | Game.Instance |

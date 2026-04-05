@@ -5,7 +5,7 @@
 
 ## Session Logging Requirement ✅ MANDATORY
 **IMPORTANT:** After EVERY prompt/session, you MUST:
-1. Update the Week 10 log document (`Assets/The Forge/Week10 Log_.docx`)
+1. Update the session log at `docs/WEEK_10_LOG_TEMPLATE.md`
 2. Add a new entry with:
    - Session date/time
    - Features implemented

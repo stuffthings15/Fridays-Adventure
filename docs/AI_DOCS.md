@@ -1,60 +1,53 @@
 # Friday's Adventure — AI / Copilot Documentation
 
 > **For AI assistants working in this codebase.**
-> Full architecture reference, API guide, integration map, and known bugs/fixes.
 > Start every session by reading this file.
 
 ---
 
 ## ✅ MANDATORY SESSION LOGGING
 
-After **every** prompt, update `Assets/The Forge/Week10 Log_.docx` with:  
+After **every** prompt, update `docs/WEEK_10_LOG_TEMPLATE.md` with:  
 `date/time · features implemented · bugs fixed · docs updated · build status · next steps`
 
 ---
 
-## Phase Status
+## Project Status
 
-| Phase | Features | Status |
-|-------|---------|--------|
-| Phase 1 | 110 | ✅ COMPLETE |
-| Phase 2 (core Team 1–11) | 110 | ✅ COMPLETE |
-| Phase 3 (core Team 1–11) | 110 | ✅ COMPLETE |
-| **Total built (core)** | **330** | ✅ PASSING build |
+| Phase | Features | Status | Notes |
+|-------|---------|--------|-------|
+| Phase 1 | 110 | ✅ COMPLETE | Core gameplay — the actual playable game |
+| Phase 2 | 110 | ✅ IMPLEMENTED | Mostly systems/dashboard stubs in Dev Menu |
+| Phase 3 | 110 | ✅ IMPLEMENTED | Mostly systems/dashboard stubs in Dev Menu |
 
 **Build:** C# 7.3 · .NET Framework 4.7.2 · WinForms  
-**Entry point:** `Form1.cs` → `Game.cs` → `SceneManager`  
-**Known errors fixed:** see § "Bugs Fixed" below
+**Entry point:** `Form1.cs` → `Game.cs` → `SceneManager`
+
+**Important:** Phase 2 and Phase 3 features are primarily data-layer classes and
+Dev Menu dashboard scenes. They are NOT deeply integrated into core gameplay.
+The actual playable game experience is Phase 1.
 
 ---
 
 ## Architecture
 
 ```
-
-## Current Validation Snapshot
-
-- Application icon uses Miss Friday image (`pirate_ship.ico`, generated from `Assets\Sprites\player_missfriday.png`).
-- Gameplay HUD consistency is centralized via `GameHUD.Draw(...)` in gameplay scenes.
-- Latest Release build is published to `Release\` (standalone payload copy from `bin\Release\`).
 Game (singleton)
  ├─ SceneManager          push/pop/replace scene stack
  ├─ InputManager          keyboard state snapshot
  ├─ AudioManager          music moods + SFX beeps
  ├─ SMB3Hud               composite HUD (lives, coins, timer, P-meter, boss bar)
- ├─ PowerUpSystem         SMB3 power-up state machine (8 suits/items)
+ ├─ PowerUpSystem         SMB3 power-up state machine
  ├─ ParticleSystem        lightweight 2D particle bursts
  ├─ FloatingTextManager   score pop-up text
  ├─ ScreenShake           trauma-based camera shake
  ├─ AchievementSystem     unlock + banner
  ├─ SessionStats          play-time, stomp count, death count
- ├─ FeatureFlags          runtime feature toggles from feature-flags.cfg
- ├─ DifficultyModifiers   enemy speed/HP/damage scale per difficulty
+ ├─ DifficultyModifiers   enemy HP scaling per difficulty
  ├─ WeatherSystem         rain/snow/storm effects
  ├─ EventBus              type-safe publish/subscribe
- ├─ ObjectPool            reusable entity pool
- ├─ ErrorLogDebugger      daily rotating file + JSON report + VisualDebugger bridge
- └─ VisualDebugger        screenshot capture + HTML gallery + F10 overlay
+ ├─ ErrorLogDebugger      daily rotating file + JSON report
+ └─ VisualDebugger        screenshot capture + HTML gallery
 ```
 
 ### All Scenes
