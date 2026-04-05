@@ -1729,6 +1729,50 @@
 
 ---
 
+## SESSION 48: Berry Fix + Dialogue Consistency + Options Exit + Loofy Password
+
+**Date/Time:** April 5, 2026  
+**Duration:** Bugfix + feature implementation session  
+
+### ✅ Features Implemented
+- **Berry position fix** (Entities/Berries.cs + Scenes/IslandScene.cs):
+  - Made `_baseY` mutable and added `SyncBaseY()` method.
+  - Called `SyncBaseY()` after level-scale pass in `ApplyLevelScale()`.
+  - Root cause: `LevelScale = 1.5f` scaled `b.Y` but not `_baseY`, so every `Update()` reset coins to unscaled positions — making them appear to stick near the player and be uncollectable.
+- **Dialogue consistency for Orca and Swan** (Data/DialogueLine.cs):
+  - Added `PlayerName` property that returns the selected character's display name.
+  - Replaced all hardcoded `"MISS FRIDAY"` speaker names with dynamic `PlayerName`.
+  - NPC lines that address the player by name now also use `PlayerName`.
+  - Affected sequences: MeetFinn, MeetAmelia, MarineEncounter, BladeSamuriGate, ZaraRescue, MeetOrca, OrcaJoinsCrew, MeetSwan, SwanJoinsCrew.
+- **Options scene exit fix** (Engine/Game.cs + Scenes/OptionsScene.cs):
+  - Global Esc handler now also closes OptionsScene (previously skipped it).
+  - Added prominent "RESUME GAME" button at the top of Options menu (green highlight).
+  - Bottom "Back" button remains for redundancy.
+- **Dev menu password "Loofy"** (Scenes/TitleScene.cs):
+  - Accepts both "Luffy" and "Loofy" (case-insensitive) as secret passwords.
+  - Replaced single `const` with array of accepted passwords.
+
+### 🐛 Bugs Fixed
+- Fixed coins appearing at wrong positions and being uncollectable after level scaling.
+- Fixed Orca and Swan characters seeing "MISS FRIDAY" in all dialogue lines instead of their own name.
+- Fixed inability to exit Options scene with Esc key (global handler now properly pops OptionsScene).
+- Fixed missing prominent "back to game" button in Options.
+
+### 📋 Documentation Updated
+- `docs/WEEK_10_LOG_TEMPLATE.md` updated with Session 48 details.
+
+### 🏗️ Build Status
+- Build: ✅ PASSING
+- Release: ✅ Published to `Release\Fridays Adventure.exe`
+- Git: ✅ Pushed to `origin/master`
+
+### 🎯 Next Steps
+- In-game verify coin pickup on all island types.
+- Verify dialogue shows character-appropriate names for Orca/Swan.
+- Verify Esc closes Options from any scene.
+
+---
+
 ## NOTES & IDEAS
 
 **Recurring Tasks:**
