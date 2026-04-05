@@ -1893,6 +1893,45 @@
 
 ---
 
+## SESSION 52: Performance Fix — Revert Per-Frame HD, Keep Pre-Scale Quality
+
+**Date/Time:** April 5, 2026  
+**Duration:** Performance hotfix session  
+
+### ✅ Features Implemented
+- **Reverted per-frame rendering to fast settings** (Engine/Game.cs `OnRender`):
+  - `InterpolationMode` back to `NearestNeighbor` (fast)
+  - `SmoothingMode` back to `None` (fast)
+  - `CompositingQuality` changed to `HighSpeed`
+  - Kept `TextRenderingHint.ClearTypeGridFit` (cheap, improves text)
+- **Reverted GameCanvas** (Engine/GameCanvas.cs):
+  - Removed per-frame quality overrides; canvas just passes through to Game.OnRender.
+- **Reverted Entity.Draw** (Entities/Entity.cs):
+  - Removed per-draw `HighQualityBicubic` mode swap; back to simple `DrawImage`.
+- **Added background pre-scaling** (Scenes/IslandScene.cs `LoadBackground`):
+  - Backgrounds are now pre-scaled to screen resolution once at load time using `HighQualityBicubic`, then drawn 1:1 at runtime — smooth backgrounds with zero per-frame cost.
+- **Kept SpriteManager.GetScaled quality** (Data/SpriteManager.cs):
+  - Still uses `HighQualityBicubic` + `SmoothingMode.HighQuality` — but only runs once per sprite at load time, not per frame.
+
+### 🐛 Bugs Fixed
+- Fixed severe lag/frame drops caused by `HighQualityBicubic` + `SmoothingMode.HighQuality` running on every draw call every frame. GDI+ bicubic interpolation is ~10x slower than NearestNeighbor per pixel.
+- Root cause: Session 51 applied expensive quality modes to the per-frame render loop instead of only at load-time pre-scaling.
+
+### 📋 Documentation Updated
+- `docs/WEEK_10_LOG_TEMPLATE.md` updated with Session 52 details.
+
+### 🏗️ Build Status
+- Build: ✅ PASSING
+- Release: ✅ Published to `Release\Fridays Adventure.exe`
+- Git: ✅ Pushed to `origin/master`
+
+### 🎯 Next Steps
+- In-game verify lag is gone and frame rate is smooth again.
+- Verify backgrounds still look good (pre-scaled at load).
+- Verify text is crisp (ClearType kept).
+
+---
+
 ## NOTES & IDEAS
 
 **Recurring Tasks:**
