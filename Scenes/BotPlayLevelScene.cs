@@ -247,14 +247,8 @@ namespace Fridays_Adventure.Scenes
                 }
             }
 
-            // ── Now inject bot input using REAL AI ─────────────────────
+            // ── Now inject bot input using OBSERVABLE AI ─────────────────
             _bot.InjectInput(Game.Instance.Input, dt);
-
-            // Verify AI is making decisions
-            if (_bot._realAI != null)
-            {
-                BotAIVerificationTool.VerifyAIFrame(_bot._realAI, dt);
-            }
 
             // Log what the bot is injecting for diagnostics
             if (input.IsHeld(Keys.Right))
