@@ -272,6 +272,7 @@
     <Compile Include="Tests\ItemAndEnemyAnalyzer.cs" />
     <Compile Include="Tests\LevelBeatabilityTest.cs" />
     <Compile Include="Tests\LevelTestRunner.cs" />
+    <Compile Include="Tests\SmartBotAI.cs" />
     <Compile Include="Tests\TestLogSystem.cs" />
     <EmbeddedResource Include="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>
