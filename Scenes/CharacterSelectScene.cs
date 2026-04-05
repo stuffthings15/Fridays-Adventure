@@ -142,6 +142,41 @@ namespace Fridays_Adventure.Scenes
             if (input.IsPressed(Keys.D2)) Game.Instance.SelectedCharacter = PlayableCharacter.Orca;
             if (input.IsPressed(Keys.D3)) Game.Instance.SelectedCharacter = PlayableCharacter.Swan;
 
+            // Arrow keys and A/D for navigation (left/right)
+            if (input.IsPressed(Keys.Left) || input.IsPressed(Keys.A))
+            {
+                // Move to previous character
+                switch (Game.Instance.SelectedCharacter)
+                {
+                    case PlayableCharacter.Orca:
+                        Game.Instance.SelectedCharacter = PlayableCharacter.MissFriday;
+                        break;
+                    case PlayableCharacter.Swan:
+                        Game.Instance.SelectedCharacter = PlayableCharacter.Orca;
+                        break;
+                    case PlayableCharacter.MissFriday:
+                        Game.Instance.SelectedCharacter = PlayableCharacter.Swan;  // Wrap around
+                        break;
+                }
+            }
+
+            if (input.IsPressed(Keys.Right) || input.IsPressed(Keys.D))
+            {
+                // Move to next character
+                switch (Game.Instance.SelectedCharacter)
+                {
+                    case PlayableCharacter.MissFriday:
+                        Game.Instance.SelectedCharacter = PlayableCharacter.Orca;
+                        break;
+                    case PlayableCharacter.Orca:
+                        Game.Instance.SelectedCharacter = PlayableCharacter.Swan;
+                        break;
+                    case PlayableCharacter.Swan:
+                        Game.Instance.SelectedCharacter = PlayableCharacter.MissFriday;  // Wrap around
+                        break;
+                }
+            }
+
             // Confirm selection and proceed to the overworld
             if (input.InteractPressed || input.AttackPressed)
                 ConfirmAndProceed();
@@ -263,7 +298,7 @@ namespace Fridays_Adventure.Scenes
                 _confirmBtn.Y + (_confirmBtn.Height - cSz.Height) / 2f);
 
             // ── Control hints ────────────────────────────────────────────────
-            g.DrawString("[1/2/3 or Click] Select   [Enter/Z] Confirm   [Esc] Back",
+            g.DrawString("[1/2/3 or ←/→ or A/D] Select   [Enter/Z] Confirm   [Esc] Back",
                 _labelFont, Brushes.DimGray, 10, H - 18);
 
             DrawDevMenuButton(g);
