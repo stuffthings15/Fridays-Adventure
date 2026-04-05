@@ -2021,30 +2021,28 @@
 
 ---
 
-## SESSION 56: Save Loading Fix — Restore Overworld Position
+## SESSION 57: Auto-Save After Level Completion
 
 **Date/Time:** April 5, 2026  
-**Duration:** Bugfix session  
+**Duration:** Feature implementation session  
 
 ### ✅ Features Implemented
-- **Save loading fix** (Scenes/OverworldScene.cs `OnEnter()`):
-  - Load saved `CurrentNodeId` from SaveData.
-  - Set `_current` to the saved node (or "start" if not found).
-  - Mark saved node as visited.
-  - Unlock all nodes to allow navigation (game is linear).
-  - Root cause: Overworld always started at "start" node, ignoring saved progress.
+- **Auto-save after level completion** (Scenes/OverworldScene.cs `OnResume()`):
+  - After processing level completion (unlocking nodes, incrementing level), automatically sync runtime state to SaveData and persist to disk.
+  - Show toast notification "Progress saved." to confirm save.
+  - Root cause: No automatic saving after levels, requiring manual saves to preserve progress.
 
 ### 🐛 Bugs Fixed
-- Fixed save loading not restoring overworld position — player always returned to start instead of saved node.
+- Fixed progress not being saved automatically after completing levels.
 
 ### 📋 Documentation Updated
-- `docs/WEEK_10_LOG_TEMPLATE.md` updated with Session 56 details.
+- `docs/WEEK_10_LOG_TEMPLATE.md` updated with Session 57 details.
 
 ### 🏗️ Build Status
 - Build: ✅ PASSING
 
 ### 🎯 Next Steps
-- In-game verify save/load restores correct overworld position and level progress.
+- In-game verify auto-save triggers after level completion and progress is preserved on reload.
 
 ---
 

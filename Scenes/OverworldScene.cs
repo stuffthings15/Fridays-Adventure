@@ -157,6 +157,14 @@ namespace Fridays_Adventure.Scenes
                 _status = "Choose your next destination.";
             }
 
+            // Auto-save after level completion processing
+            if (Game.Instance.LevelJustCompleted)
+            {
+                Game.Instance.SyncRuntimeToSaveData();
+                Game.Instance.Save.Save();
+                SMB3Hud.ShowToast("Progress saved.");
+            }
+
             _pendingNode = null;
         }
 
