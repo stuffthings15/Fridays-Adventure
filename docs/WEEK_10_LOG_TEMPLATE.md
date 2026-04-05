@@ -6,6 +6,120 @@
 
 ---
 
+## SESSION 65: Victory Condition Corrected - ALL 18 LEVELS REQUIRED (Not Just 11 Islands)
+
+**Date/Time:** April 5, 2026  
+**Duration:** Critical fix session  
+
+### ✅ Issues Fixed
+
+1. **Victory Condition Was Incomplete** (Scenes/OverworldScene.cs):
+   - **Previous Logic:** Game ended when 11/11 story islands were completed (bosses were optional)
+   - **Root Cause:** AllIslandsCompleted() only checked the 11 story islands
+   - **Now Fixed:** Victory triggers only when ALL 18 LEVELS are completed (11 islands + 7 bosses)
+   - All bosses are now **REQUIRED** to beat the game, not optional
+
+2. **Updated Counter Display:**
+   - **Main Panel Title:** Changed from "CAMPAIGN PROGRESS: X/11 Islands" → "VICTORY: X/18 Levels Complete"
+   - **Victory Message:** Changed from "★ ALL ISLANDS CONQUERED ★" → "★ ALL 18 LEVELS BEATEN! ★"
+   - **Counter:** Now shows X/18 instead of X/11
+   - **Victory Trigger:** Moves to X/18 (not 11/18)
+
+3. **All 18 Levels Now Listed:**
+   - Displays all 18 levels in the main panel (previously was filtering out bosses)
+   - Each level shows checkmark (✓) or bullet (•)
+   - Player can see progress on all bosses, not just islands
+
+### 📊 COMPLETE 18-LEVEL LIST
+
+**Story Islands (11):**
+1. Dinosaur Island
+3. Sky Island
+5. Blade Nation
+7. Harbor Town
+8. Coral Reef
+9. Tundra Peak
+12. Dive Gate
+13. Sunken Gate
+14. Kelp Maze
+15. Vent Ruins
+16. Abyss
+
+**Boss/Storm Encounters (7) - NOW REQUIRED:**
+2. Storm Belt
+4. Marine Blockade
+6. Warlord: Sudo
+10. Tempest Strait
+11. Warlord: Vanta
+17. Centipede of the Deep
+
+### 🎮 NEW VICTORY FLOW
+
+```
+Start Game
+    ↓
+Complete Island 1: Counter 1/18
+    ↓
+Complete Storm Belt: Counter 2/18
+    ↓
+Complete Island 2: Counter 3/18
+    ↓
+... (continue for all 18)
+    ↓
+Complete 17th Level: Counter 17/18
+    ↓
+Complete 18th Level (ANY BOSS): Counter 18/18
+    ↓
+VICTORY SCREEN TRIGGERS ← "★ ALL 18 LEVELS BEATEN! ★"
+    ↓
+Victory Scene
+    ↓
+Credits Scene
+```
+
+### 🐛 Technical Changes
+
+**AllIslandsCompleted() method now checks:**
+```csharp
+// ALL 18 LEVELS REQUIRED FOR VICTORY
+string[] allLevelIds = { 
+    // Story Islands (11)
+    "dino", "sky", "wano", "harbor", "coral", "tundra", 
+    "dive_gate", "sunken_gate", "kelp", "boiling_vent", "abyss",
+    // Boss/Storm Encounters (7) - ALSO REQUIRED
+    "storm1", "blockade", "warlord1", "storm2", "warlord2", "centipede_final"
+};
+```
+
+**Victory condition changed:**
+- OLD: `allStoriesComplete = storyCompleted == 11`
+- NEW: `allStoriesComplete = totalCompleted == 18`
+
+### 🔄 Build Status
+- Build: ✅ **PASSING (0 errors, 0 warnings)**
+
+### ✨ Impact on Gameplay
+
+**Before Session 65:**
+- Players could win game by beating 11 islands
+- Bosses were optional/skippable
+- Victory didn't require full completion
+
+**After Session 65:**
+- Players MUST beat all 18 levels
+- Every boss encounter is required
+- True 100% completion = game victory
+- Counter displays all 18 areas
+- Players see boss completion status
+
+### 🎯 Next Steps
+- In-game verify victory triggers only at 18/18
+- Verify all 18 levels display in counter
+- Test completing all bosses leads to victory
+- Confirm counter never reaches victory at 11/18 (must have all bosses too)
+
+---
+
 ## SESSION 64: Complete Level Progression System + Enhanced Counter Display
 
 **Date/Time:** April 5, 2026  

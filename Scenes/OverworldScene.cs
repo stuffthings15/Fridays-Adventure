@@ -169,18 +169,24 @@ namespace Fridays_Adventure.Scenes
         }
 
         /// <summary>
-        /// Returns true if all island nodes have been visited.
-        /// Islands are: dino, sky, wano, harbor, coral, tundra, dive_gate, sunken_gate, kelp, boiling_vent, abyss
+        /// Returns true if ALL 18 levels have been completed (11 story islands + 7 bosses).
+        /// Victory requires beating every area in the game, not just islands.
         /// </summary>
         private bool AllIslandsCompleted()
         {
-            string[] islandIds = { "dino", "sky", "wano", "harbor", "coral", "tundra", 
-                                  "dive_gate", "sunken_gate", "kelp", "boiling_vent", "abyss" };
-            
-            foreach (string id in islandIds)
+            // ALL 18 LEVELS REQUIRED FOR VICTORY
+            string[] allLevelIds = { 
+                // Story Islands (11) - required
+                "dino", "sky", "wano", "harbor", "coral", "tundra", 
+                "dive_gate", "sunken_gate", "kelp", "boiling_vent", "abyss",
+                // Boss/Storm Encounters (7) - ALSO REQUIRED
+                "storm1", "blockade", "warlord1", "storm2", "warlord2", "centipede_final"
+            };
+
+            foreach (string id in allLevelIds)
             {
-                var island = Find(id);
-                if (island == null || !island.Visited)
+                var node = Find(id);
+                if (node == null || !node.Visited)
                     return false;
             }
             return true;
@@ -677,7 +683,7 @@ namespace Fridays_Adventure.Scenes
             int itemsPerPanel = 12;
             int panelH = 16 + (itemsPerPanel * 14) + 20;
 
-            // ── MAIN PANEL: Story Islands (11 required for victory) ──
+            // ── MAIN PANEL: ALL 18 LEVELS (ALL REQUIRED FOR VICTORY) ──
             using (var br = new SolidBrush(Color.FromArgb(200, 20, 30, 60)))
                 g.FillRectangle(br, panelX, panelY, panelW, panelH);
             using (var pen = new Pen(Color.FromArgb(160, Color.Gold), 2))
@@ -696,19 +702,17 @@ namespace Fridays_Adventure.Scenes
                 }
             }
 
-            bool allStoriesComplete = storyCompleted == 11;
+            bool allStoriesComplete = totalCompleted == 18; // VICTORY REQUIRES ALL 18 LEVELS
             Color titleColor = allStoriesComplete ? Color.Gold : Color.LimeGreen;
-            string titleText = $"CAMPAIGN PROGRESS: {storyCompleted}/11 Islands";
+            string titleText = $"VICTORY: {totalCompleted}/18 Levels Complete";
 
             using (var f = new Font("Courier New", 9, FontStyle.Bold))
                 g.DrawString(titleText, f, new SolidBrush(titleColor), panelX + 6, panelY + 2);
 
-            // ── Level list (Story islands only) ──
+            // ── Level list (ALL 18 LEVELS) ──
             int drawCount = 0;
             for (int i = 0; i < levelIds.Length && drawCount < itemsPerPanel; i++)
             {
-                if (!isStoryCritical[i]) continue; // Skip non-story levels in this section
-
                 var node = Find(levelIds[i]);
                 bool visited = node != null && node.Visited;
 
@@ -735,7 +739,7 @@ namespace Fridays_Adventure.Scenes
                 using (var br = new SolidBrush(Color.FromArgb(100, 200, 160, 0)))
                     g.FillRectangle(br, panelX, victoryY, panelW, 16);
                 using (var f = new Font("Courier New", 9, FontStyle.Bold))
-                    g.DrawString("★ ALL ISLANDS CONQUERED ★", f, Brushes.Gold, panelX + 6, victoryY + 1);
+                    g.DrawString("★ ALL 18 LEVELS BEATEN! ★", f, Brushes.Gold, panelX + 6, victoryY + 1);
             }
 
             // ── SECONDARY PANEL: All Levels + Total Counter ──

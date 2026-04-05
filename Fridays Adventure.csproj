@@ -312,6 +312,8 @@
     <None Include="docs\SESSION_4_FEATURE_VERIFICATION_REPORT.md" />
     <None Include="docs\SESSION_4_LEGAL_VERIFICATION.md" />
     <None Include="docs\SESSION_5_FIXES_APPLIED.md" />
+    <None Include="docs\SESSION_64_IMPLEMENTATION_SUMMARY.md" />
+    <None Include="docs\SESSION_64_INGAME_VERIFICATION_GUIDE.md" />
     <None Include="docs\SESSION_6_FEATURES_IMPLEMENTED.md" />
     <None Include="docs\SESSION_7_PROGRESS.md" />
     <None Include="docs\THIRD_PARTY_ASSETS.md" />
