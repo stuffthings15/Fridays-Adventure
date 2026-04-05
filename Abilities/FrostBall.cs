@@ -8,11 +8,11 @@ namespace Fridays_Adventure.Abilities
 {
     /// <summary>
     /// Frost Ball ability — shoots a blue ice projectile on X key press.
-    /// Available to all playable characters with a 1-second cooldown.
+    /// Available to all playable characters with a 2-second cooldown.
     /// </summary>
     public sealed class FrostBall : Ability
     {
-        public FrostBall() : base("Frost Ball", 1.0f) { }
+        public FrostBall() : base("Frost Ball", 2.0f) { }
 
         protected override void OnUse(Entities.Character caster) 
         {

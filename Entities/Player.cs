@@ -433,8 +433,8 @@ namespace Fridays_Adventure.Entities
                 case PlayableCharacter.Orca:
                     if (!_tidalSlam.IsReady)  { Energy = Math.Min(MaxEnergy, Energy + EnergyCostCharAbility); return false; }
                     _tidalSlam.TryUse(this);
-                    // Apply dash forward
-                    VelocityX = FacingRight ? 500f : -500f;
+                    // Apply dash forward (7x longer distance)
+                    VelocityX = FacingRight ? 3500f : -3500f;
                     VelocityY = -100f; // slight upward
                     ApplyEffect(StatusEffect.Dodging, 0.3f); // brief i-frames
                     return true;

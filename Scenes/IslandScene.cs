@@ -1754,6 +1754,9 @@ namespace Fridays_Adventure.Scenes
             if (_player.IsAttacking) DrawAttackArc(g);
             if (_breakShockwaveTimer > 0f) DrawBreakShockwave(g);
 
+            // Draw exit flag with animated indicators
+            DrawExitFlag(g);
+
             // Phase 2 — Team 9: Accessibility outline mode — draws bright borders
             // around every interactive object so they read against any background.
             if (Game.Instance.OutlineModeEnabled)
