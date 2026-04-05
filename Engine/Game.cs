@@ -515,6 +515,10 @@ namespace Fridays_Adventure.Engine
                 DebugLogger.LogError("Game.OnTick", ex);
                 Input.EndFrame();
             }
+
+            // ── Update gamepad and touch inputs ───────────────────────────
+            Input.UpdateGamepads();  // Query connected gamepads
+            Input.EndFrame();         // Clear keyboard state for next frame
         }
 
         private void OnRender(System.Drawing.Graphics g)
