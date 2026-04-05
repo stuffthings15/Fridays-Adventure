@@ -10,16 +10,24 @@ namespace Fridays_Adventure.Entities
     public sealed class Berries : Item
     {
         private float _bob;
+        private readonly float _baseY;
 
-        public Berries(float x, float y) : base(x, y, 16, 16, 10) { }
+        public Berries(float x, float y) : base(x, y, 16, 16, 10)
+        {
+            _baseY = y;
+        }
 
-        public override void Update(float dt) { _bob += dt; }
+        public override void Update(float dt)
+        {
+            _bob += dt;
+            // Keep logical hitbox aligned to visual bob so airborne coins remain collectable.
+            Y = _baseY + (float)Math.Sin(_bob * 4f) * 3f;
+        }
 
         public override void Draw(Graphics g)
         {
             if (Collected) return;
-            float yOff = (float)Math.Sin(_bob * 4) * 3;
-            float cx   = X, cy = Y + yOff;
+            float cx = X, cy = Y;
 
             // ── SMB3-style gold coin ─────────────────────────────────────────
             // Outer bright gold body

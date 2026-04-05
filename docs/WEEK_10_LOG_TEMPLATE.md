@@ -1630,6 +1630,105 @@
 
 ---
 
+## SESSION 45: Gameplay Hotfix — Post-Clear Delay + Sky Coin Pickup Reliability
+
+**Date/Time:** April 5, 2026  
+**Duration:** Hotfix session  
+
+### ✅ Features Implemented
+- Reduced long post-level delay risk in `Scenes/CourseClearScene.cs`:
+  - Added a cap for bonus countdown seconds (`MaxBonusCountdownSeconds = 30`) so large values cannot stall transition flow.
+- Fixed intermittent sky coin pickup reliability in `Entities/Berries.cs`:
+  - Synced berry logical position (`Y`) to bob animation in `Update(...)`.
+  - Removed draw-only vertical offset so rendered coin and hitbox remain aligned.
+
+### 🐛 Bugs Fixed
+- Fixed long black-screen-style wait after level completion caused by overly long bonus countdown values.
+- Fixed intermittent inability to collect airborne/bobbing coins due to visual-hitbox desync.
+
+### 📋 Documentation Updated
+- `docs/WEEK_10_LOG_TEMPLATE.md` updated with Session 45 details.
+
+### 🏗️ Build Status
+- Build: ✅ PASSING
+
+### 🎯 Next Steps
+- In-game verify post-clear pacing feels immediate across multiple islands.
+- In-game verify coin pickup consistency on high/airborne berry placements.
+
+---
+
+## SESSION 46: Debug Log Triage — Render Exception Spam + Warning Cleanup
+
+**Date/Time:** April 5, 2026  
+**Duration:** Debugging + hotfix session  
+
+### ✅ Features Implemented
+- Investigated Visual Studio Output debug logs and build logs.
+- Fixed repeated `System.Drawing.ArgumentException` render-loop spam by correcting font lifetime usage:
+  - `Scenes/CardRouletteScene.cs`
+  - `Scenes/CourseClearScene.cs`
+- Removed build warning source by deleting unused field in:
+  - `Scenes/BossRushScene.cs` (`_startHp`)
+
+### 🐛 Bugs Fixed
+- Fixed repeated render exceptions caused by disposing scene-owned fonts every frame inside draw paths.
+- Fixed debug-log noise and potential UI instability on post-level scenes.
+- Fixed build warning `CS0169` in `BossRushScene`.
+
+### 📋 Documentation Updated
+- `docs/WEEK_10_LOG_TEMPLATE.md` updated with Session 46 details.
+
+### 🏗️ Build Status
+- Build: ✅ PASSING
+- Warnings: ✅ 0 (latest build)
+
+### 🎯 Next Steps
+- Run an in-game pass through `CardRouletteScene` and `CourseClearScene` to confirm no new render exceptions appear in debug output.
+- Continue monitoring logs after major UI scene transitions.
+
+---
+
+## SESSION 47: Global UI Access + Inventory Item Interaction + Docs in Options
+
+**Date/Time:** April 5, 2026  
+**Duration:** Implementation + release session  
+
+### ✅ Features Implemented
+- Added global quick-access UI overlays in `Engine/Game.cs`:
+  - Always-visible clickable `I INVENTORY` button.
+  - Always-visible clickable `ESC OPTIONS` button.
+  - Global hotkeys wired from any scene:
+    - `I` toggles inventory overlay.
+    - `Esc` opens options overlay (pause-style behavior).
+- Updated mouse click routing in `Form1.cs` so global buttons are handled before scene/HUD clicks.
+- Expanded `Scenes/InventoryScene.cs` item interaction:
+  - Added reserve item use via hotkey (`R`).
+  - Added clickable `USE (R)` button for reserve item.
+  - Kept medkit item both hot-keyed (`H`) and clickable.
+- Expanded `Scenes/OptionsScene.cs` with a documentation section:
+  - Open Documentation Folder
+  - Open Master Documentation Index
+  - Open AI Docs
+  - Open Week 10 Running Log
+  - Open README
+
+### 🐛 Bugs Fixed
+- Fixed options/documentation access not being available globally from every scene.
+- Fixed inventory interaction gap by making reserve item directly clickable/hot-keyed in inventory.
+
+### 📋 Documentation Updated
+- `docs/WEEK_10_LOG_TEMPLATE.md` updated with Session 47 details.
+
+### 🏗️ Build Status
+- Build: ✅ PASSING
+
+### 🎯 Next Steps
+- In-game verify global overlay buttons are visible/usable across gameplay + menu scenes.
+- Verify documentation open actions work in both IDE-run and published Release environment.
+
+---
+
 ## NOTES & IDEAS
 
 **Recurring Tasks:**

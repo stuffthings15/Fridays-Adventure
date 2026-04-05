@@ -31,6 +31,7 @@ namespace Fridays_Adventure.Scenes
         }
 
         private Rectangle _useHealthBtn;
+        private Rectangle _useReserveBtn;
 
         public override void OnEnter() { }
         public override void OnExit()  { }
@@ -47,6 +48,21 @@ namespace Fridays_Adventure.Scenes
                     Game.Instance.Audio.BeepHeal();
                     SMB3Hud.ShowToast($"Used medkit. Remaining: {PowerUpInventory.HealthItemCount}");
                 }
+
+            // Use reserve item while inventory is open.
+            if (input.IsPressed(System.Windows.Forms.Keys.R))
+            {
+                var used = PowerUpInventory.UseReserve();
+                if (used != SuitType.None)
+                {
+                    Game.Instance.Audio.BeepPowerup();
+                    SMB3Hud.ShowToast($"Used reserve item: {used}");
+                }
+                else
+                {
+                    SMB3Hud.ShowToast("Reserve box is empty.");
+                }
+            }
                 else
                 {
                     SMB3Hud.ShowToast("No medkit available (or HP is full).");
@@ -73,6 +89,21 @@ namespace Fridays_Adventure.Scenes
                 else
                 {
                     SMB3Hud.ShowToast("No medkit available (or HP is full).");
+                }
+                return;
+            }
+
+            if (_useReserveBtn.Contains(p))
+            {
+                var used = PowerUpInventory.UseReserve();
+                if (used != SuitType.None)
+                {
+                    Game.Instance.Audio.BeepPowerup();
+                    SMB3Hud.ShowToast($"Used reserve item: {used}");
+                }
+                else
+                {
+                    SMB3Hud.ShowToast("Reserve box is empty.");
                 }
                 return;
             }
@@ -174,6 +205,22 @@ namespace Fridays_Adventure.Scenes
                 "ICE Power", -1,
                 "Regenerates over time — powers abilities", Color.FromArgb(180, 220, 255));
 
+            // Reserve box item (hotkey + clickable).
+            string reserveLabel = PowerUpInventory.ReserveItem == SuitType.None
+                ? "Empty"
+                : PowerUpInventory.ReserveItem.ToString();
+            DrawItemEntry(g, rightX, ref ry, colW,
+                "Reserve Box", -1,
+                $"Current: {reserveLabel}  (Press R or click USE)", Color.FromArgb(255, 220, 120));
+
+            _useReserveBtn = new Rectangle(rightX + 28, ry - 4, 110, 26);
+            using (var br = new SolidBrush(Color.FromArgb(120, 90, 70, 20)))
+                g.FillRectangle(br, _useReserveBtn);
+            g.DrawRectangle(Pens.Gold, _useReserveBtn);
+            using (var bf = new Font("Courier New", 10, FontStyle.Bold))
+                g.DrawString("USE (R)", bf, Brushes.Gold, _useReserveBtn.X + 12, _useReserveBtn.Y + 4);
+            ry += 28;
+
             // Sea Stone counter
             if (Game.Instance.SeaStoneCount > 0)
             {
@@ -197,7 +244,7 @@ namespace Fridays_Adventure.Scenes
             DrawLabelValue(g, rightX, ref ry, "Player", Game.Instance.PlayerName, Brushes.LightGray);
 
             // ── Control hints ────────────────────────────────────────────────
-            g.DrawString("[Esc / I / Enter] Close Inventory   [H] Use Health Item",
+            g.DrawString("[Esc / I / Enter] Close   [H] Medkit   [R] Reserve Item",
                 _hintFont, Brushes.DimGray, W / 2 - 220, H - 24);
 
             DrawDevMenuButton(g);

@@ -81,6 +81,14 @@ namespace Fridays_Adventure.Scenes
                 : "Outline Mode: OFF [Toggle]";
             _rows.Add(new Row { Type = RowType.ToolAction, Label = outlineLabel, ToolAction = ToggleOutlineMode });
 
+            // Documentation hub — quick access to core project docs from anywhere.
+            _rows.Add(new Row { Type = RowType.Header, Label = "DOCUMENTATION" });
+            _rows.Add(new Row { Type = RowType.ToolAction, Label = "Open Documentation Folder", ToolAction = OpenDocumentationFolder });
+            _rows.Add(new Row { Type = RowType.ToolAction, Label = "Open Master Documentation Index", ToolAction = OpenMasterDocumentationIndex });
+            _rows.Add(new Row { Type = RowType.ToolAction, Label = "Open AI Docs", ToolAction = OpenAiDocs });
+            _rows.Add(new Row { Type = RowType.ToolAction, Label = "Open Week 10 Running Log", ToolAction = OpenWeek10Log });
+            _rows.Add(new Row { Type = RowType.ToolAction, Label = "Open README", ToolAction = OpenReadme });
+
             _rows.Add(new Row { Type = RowType.Header,   Label = "PLAYLISTS" });
             foreach (string mood in new[] { "overworld", "combat", "island", "boss" })
             {
@@ -408,6 +416,37 @@ namespace Fridays_Adventure.Scenes
             catch (Exception ex)
             {
                 DebugLogger.LogError("Options.OpenLogsFolder", ex);
+            }
+        }
+
+        private static void OpenDocumentationFolder()
+        {
+            string docsDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "docs");
+            try
+            {
+                Process.Start("explorer.exe", docsDir);
+            }
+            catch (Exception ex)
+            {
+                DebugLogger.LogError("Options.OpenDocumentationFolder", ex);
+            }
+        }
+
+        private static void OpenMasterDocumentationIndex() => OpenDocument("docs", "MASTER_DOCUMENTATION_INDEX.md");
+        private static void OpenAiDocs() => OpenDocument("docs", "AI_DOCS.md");
+        private static void OpenWeek10Log() => OpenDocument("docs", "WEEK_10_LOG_TEMPLATE.md");
+        private static void OpenReadme() => OpenDocument("README.md");
+
+        private static void OpenDocument(params string[] relativeParts)
+        {
+            string fullPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, Path.Combine(relativeParts));
+            try
+            {
+                Process.Start(fullPath);
+            }
+            catch (Exception ex)
+            {
+                DebugLogger.LogError("Options.OpenDocument", ex);
             }
         }
 

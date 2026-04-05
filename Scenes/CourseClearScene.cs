@@ -40,6 +40,7 @@ namespace Fridays_Adventure.Scenes
         private int   _bonusRemaining;   // remaining seconds to count down
         private const float BonusTickRate = 0.04f; // seconds per bonus tick
         private const int   BonusPerSec  = 10;     // score added per remaining second
+        private const int   MaxBonusCountdownSeconds = 30; // cap to prevent long post-clear stalls
 
         // ── Auto-advance ──────────────────────────────────────────────────────
         private float _autoTimer;
@@ -82,7 +83,7 @@ namespace Fridays_Adventure.Scenes
 
             // Start banner slide-in immediately.
             _bannerTimer    = 0f;
-            _bonusRemaining = _timeRemaining;
+            _bonusRemaining = Math.Max(0, Math.Min(_timeRemaining, MaxBonusCountdownSeconds));
             _bonusCounting  = false;
             _autoTimer      = 0f;
 
@@ -178,48 +179,36 @@ namespace Fridays_Adventure.Scenes
             float bannerT = _bannerTimer / BannerDuration;
             float bannerY = -80f + EasingFunctions.EaseOutBounce(bannerT) * (H / 2f - 80f);
 
-            using (var f = _titleFont)
-            {
-                string title = "COURSE  CLEAR!";
-                SizeF sz = g.MeasureString(title, f);
-                // Shadow
-                g.DrawString(title, f, Brushes.DarkOrange, (W - sz.Width) / 2f + 3, bannerY + 3);
-                g.DrawString(title, f, Brushes.Gold,       (W - sz.Width) / 2f,     bannerY);
-            }
+            string title = "COURSE  CLEAR!";
+            SizeF titleSz = g.MeasureString(title, _titleFont);
+            // Shadow
+            g.DrawString(title, _titleFont, Brushes.DarkOrange, (W - titleSz.Width) / 2f + 3, bannerY + 3);
+            g.DrawString(title, _titleFont, Brushes.Gold,       (W - titleSz.Width) / 2f,     bannerY);
 
             // ── Level name ────────────────────────────────────────────────────
-            using (var f = _subFont)
-            {
-                string levelStr = $"~  {_levelName}  ~";
-                SizeF sz = g.MeasureString(levelStr, f);
-                g.DrawString(levelStr, f, Brushes.LightCyan, (W - sz.Width) / 2f, H / 2f - 26);
-            }
+            string levelStr = $"~  {_levelName}  ~";
+            SizeF levelSz = g.MeasureString(levelStr, _subFont);
+            g.DrawString(levelStr, _subFont, Brushes.LightCyan, (W - levelSz.Width) / 2f, H / 2f - 26);
 
             // ── Time bonus row ────────────────────────────────────────────────
             if (_bonusCounting)
             {
-                using (var f = _infoFont)
-                {
-                    int shown = _bonusRemaining;
-                    g.DrawString($"TIME BONUS: {shown,5} × {BonusPerSec}", f, Brushes.White, W / 2f - 110, H / 2f + 30);
-                    g.DrawString($"TOTAL SCORE: {Game.Instance.PlayerBounty:N0}", f, Brushes.Yellow, W / 2f - 100, H / 2f + 58);
-                }
+                int shown = _bonusRemaining;
+                g.DrawString($"TIME BONUS: {shown,5} × {BonusPerSec}", _infoFont, Brushes.White, W / 2f - 110, H / 2f + 30);
+                g.DrawString($"TOTAL SCORE: {Game.Instance.PlayerBounty:N0}", _infoFont, Brushes.Yellow, W / 2f - 100, H / 2f + 58);
             }
 
             // ── Grade letter (right side) ─────────────────────────────────────
             if (_bonusCounting)
             {
-                using (var f = _gradeFont)
-                {
-                    SizeF gsz = g.MeasureString(_grade, f);
-                    float gx = W - gsz.Width - 60;
-                    float gy = H / 2f - gsz.Height / 2f;
-                    // Glow shadow
-                    using (var br = new SolidBrush(Color.FromArgb(80, _gradeColor)))
-                        g.DrawString(_grade, f, br, gx + 4, gy + 4);
-                    using (var br = new SolidBrush(_gradeColor))
-                        g.DrawString(_grade, f, br, gx, gy);
-                }
+                SizeF gsz = g.MeasureString(_grade, _gradeFont);
+                float gx = W - gsz.Width - 60;
+                float gy = H / 2f - gsz.Height / 2f;
+                // Glow shadow
+                using (var br = new SolidBrush(Color.FromArgb(80, _gradeColor)))
+                    g.DrawString(_grade, _gradeFont, br, gx + 4, gy + 4);
+                using (var br = new SolidBrush(_gradeColor))
+                    g.DrawString(_grade, _gradeFont, br, gx, gy);
             }
 
             // ── "Press any button" prompt ─────────────────────────────────────
@@ -227,12 +216,11 @@ namespace Fridays_Adventure.Scenes
             {
                 bool blink = (int)((_autoTimer) * 4) % 2 == 0;
                 if (blink)
-                    using (var f = _infoFont)
-                    {
-                        const string prompt = "[ Press any button to continue ]";
-                        SizeF sz = g.MeasureString(prompt, f);
-                        g.DrawString(prompt, f, Brushes.LightYellow, (W - sz.Width) / 2f, H - 60);
-                    }
+                {
+                    const string prompt = "[ Press any button to continue ]";
+                    SizeF promptSz = g.MeasureString(prompt, _infoFont);
+                    g.DrawString(prompt, _infoFont, Brushes.LightYellow, (W - promptSz.Width) / 2f, H - 60);
+                }
             }
 
             // Curtain wipe overlay.

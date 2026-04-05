@@ -278,6 +278,10 @@ namespace Fridays_Adventure.Engine
 
         private readonly GameCanvas _canvas;
         private readonly Timer      _timer;
+
+        // Global quick-access buttons (always visible): Inventory + Options.
+        private Rectangle _globalInventoryBtn;
+        private Rectangle _globalOptionsBtn;
         private const float FixedDt = 1f / 60f;
 
         // ── New cross-cutting systems ─────────────────────────────────────────
@@ -435,7 +439,12 @@ namespace Fridays_Adventure.Engine
                 }
 
                 Audio.Tick(dt);
-                Scenes.Current?.Update(dt);
+
+                // Global quick overlays:
+                // I = Inventory, Esc = Options (pause-style behavior) from any scene.
+                bool handledGlobalOverlay = HandleGlobalOverlayHotkeys();
+                if (!handledGlobalOverlay)
+                    Scenes.Current?.Update(dt);
 
                 // Team 3 (Technical Lead) — process deferred config reload events.
                 HotReloadConfig.Tick();
@@ -522,6 +531,9 @@ namespace Fridays_Adventure.Engine
                 ScreenShake.ApplyTranslation(g);
                 Scenes.Current?.Draw(g);
                 ScreenShake.ResetTranslation(g);
+
+                // Always-visible quick-access UI (Inventory / Options).
+                DrawGlobalQuickButtons(g);
 
                 // Floating text drawn after scene but before HUD overlay.
                 FloatingText.Draw(g);
@@ -773,6 +785,101 @@ namespace Fridays_Adventure.Engine
             var scene = Scenes.Current;
             if (scene == null || !IsGameplayScene(scene)) return false;
             return SMB3Hud.HandleHudClick(p, GetActiveScenePlayer());
+        }
+
+        /// <summary>
+        /// Handles always-visible quick UI button clicks (Inventory / Options).
+        /// </summary>
+        public bool TryHandleGlobalUiClick(Point p)
+        {
+            if (_globalInventoryBtn.Contains(p))
+            {
+                ToggleInventoryOverlay();
+                return true;
+            }
+
+            if (_globalOptionsBtn.Contains(p))
+            {
+                OpenOptionsOverlay();
+                return true;
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Handles global hotkeys that should work at all times.
+        /// </summary>
+        private bool HandleGlobalOverlayHotkeys()
+        {
+            var scene = Scenes.Current;
+            if (scene == null || scene is LoadingScene) return false;
+
+            // Inventory hotkey (I): toggle inventory scene.
+            if (Input.InventoryPressed)
+            {
+                ToggleInventoryOverlay();
+                return true;
+            }
+
+            // Pause/options hotkey (Esc): open options overlay from anywhere.
+            if (Input.PausePressed && !(scene is OptionsScene))
+            {
+                OpenOptionsOverlay();
+                return true;
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Opens options if not already open.
+        /// </summary>
+        private void OpenOptionsOverlay()
+        {
+            if (Scenes.Current is OptionsScene) return;
+            Scenes.Push(new OptionsScene());
+        }
+
+        /// <summary>
+        /// Toggles inventory overlay scene.
+        /// </summary>
+        private void ToggleInventoryOverlay()
+        {
+            if (Scenes.Current is InventoryScene)
+            {
+                Scenes.Pop();
+                return;
+            }
+
+            Scenes.Push(new InventoryScene(GetActiveScenePlayer()));
+        }
+
+        /// <summary>
+        /// Draws always-visible quick buttons for inventory and options access.
+        /// </summary>
+        private void DrawGlobalQuickButtons(Graphics g)
+        {
+            int W = CanvasWidth;
+            _globalInventoryBtn = new Rectangle(W - 206, 0, 102, 28);
+            _globalOptionsBtn   = new Rectangle(W - 102, 0, 102, 28);
+
+            using (var invBr = new SolidBrush(Color.FromArgb(205, 30, 95, 40)))
+                g.FillRectangle(invBr, _globalInventoryBtn);
+            using (var optBr = new SolidBrush(Color.FromArgb(205, 30, 65, 120)))
+                g.FillRectangle(optBr, _globalOptionsBtn);
+
+            using (var pen = new Pen(Color.FromArgb(220, 220, 220), 1))
+            {
+                g.DrawRectangle(pen, _globalInventoryBtn);
+                g.DrawRectangle(pen, _globalOptionsBtn);
+            }
+
+            using (var f = new Font("Courier New", 9, FontStyle.Bold))
+            {
+                g.DrawString("I INVENTORY", f, Brushes.White, _globalInventoryBtn.X + 8, _globalInventoryBtn.Y + 7);
+                g.DrawString("ESC OPTIONS", f, Brushes.White, _globalOptionsBtn.X + 8, _globalOptionsBtn.Y + 7);
+            }
         }
     }
 }

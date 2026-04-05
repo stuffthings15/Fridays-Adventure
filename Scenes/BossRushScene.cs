@@ -47,9 +47,6 @@ namespace Fridays_Adventure.Scenes
         private float _waitTimer   = 0f;
         private const float WaitBetween = 2.5f;
 
-        // ── Shared HP pool (all boss fights use same player HP) ───────────────
-        private int _startHp;
-
         // ── Results ───────────────────────────────────────────────────────────
         private int   _bossesDefeated = 0;
         private float _totalTime      = 0f;

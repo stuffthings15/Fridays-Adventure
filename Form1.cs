@@ -67,6 +67,7 @@ namespace Fridays_Adventure
 
             _canvas.MouseClick += (s, e) =>
             {
+                if (_game.TryHandleGlobalUiClick(e.Location)) return;
                 if (_game.TryHandleHudClick(e.Location)) return;
                 _game.Scenes.Current?.HandleClick(e.Location);
             };

@@ -232,12 +232,9 @@ namespace Fridays_Adventure.Scenes
                 g.FillRectangle(br, 0, 0, W, H);
 
             // ── Title ─────────────────────────────────────────────────────────
-            using (var f = _titleFont)
-            {
-                const string title = "CARD  ROULETTE";
-                SizeF sz = g.MeasureString(title, f);
-                g.DrawString(title, f, Brushes.Gold, (W - sz.Width) / 2f, 30);
-            }
+            const string title = "CARD  ROULETTE";
+            SizeF titleSz = g.MeasureString(title, _titleFont);
+            g.DrawString(title, _titleFont, Brushes.Gold, (W - titleSz.Width) / 2f, 30);
 
             // ── Cards ─────────────────────────────────────────────────────────
             int cardW = 120, cardH = 160;
@@ -254,27 +251,21 @@ namespace Fridays_Adventure.Scenes
             // ── Hint line ─────────────────────────────────────────────────────
             if (!_resultShown && _activeCard < 3)
             {
-                using (var f = _hintFont)
-                {
-                    string hint = $"Press JUMP / Z to stop card {_activeCard + 1}";
-                    SizeF sz = g.MeasureString(hint, f);
-                    g.DrawString(hint, f, Brushes.LightGray, (W - sz.Width) / 2f, H - 60);
-                }
+                string hint = $"Press JUMP / Z to stop card {_activeCard + 1}";
+                SizeF sz = g.MeasureString(hint, _hintFont);
+                g.DrawString(hint, _hintFont, Brushes.LightGray, (W - sz.Width) / 2f, H - 60);
             }
 
             // ── Result banner ─────────────────────────────────────────────────
             if (_resultShown)
             {
-                using (var f = _resultFont)
-                {
-                    SizeF sz = g.MeasureString(_resultMsg, f);
-                    float rx = (W - sz.Width) / 2f;
-                    float ry = H - 90;
-                    using (var br = new SolidBrush(Color.FromArgb(200, 10, 10, 30)))
-                        g.FillRectangle(br, rx - 10, ry - 6, sz.Width + 20, sz.Height + 12);
-                    using (var br = new SolidBrush(_resultColor))
-                        g.DrawString(_resultMsg, f, br, rx, ry);
-                }
+                SizeF sz = g.MeasureString(_resultMsg, _resultFont);
+                float rx = (W - sz.Width) / 2f;
+                float ry = H - 90;
+                using (var br = new SolidBrush(Color.FromArgb(200, 10, 10, 30)))
+                    g.FillRectangle(br, rx - 10, ry - 6, sz.Width + 20, sz.Height + 12);
+                using (var br = new SolidBrush(_resultColor))
+                    g.DrawString(_resultMsg, _resultFont, br, rx, ry);
             }
 
             SceneTransition.Draw(g, W, H);
@@ -302,32 +293,23 @@ namespace Fridays_Adventure.Scenes
                 g.DrawRectangle(pen, x, y, w, h);
 
             // Face symbol.
-            using (var f = _symbolFont)
-            {
-                string sym = CardSymbol[face];
-                SizeF  sz  = g.MeasureString(sym, f);
-                using (var br = new SolidBrush(CardColor[face]))
-                    g.DrawString(sym, f, br, x + (w - sz.Width) / 2f, y + h / 2f - sz.Height / 2f - 10);
-            }
+            string sym = CardSymbol[face];
+            SizeF symSz = g.MeasureString(sym, _symbolFont);
+            using (var br = new SolidBrush(CardColor[face]))
+                g.DrawString(sym, _symbolFont, br, x + (w - symSz.Width) / 2f, y + h / 2f - symSz.Height / 2f - 10);
 
             // Face label.
-            using (var f = _labelFont)
-            {
-                string lbl = CardLabel[face];
-                SizeF  sz  = g.MeasureString(lbl, f);
-                using (var br = new SolidBrush(stopped ? Color.White : Color.DimGray))
-                    g.DrawString(lbl, f, br, x + (w - sz.Width) / 2f, y + h - 26);
-            }
+            string lbl = CardLabel[face];
+            SizeF lblSz = g.MeasureString(lbl, _labelFont);
+            using (var br = new SolidBrush(stopped ? Color.White : Color.DimGray))
+                g.DrawString(lbl, _labelFont, br, x + (w - lblSz.Width) / 2f, y + h - 26);
 
             // "LOCKED" indicator on stopped card.
             if (stopped)
             {
-                using (var f = _labelFont)
-                {
-                    SizeF sz = g.MeasureString("STOP", f);
-                    using (var br = new SolidBrush(Color.FromArgb(180, Color.LimeGreen)))
-                        g.DrawString("STOP", f, br, x + (w - sz.Width) / 2f, y + 8);
-                }
+                SizeF stopSz = g.MeasureString("STOP", _labelFont);
+                using (var br = new SolidBrush(Color.FromArgb(180, Color.LimeGreen)))
+                    g.DrawString("STOP", _labelFont, br, x + (w - stopSz.Width) / 2f, y + 8);
             }
         }
     }
