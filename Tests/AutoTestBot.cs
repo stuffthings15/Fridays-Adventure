@@ -245,84 +245,8 @@ namespace Fridays_Adventure.Tests
 
         public static List<LevelAutoTestResult> AllResults { get; set; } = new List<LevelAutoTestResult>();
 
-        /// <summary>
-        /// Test a single level with detailed visual debugging
-        /// </summary>
-        public static EnhancedLevelTestResult TestLevelVisual(string levelId, string levelName, BotVisualDebugger debugger = null)
-        {
-            var bot = new AutoTestBot();
-            bot.Initialize(100f, 300f); // Start position
-
-            var visualDebugger = debugger ?? new BotVisualDebugger();
-            visualDebugger.StartLevelDebug(bot, levelName);
-
-            var result = new EnhancedLevelTestResult
-            {
-                LevelId = levelId,
-                LevelName = levelName,
-                BotData = bot,
-                VisualDebugData = visualDebugger
-            };
-
-            try
-            {
-                // Simulate bot running through level for 60 seconds
-                for (float time = 0f; time < 60f; time += 0.016f) // ~60 FPS
-                {
-                    bot.Update(0.016f);
-                    visualDebugger.Update(0.016f);
-
-                    // Simulate random events
-                    SimulateLevelEvents(bot, time, levelId);
-
-                    // Log important events
-                    if (bot.State == AutoTestBot.BotState.WonLevel && !result.IsBeatable)
-                    {
-                        visualDebugger.LogAction("🎉 EXIT REACHED - Level Won!", "SUCCESS");
-                    }
-
-                    // Check if bot reached exit
-                    if (bot.State == AutoTestBot.BotState.WonLevel)
-                    {
-                        result.IsBeatable = true;
-                        result.TimeToComplete = bot.TimeInLevel;
-                        result.ItemsCollected = bot.ItemsCollected;
-                        result.EnemiesDefeated = bot.EnemiesDefeated;
-                        break;
-                    }
-
-                    // Check timeout
-                    if (bot.TimeInLevel >= 60f)
-                    {
-                        result.IsBeatable = false;
-                        result.FailureReason = "Timeout - Level took too long";
-                        visualDebugger.LogAction("⏱️ TIMEOUT - 60 seconds exceeded", "TIMEOUT");
-                        break;
-                    }
-                }
-
-                // If bot made no progress, level is likely unbeatable
-                if (bot.DistanceTraveled < 50f)
-                {
-                    result.IsBeatable = false;
-                    result.FailureReason = "Bot made insufficient progress";
-                    visualDebugger.LogAction("❌ NO PROGRESS - Bot didn't move enough", "NO_PROGRESS");
-                }
-
-                // Capture debug data
-                result.BotGotStuck = visualDebugger.WasStuckAtAnyPoint();
-                result.StuckDuration = visualDebugger.GetStuckDuration();
-                result.DetailedActionLog = visualDebugger.GetActionLog();
-            }
-            catch (Exception ex)
-            {
-                result.IsBeatable = false;
-                result.FailureReason = $"Exception: {ex.Message}";
-                visualDebugger.LogAction($"💥 EXCEPTION: {ex.Message}", "ERROR");
-            }
-
-            return result;
-        }
+        // ── Test Session Logger ──────────────────────────────────────────
+        private static TestSessionLogger _logger;
 
         /// <summary>
         /// Test a single level with the bot (used for live progress)
@@ -389,6 +313,9 @@ namespace Fridays_Adventure.Tests
         /// </summary>
         public static void RunAllTests()
         {
+            // Initialize file logger
+            _logger = new TestSessionLogger();
+
             // Allocate console window for WinExe application
             // Fixes "The handle is invalid" IOException when calling Console.Clear()
             try
@@ -409,6 +336,9 @@ namespace Fridays_Adventure.Tests
             Console.WriteLine("║                                                            ║");
             Console.WriteLine("╚════════════════════════════════════════════════════════════╝\n");
 
+            _logger.WriteLine("Starting automated test run of all 18 levels...");
+            _logger.WriteBlankLine();
+
             // Test each level
             string[] levelIds = {
                 "dino", "storm1", "sky", "blockade", "wano", "warlord1",
@@ -427,21 +357,41 @@ namespace Fridays_Adventure.Tests
 
             for (int i = 0; i < levelIds.Length; i++)
             {
-                Console.WriteLine($"[{i + 1}/18] Testing: {levelNames[i]}...");
+                string testMessage = $"[{i + 1}/18] Testing: {levelNames[i]}...";
+                Console.WriteLine(testMessage);
+                _logger.WriteLine(testMessage);
+
                 var result = TestLevel(levelIds[i], levelNames[i]);
                 AllResults.Add(result);
 
                 string status = result.IsBeatable ? "✅ BEATABLE" : "❌ NOT BEATABLE";
                 Console.WriteLine($"        Status: {status}");
+                _logger.WriteLine($"Status: {status}");
+
                 Console.WriteLine($"        {result.BotData.GetSummary()}");
+                _logger.WriteLine(result.BotData.GetSummary());
+
                 if (!string.IsNullOrEmpty(result.FailureReason))
                 {
                     Console.WriteLine($"        Issue: {result.FailureReason}");
+                    _logger.WriteLine($"Issue: {result.FailureReason}");
                 }
                 Console.WriteLine();
+                _logger.WriteBlankLine();
+
+                // Log individual level result
+                _logger.LogLevelResult(levelIds[i], result);
             }
 
             PrintTestSummary();
+
+            // Create CSV for analysis
+            _logger.CreateResultsCSV(AllResults);
+
+            // Close logger
+            _logger.FinishSession();
+
+            Console.WriteLine($"\n📁 Test logs saved to: {_logger.GetLogDirectory()}");
         }
 
         /// <summary>
@@ -545,16 +495,28 @@ namespace Fridays_Adventure.Tests
             Console.WriteLine($"✅ Beatable (simulation): {beatableCount}/18");
             Console.WriteLine($"❌ Not beatable (simulation): {unbeatableCount}/18\n");
 
+            // Log summary
+            _logger.LogTestSummary(AllResults.Count, beatableCount, unbeatableCount);
+
             if (unbeatableCount > 0)
             {
                 Console.WriteLine("LEVELS NEEDING ATTENTION:");
                 Console.WriteLine("─────────────────────────────────────────────────────────");
+                _logger.WriteLine("LEVELS NEEDING ATTENTION:");
+
                 foreach (var result in AllResults.Where(r => !r.IsBeatable))
                 {
                     Console.WriteLine($"\n{result.LevelName} ({result.LevelId})");
+                    _logger.WriteLine($"\n{result.LevelName} ({result.LevelId})");
+
                     Console.WriteLine($"  ❌ {result.FailureReason}");
+                    _logger.WriteLine($"  ❌ {result.FailureReason}");
+
                     Console.WriteLine($"  Distance traveled: {result.BotData.DistanceTraveled:F0}px");
+                    _logger.WriteLine($"  Distance traveled: {result.BotData.DistanceTraveled:F0}px");
+
                     Console.WriteLine($"  Time spent: {result.BotData.TimeInLevel:F1}s");
+                    _logger.WriteLine($"  Time spent: {result.BotData.TimeInLevel:F1}s");
                 }
                 Console.WriteLine("\n════════════════════════════════════════════════════════════");
                 Console.WriteLine("⚠️  ACTION REQUIRED: Fix identified levels");
@@ -570,6 +532,7 @@ namespace Fridays_Adventure.Tests
             // Show statistics
             float averageTime = AllResults.Where(r => r.IsBeatable).Average(r => r.TimeToComplete);
             Console.WriteLine($"\nAverage completion time: {averageTime:F1}s");
+            _logger.WriteLine($"\nAverage completion time: {averageTime:F1}s");
         }
 
         /// <summary>
