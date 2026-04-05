@@ -297,11 +297,9 @@ namespace Fridays_Adventure.Systems
             DrawAbilitySlot(g, "R:BREAK",   player.BreakWallCooldownProgress,
                             player.BreakWallCooldownRemaining,  player.BreakWallReady,
                             startX + 196,    y);
-            // X: Dodge (cooldown-based)
-            float dodgeProgress = 1f - (player.DodgeCooldown / 0.9f);
-            bool dodgeReady = player.DodgeCooldown <= 0;
-            DrawAbilitySlot(g, "X:DODGE",   dodgeProgress,
-                            player.DodgeCooldown,  dodgeReady,
+            // X: Frost Ball
+            DrawAbilitySlot(g, "X:FIRE",   player.FrostBallCooldownProgress,
+                            player.FrostBallCooldownRemaining, player.FrostBallReady,
                             startX + 294,    y);
             // C: Air Dash (available if not used this jump)
             bool airDashReady = !player.AirDashUsed && player.IsGrounded;

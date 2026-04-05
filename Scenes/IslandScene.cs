@@ -373,12 +373,10 @@ namespace Fridays_Adventure.Scenes
                 b.SyncBaseY();
             }
 
-            foreach (var hp in _healthPickups)
+            foreach (var sc in _starCoins)
             {
-                hp.X *= LevelScale;
-                hp.Y *= LevelScale;
+                sc.ApplyLevelScale(LevelScale);
             }
-
             // Scale moving platform extents
             foreach (var mp in _movingPlatforms)
                 mp.ApplyScale(LevelScale);
@@ -1132,18 +1130,13 @@ namespace Fridays_Adventure.Scenes
             // ── Dodge ─────────────────────────────────────────────────────────
             if (input.DodgePressed)
             {
-                _player.TryDodge();
-                // Phase 2 T4 #6: Parry — open the window on every dodge start.
-                _player.OpenParryWindow();
-            }
-
-            // ── Phase 2 T7 #2: Air Dash (C key) ──────────────────────────────
-            if (input.AirDashPressed && !_player.IsGrounded && !_player.AirDashUsed)
-            {
-                _player.DoAirDash();
-                Game.Instance.Audio.BeepJump();
-                ParticleSystem.SpawnBurst(_player.CenterX, _player.CenterY, 8,
-                    Color.Cyan, 60f, 160f, 0.15f, 0.35f);
+                if (_player.TryShootFrostBall())
+                {
+                    float fx = _player.FacingRight ? _player.X + _player.Width + 4 : _player.X - 18;
+                    float fy = _player.Y + _player.Height * 0.55f;
+                    _frostBalls.Add(new FrostBallProjectile(fx, fy, _player.FacingRight));
+                    Game.Instance.Audio.BeepFireball();
+                }
             }
 
             // ── Melee attack / Fire Flower projectile ─────────────────────────

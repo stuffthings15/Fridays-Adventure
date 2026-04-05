@@ -28,12 +28,12 @@ namespace Fridays_Adventure.Entities
     public sealed class StarCoinPickup
     {
         // ── Position & dimensions ─────────────────────────────────────────────
-        public float X       { get; }
-        public float Y       { get; }
-        private const int W  = 24;
-        private const int H  = 24;
+        public float X       { get; private set; }
+        public float Y       { get; private set; }
+        private float _width = W;
+        private float _height = H;
 
-        public Rectangle Hitbox => new Rectangle((int)X, (int)Y, W, H);
+        public Rectangle Hitbox => new Rectangle((int)X, (int)Y, (int)_width, (int)_height);
 
         // ── State ─────────────────────────────────────────────────────────────
         public bool Collected { get; private set; }
@@ -47,6 +47,17 @@ namespace Fridays_Adventure.Entities
         {
             X = x;
             Y = y;
+        }
+
+        /// <summary>
+        /// Applies level scaling to position and hitbox.
+        /// </summary>
+        public void ApplyLevelScale(float scale)
+        {
+            X *= scale;
+            Y *= scale;
+            _width *= scale;
+            _height *= scale;
         }
 
         // ── Update (Team 7 — collision) ────────────────────────────────────────

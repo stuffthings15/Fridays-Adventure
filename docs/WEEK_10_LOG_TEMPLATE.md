@@ -1512,7 +1512,7 @@
 - Build: ✅ PASSING
 
 ### 🎯 Next Steps
-- Validate in-game pacing on island/fortress/storm/airship clears to confirm transition timing feels responsive.
+- In-game verify post-clear pacing on island/fortress/storm/airship clears to confirm transition timing feels responsive.
 
 ---
 
@@ -2085,23 +2085,37 @@
 
 ---
 
-## NOTES & IDEAS
+## SESSION 59: Bug Fixes — Star Coins, Orca Ability, X Key Frost Ball
 
-**Recurring Tasks:**
-- [ ] Update checklist in `PHASE_2_PROGRESS_TRACKER.md` after each feature
-- [ ] Run build verification (0 errors, 0 warnings)
-- [ ] Test Phase 1 features still working
-- [ ] Git commit with Phase/Team info
-- [ ] Update this log before committing
+**Date/Time:** April 5, 2026  
+**Duration:** Bugfix session  
 
-**Key Files to Remember:**
-- `.github/copilot-instructions.md` - Code standards
-- `docs/PHASE_2_START_HERE.md` - Phase 2 workflow
-- `docs/MASTER_DOCUMENTATION_INDEX.md` - Find anything
-- `Assets/The Forge/Week10 Log_.docx` - THIS LOG
+### ✅ Features Implemented
+- **Star coin collection fixes** (Entities/StarCoinPickup.cs + Scenes/IslandScene.cs):
+  - Added ApplyLevelScale method to scale position and hitbox.
+  - Called ApplyLevelScale in IslandScene.ApplyLevelScale() to fix uncollectable coins after level scaling.
+  - Star coins now properly scale and remain stationary (not moving with player).
+- **Orca ability changed to dash** (Entities/Player.cs):
+  - Modified UseCharacterAbility for Orca to apply forward dash velocity instead of ground-pound AOE.
+  - Orca now dashes forward quickly with brief i-frames.
+- **X key changed to Frost Ball** (Scenes/IslandScene.cs + Systems/GameHUD.cs):
+  - X key now shoots Frost Ball projectile instead of dodge.
+  - Updated HUD to show "X:FIRE" instead of "X:DODGE".
 
-**Contact Points:**
-- Build verification: `run_build`
-- Git status: `git status`
-- Phase 2 specs: `docs/PHASE_2_FEATURES_WAVE_1/2.md`
+### 🐛 Bugs Fixed
+- Fixed star coins being uncollectable due to unscaled hitboxes in scaled worlds.
+- Fixed star coins appearing to move with player/camera due to improper scaling.
+- Fixed Orca's E ability not moving forward (now dashes forward quickly).
+- Fixed X key not shooting Frost Ball (now does).
+
+### 📋 Documentation Updated
+- `docs/WEEK_10_LOG_TEMPLATE.md` updated with Session 59 details.
+
+### 🔄 Build Status
+- Build: ✅ PASSING
+
+### 🎯 Next Steps
+- In-game verify star coin collection works without damage.
+- Verify Orca dashes forward on E key.
+- Verify X key shoots Frost Ball.
 
