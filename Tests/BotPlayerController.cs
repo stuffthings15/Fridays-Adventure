@@ -74,9 +74,11 @@ namespace Fridays_Adventure.Tests
             if (_jumpHoldTimer > 0f)
                 _jumpHoldTimer -= dt;
 
-            // ── CARD ROULETTE HANDLING (Inject Enter every frame to play cards) ─
-            // If we're in CardRouletteScene, inject Enter to select cards automatically
-            input.InjectPressed(Keys.Return);  // Enter key for card selection
+            // ── CARD ROULETTE & MINIGAME HANDLING ─────────────────────────────
+            // Inject Space (Jump) to select cards in CardRoulette
+            // Also inject Z (Attack) for interactive elements
+            input.InjectPressed(Keys.Space);   // For card selection in roulette
+            input.InjectPressed(Keys.Z);       // For attack/interact
 
             // ── Always run right at sprint speed ──────────────────────────
             input.InjectHeld(Keys.Right);
@@ -88,7 +90,7 @@ namespace Fridays_Adventure.Tests
             // Injecting every frame also keeps InputManager.AnyMash = true, which
             // causes the sinking/SeaStone escape timer to drain by 0.4 per frame
             // — the bot escapes water in < 1 frame at 60 fps.
-            input.InjectPressed(Keys.Z);
+            // REMOVED - already injecting above for card roulette compatibility
 
             // ── Periodic full-height jump ─────────────────────────────────
             // Fire a new jump every JumpInterval seconds.

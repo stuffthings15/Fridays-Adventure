@@ -108,11 +108,12 @@ namespace Fridays_Adventure.Scenes
             _innerCompleted = false;
             _completionHoldTimer = 0f;
 
-            // Enable GodMode so the bot never dies from enemies or hazards.
-            // The real gameplay still runs — enemies attack, hazards trigger —
-            // but Player.TakeDamage is a no-op while GodMode is true.
+            // DISABLED: GodMode was making bot invincible - enemies never hurt it
+            // This prevents proper testing of health/damage mechanics
+            // The bot now takes damage and needs to be smart about avoiding enemies
+            // Enemies CAN hurt the bot, and bot health items are critical
             _previousGodMode = Game.Instance.GodMode;
-            Game.Instance.GodMode = true;
+            Game.Instance.GodMode = false;  // Let enemies hurt the bot for real testing
 
             // Start diagnostics tracking
             _diagnostics.StartLevel(_levelName);
