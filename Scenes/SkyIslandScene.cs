@@ -216,7 +216,21 @@ namespace Fridays_Adventure.Scenes
             c.Y += c.VelocityY * dt;
             c.IsGrounded = false;
             ResolveV(c);
-            if (c.Y > LevelHeight) { if (c == _player) _player.TakeDamage(9999); else c.Health = 0; }
+
+            // No fall damage: recover player instead of applying lethal damage.
+            if (c.Y > LevelHeight)
+            {
+                if (c == _player)
+                {
+                    c.X = LevelWidth / 2f - c.Width / 2f;
+                    c.Y = (LevelHeight - 60) - c.Height;
+                    c.VelocityX = 0f;
+                    c.VelocityY = 0f;
+                    c.IsGrounded = true;
+                    _player.GrantInvincibility(0.6f);
+                }
+                else c.Health = 0;
+            }
         }
 
         private void ResolveH(Character c)
@@ -275,7 +289,8 @@ namespace Fridays_Adventure.Scenes
                 bool stomped = false;
 
                 // Head stomp — eliminate enemy + bounce
-                if (_player.VelocityY > 0 && !_player.IsInvincible)
+                // Allow stomps while blinking so i-frames do not block jump-on-head gameplay.
+                if (_player.VelocityY > 0)
                 {
                     float pBot = _player.Y + _player.Height;
                     float overlap = pBot - e.Y;

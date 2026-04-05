@@ -418,7 +418,8 @@ namespace Fridays_Adventure.Scenes
             // The stomped flag suppresses body-contact damage in the same frame and
             // the VelocityY >= 0 guard prevents damage while the player bounces away.
             bool stomped = false;
-            if (_boss.IsAlive && _player.VelocityY > 0 && !_player.IsInvincible)
+            // Stomp should still work while player is blinking from i-frames.
+            if (_boss.IsAlive && _player.VelocityY > 0)
             {
                 float pBot   = _player.Y + _player.Height;
                 float headZone = _boss.Y + _boss.Height * 0.35f;   // top 35 % of boss

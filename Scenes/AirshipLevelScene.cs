@@ -300,9 +300,19 @@ namespace Fridays_Adventure.Scenes
                 _completeTimer = 0.7f;
             }
 
-            // ── Death check ───────────────────────────────────────────────────
-            if (!_player.IsAlive || _player.Y > H + 100 || _player.X < _scrollX - _player.Width)
+            // ── Death / fall check ───────────────────────────────────────────
+            if (!_player.IsAlive || _player.X < _scrollX - _player.Width)
                 HandleDeath();
+            else if (_player.Y > H + 100)
+            {
+                // No fall damage: reset to a safe deck position near the current camera.
+                _player.X = _scrollX + 120f;
+                _player.Y = H - 160;
+                _player.VelocityX = 0f;
+                _player.VelocityY = 0f;
+                _player.IsGrounded = false;
+                _player.GrantInvincibility(0.6f);
+            }
 
             SMB3Hud.Update(dt);
         }
@@ -452,5 +462,6 @@ namespace Fridays_Adventure.Scenes
         }
     }
 }
+
 
 

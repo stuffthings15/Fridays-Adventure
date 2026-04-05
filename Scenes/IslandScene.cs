@@ -1364,10 +1364,17 @@ namespace Fridays_Adventure.Scenes
                     c.VelocityY = 0;
                 }
             }
-            // Death floor
+            // Fall recovery (no fall damage): falling below the level resets the player.
             if (c.Y > Game.Instance.CanvasHeight + 200)
             {
-                if (c == _player) _player.TakeDamage(9999);
+                if (c == _player)
+                {
+                    c.X = 48;
+                    c.Y = _groundY - c.Height;
+                    c.VelocityX = 0f;
+                    c.VelocityY = 0f;
+                    c.IsGrounded = true;
+                }
                 else c.Health = 0;
             }
         }
@@ -1432,7 +1439,8 @@ namespace Fridays_Adventure.Scenes
                 bool stomped = false;
 
                 // Head stomp — land on enemy to eliminate + bounce
-                if (_player.VelocityY > 0 && !_player.IsInvincible)
+                // Allow stomps even during i-frames (blinking) so bounce combat remains reliable.
+                if (_player.VelocityY > 0)
                 {
                     float pBot = _player.Y + _player.Height;
                     float eTop = e.Y;

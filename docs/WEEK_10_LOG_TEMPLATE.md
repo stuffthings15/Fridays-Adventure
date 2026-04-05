@@ -1549,6 +1549,87 @@
 
 ---
 
+## SESSION 42: Combat Hotfix — Stomps During Blink Invincibility
+
+**Date/Time:** April 4, 2026  
+**Duration:** Hotfix session  
+
+### ✅ Features Implemented
+- Updated stomp detection to remain active while player is blinking (i-frames):
+  - `Scenes/IslandScene.cs`
+  - `Scenes/SkyIslandScene.cs`
+  - `Scenes/BossScene.cs`
+  - `Scenes/WarlordBossScene.cs`
+- Removed `!_player.IsInvincible` gate from head-stomp checks so jump-on-head combat works during blink windows.
+
+### 🐛 Bugs Fixed
+- Fixed issue where player could not stomp enemies/bosses while blinking from recent damage.
+- Reduced perception of “random” contact damage caused by failed stomp registration during i-frames.
+
+### 📋 Documentation Updated
+- `docs/WEEK_10_LOG_TEMPLATE.md` updated with Session 42 details.
+
+### 🏗️ Build Status
+- Build: ✅ PASSING
+
+### 🎯 Next Steps
+- In-game verify stomp consistency in island, sky, boss, and warlord encounters while blinking.
+- If random damage still appears, isolate hazard overlap zones (fire/sea-stone/water) with debug overlay.
+
+---
+
+## SESSION 43: Gameplay Rule Update — No Fall Damage
+
+**Date/Time:** April 4, 2026  
+**Duration:** Hotfix session  
+
+### ✅ Features Implemented
+- Removed fall-damage/fall-death behavior for player in major gameplay scenes by replacing out-of-bounds fall damage/death with safe recovery reposition:
+  - `Scenes/IslandScene.cs`
+  - `Scenes/SkyIslandScene.cs`
+  - `Scenes/StormScene.cs`
+  - `Scenes/FortressScene.cs`
+  - `Scenes/AirshipLevelScene.cs`
+
+### 🐛 Bugs Fixed
+- Fixed gameplay behavior so falling off-screen no longer damages or kills the player as fall damage.
+
+### 📋 Documentation Updated
+- `docs/WEEK_10_LOG_TEMPLATE.md` updated with Session 43 details.
+
+### 🏗️ Build Status
+- Build: ✅ PASSING
+
+### 🎯 Next Steps
+- In-game verify recovery spawn points feel fair in each affected scene.
+- If desired, add per-scene checkpoint-based fall recovery positions for finer control.
+
+---
+
+## SESSION 44: Source Control Operation — Commit + Push to GitHub
+
+**Date/Time:** April 5, 2026  
+**Duration:** Git operation session  
+
+### ✅ Features Implemented
+- Committed latest local gameplay and documentation updates.
+- Pushed `master` branch changes to remote `origin` (`Fridays-Adventure`).
+
+### 🐛 Bugs Fixed
+- None (source control operation only).
+
+### 📋 Documentation Updated
+- `docs/WEEK_10_LOG_TEMPLATE.md` updated with Session 44 details.
+
+### 🏗️ Build Status
+- Build: ✅ PASSING (from latest local verification)
+
+### 🎯 Next Steps
+- Continue gameplay validation for no-fall-damage recovery points.
+- Keep session log updated after each prompt.
+
+---
+
 ## NOTES & IDEAS
 
 **Recurring Tasks:**

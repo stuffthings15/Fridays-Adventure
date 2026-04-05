@@ -258,8 +258,18 @@ namespace Fridays_Adventure.Scenes
             }
 
             // ── Death check ───────────────────────────────────────────────────
-            if (!_player.IsAlive || _player.Y > H + 100)
+            if (!_player.IsAlive)
                 HandleDeath();
+
+            // No fall damage: recover from below-screen falls.
+            if (_player.Y > H + 100)
+            {
+                _player.X = 60f;
+                _player.Y = H - 80 - _player.Height;
+                _player.VelocityX = 0f;
+                _player.VelocityY = 0f;
+                _player.IsGrounded = true;
+            }
 
             // ── Camera ────────────────────────────────────────────────────────
             _cameraY = _player.Y - H / 2f;

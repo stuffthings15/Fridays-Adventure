@@ -327,7 +327,8 @@ namespace Fridays_Adventure.Scenes
         private void CheckCombat()
         {
             bool stomped = false;
-            if (_boss.IsAlive && _player.VelocityY > 0 && !_player.IsInvincible)
+            // Keep stomp interactions enabled while blinking from recent damage.
+            if (_boss.IsAlive && _player.VelocityY > 0)
             {
                 float pBot = _player.Y + _player.Height;
                 float overlap = pBot - _boss.Y;

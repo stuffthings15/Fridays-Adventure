@@ -334,7 +334,16 @@ namespace Fridays_Adventure.Scenes
                     _coyoteTimer = Math.Max(0f, _coyoteTimer - dt);
             }
 
-            if (_player.Y > Game.Instance.CanvasHeight + 100) _player.TakeDamage(9999);
+            // No fall damage: recover to deck when the player drops out of bounds.
+            if (_player.Y > Game.Instance.CanvasHeight + 100)
+            {
+                _player.X = W / 2f - _player.Width / 2f;
+                _player.Y = CurrentDeckY - _player.Height;
+                _player.VelocityX = 0f;
+                _player.VelocityY = 0f;
+                _player.IsGrounded = true;
+                _player.GrantInvincibility(0.6f);
+            }
         }
 
         private void UpdateStrikes(float dt)
