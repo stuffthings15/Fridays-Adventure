@@ -6,6 +6,55 @@
 
 ---
 
+## SESSION 62: Critical Gameplay Fixes - Exit Flag Visibility + Orca Dash + Frost Ball Cooldown
+
+**Date/Time:** April 5, 2026  
+**Duration:** Critical bug fix session  
+
+### ✅ Issues Fixed
+
+1. **Exit Flag Not Showing** (Scenes/IslandScene.cs):
+   - Root cause: `DrawExitFlag()` method was defined but NEVER called in the `Draw()` method
+   - **Fix:** Added `DrawExitFlag(g);` call in the Draw method after drawing the player
+   - Exit flag now renders with animated glow, arrows, and ">>> GO <<<" text
+
+2. **Orca Dash Too Short** (Entities/Player.cs):
+   - Was: `VelocityX = FacingRight ? 500f : -500f;` (too short)
+   - Now: `VelocityX = FacingRight ? 3500f : -3500f;` (7x longer)
+   - Orca's dash now travels the full distance as intended
+
+3. **Frost Ball Cooldown** (Abilities/FrostBall.cs):
+   - Was: 1.0 second cooldown
+   - Now: 2.0 second cooldown
+   - `public FrostBall() : base("Frost Ball", 2.0f) { }`
+
+### 🐛 Detailed Analysis
+
+**Exit Flag Issue:**
+- The enhanced DrawExitFlag method (from Session 61) was fully implemented with animations
+- But the method call was missing from Draw(), so it never executed
+- Added single line to fix: `DrawExitFlag(g);`
+
+**Orca Dash Issue:**
+- UseCharacterAbility() for Orca was applying 500f velocity which was too weak
+- User requested 7x longer - changed to 3500f
+- Orca now dashes much farther across levels
+
+**Frost Ball Cooldown:**
+- The ability had 1.0 second cooldown, causing rapid fire
+- Changed to 2.0 second cooldown per user request
+- Fire button now requires proper wait time between shots
+
+### 🔄 Build Status
+- Build: ✅ **PASSING (0 errors, 0 warnings)**
+
+### 🎯 Next Steps
+- In-game verify exit flag is now clearly visible and animated
+- Verify Orca dash travels full distance across levels
+- Verify Frost Ball fire button recharges after 2 seconds
+
+---
+
 ## SESSION 61: Enhanced Level Exit Indicators - Make Goal Flag Clearly Visible
 
 **Date/Time:** April 5, 2026  
