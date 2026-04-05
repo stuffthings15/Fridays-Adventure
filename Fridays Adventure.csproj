@@ -137,6 +137,7 @@
     <Compile Include="Rules\RescueSystem.cs" />
     <Compile Include="Scenes\AchievementsScene.cs" />
     <Compile Include="Scenes\AirshipLevelScene.cs" />
+    <Compile Include="Scenes\AutoTestLevelScene.cs" />
     <Compile Include="Scenes\BossRushScene.cs" />
     <Compile Include="Scenes\BossScene.cs" />
     <Compile Include="Scenes\CardMiniGameScene.cs" />
@@ -259,6 +260,9 @@
     <Compile Include="Systems\UIStyleGuide.cs" />
     <Compile Include="Systems\VisualDebugger.cs" />
     <Compile Include="Systems\WeatherSystem.cs" />
+    <Compile Include="Tests\AutoTestBot.cs" />
+    <Compile Include="Tests\LevelBeatabilityTest.cs" />
+    <Compile Include="Tests\LevelTestRunner.cs" />
     <EmbeddedResource Include="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>

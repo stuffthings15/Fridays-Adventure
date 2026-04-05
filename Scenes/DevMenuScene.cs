@@ -87,6 +87,7 @@ namespace Fridays_Adventure.Scenes
                 // ── QA / Reporting scenes ─────────────────────────────────
                 new LevelEntry { Label = "[QA] Visual Debugger Report",     Create = () => new QAReportScene() },
                 new LevelEntry { Label = "[QA] Achievements Browser",       Create = () => new AchievementsScene() },
+                new LevelEntry { Label = "[QA] AUTO-TEST: Bot Level Tester", Create = () => new AutoTestLevelScene() },
                 new LevelEntry { Label = "[PH3] Producer Dashboard",        Create = () => new Phase3ProducerDashboardScene() },
                 new LevelEntry { Label = "[PH3] Systems Hub",               Create = () => new Phase3SystemsHubScene() },
                 new LevelEntry { Label = "[PH3] Tech Lead Ops",             Create = () => new Phase3TechLeadOpsScene() },
