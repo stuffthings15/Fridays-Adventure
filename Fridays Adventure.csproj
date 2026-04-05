@@ -322,6 +322,7 @@
     <None Include="docs\SESSION_64_INGAME_VERIFICATION_GUIDE.md" />
     <None Include="docs\SESSION_6_FEATURES_IMPLEMENTED.md" />
     <None Include="docs\SESSION_7_PROGRESS.md" />
+    <None Include="docs\TEST_LOGGING_GUIDE.md" />
     <None Include="docs\THIRD_PARTY_ASSETS.md" />
     <None Include="docs\WEEK_10_LOG_TEMPLATE.md" />
     <None Include="Properties\Settings.settings">
