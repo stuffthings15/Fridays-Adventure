@@ -47,6 +47,22 @@ namespace Fridays_Adventure.Scenes
         public override void OnEnter()
         {
             BuildNodes();
+
+            // Load saved progress: set current node and unlock appropriate nodes
+            string savedNodeId = Game.Instance.Save.CurrentNodeId;
+            if (!string.IsNullOrEmpty(savedNodeId))
+            {
+                var savedNode = Find(savedNodeId);
+                if (savedNode != null)
+                {
+                    _current = savedNode;
+                    _current.Visited = true;
+                    // Unlock all nodes to allow navigation (game is linear)
+                    foreach (var node in _nodes)
+                        node.Unlocked = true;
+                }
+            }
+
             string path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory,
                                        "Assets", "Sprites", "bg_overworld.png");
             if (File.Exists(path)) _bg = new Bitmap(path);

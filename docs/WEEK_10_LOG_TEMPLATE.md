@@ -607,7 +607,7 @@
 **Duration:** Autonomous implementation batch  
 
 ### ✅ Features Implemented
-- Created `Systems/Phase3DirectorSystems.cs` implementing all Team 1 Phase 3 systems:
+- Created `Systems/Phase3DirectorSystems.cs` implementing all Team 1 Phase 2 features:
   - New Game+ Mode (`NewGamePlusMode`)
   - Endless Mode (`EndlessModeSystem`)
   - Challenge of the Week (`ChallengeOfWeekSystem`)
@@ -2018,6 +2018,33 @@
 ### 🎯 Next Steps
 - In-game test full playthrough from start to credits.
 - Confirm all 11 islands must be completed for victory.
+
+---
+
+## SESSION 56: Save Loading Fix — Restore Overworld Position
+
+**Date/Time:** April 5, 2026  
+**Duration:** Bugfix session  
+
+### ✅ Features Implemented
+- **Save loading fix** (Scenes/OverworldScene.cs `OnEnter()`):
+  - Load saved `CurrentNodeId` from SaveData.
+  - Set `_current` to the saved node (or "start" if not found).
+  - Mark saved node as visited.
+  - Unlock all nodes to allow navigation (game is linear).
+  - Root cause: Overworld always started at "start" node, ignoring saved progress.
+
+### 🐛 Bugs Fixed
+- Fixed save loading not restoring overworld position — player always returned to start instead of saved node.
+
+### 📋 Documentation Updated
+- `docs/WEEK_10_LOG_TEMPLATE.md` updated with Session 56 details.
+
+### 🏗️ Build Status
+- Build: ✅ PASSING
+
+### 🎯 Next Steps
+- In-game verify save/load restores correct overworld position and level progress.
 
 ---
 
