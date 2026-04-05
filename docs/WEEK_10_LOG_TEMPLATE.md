@@ -6,6 +6,153 @@
 
 ---
 
+## SESSION 67: Advanced Logging System for Automated Tests
+
+**Date/Time:** April 5, 2026  
+**Duration:** Test logging enhancement session  
+
+### ✅ Features Implemented
+
+1. **Comprehensive Test Logging System** (Tests/TestLogSystem.cs):
+   - Records detailed timeline of bot actions during testing
+   - Logs all events with timestamps and bot position
+   - Categorizes events: MOVEMENT, ITEM, ENEMY, VICTORY, TIMEOUT, etc.
+   - **Per-Level Logs:**
+     - Test result summary (beatable/unbeatable)
+     - Time spent, items collected, enemies defeated
+     - Detailed action-by-action log
+     - Analysis section with distance traveled
+     - Recommendations for fixing unbeatable levels
+   - **Analysis Summary:**
+     - Overall pass/fail statistics
+     - List of all beatable levels
+     - List of unbeatable levels with issues
+     - Next steps for improvement
+
+2. **Enhanced LevelAutoTestManager** (Tests/AutoTestBot.cs):
+   - Integrated logging into test execution
+   - Calls `TestLogSystem.Log()` for key events
+   - Saves individual level logs after each test
+   - Generates comprehensive analysis summary
+   - Shows log file paths in console output
+
+3. **Log File Output** (Logs/bot-tests/):
+   - Individual logs for each level: `{levelId}_{levelName}.log`
+   - Analysis summary: `TEST_ANALYSIS_SUMMARY.txt`
+   - **Log Contents:**
+     - Test status and metrics
+     - Complete action timeline
+     - Event categorization
+     - Analysis with recommendations
+     - Suggestions for level fixes
+
+### 📊 Logging Features
+
+**Event Types:**
+- `INIT` - Bot initialization at level start
+- `MOVEMENT` - Bot position updates
+- `ITEM` - Item collected
+- `ENEMY` - Enemy defeated
+- `JUMP` - Jump performed
+- `ABILITY` - Special ability used
+- `STUCK` - Bot stuck detection
+- `VICTORY` - Level completed
+- `TIMEOUT` - Timeout reached
+- `FAILED` - Level failed
+- `ERROR` - Exception occurred
+
+**Per-Event Information:**
+- Timestamp (in seconds)
+- Event type
+- Message details
+- Bot X/Y position
+
+### 🎯 Analysis Workflow
+
+1. **Run Tests:** `Dev Menu → [QA] AUTO-TEST: Bot Level Tester → [ENTER]`
+2. **Get Results:** Console shows pass/fail for each level
+3. **Review Logs:** Open `Logs/bot-tests/{levelId}_*.log`
+4. **Analyze:** Look for:
+   - Where bot gets stuck
+   - What events lead to failure
+   - Distance traveled before failure
+   - Action patterns
+5. **Fix Level:** Based on log analysis, adjust:
+   - Platform placement
+   - Enemy positions
+   - Gap distances
+   - Difficulty level
+6. **Retest:** Run tests again, verify fixes work
+
+### 📝 Log File Example
+
+```
+════════════════════════════════════════════════════════════
+LEVEL TEST LOG: 5. Blade Nation
+Generated: 2026-04-05 14:30:00
+════════════════════════════════════════════════════════════
+
+TEST RESULT:
+  Status: ❌ NOT BEATABLE
+  Time: 60.0s
+  Items Collected: 3
+  Enemies Defeated: 1
+  Failure Reason: Timeout - Level took too long
+
+DETAILED ACTION LOG:
+─────────────────────────────────────────────────────────
+[0.02s] INIT: Starting level: 5. Blade Nation
+[0.50s] MOVEMENT: Bot at X:150
+[2.30s] JUMP: Jump performed
+        @ (250, 300)
+[4.10s] ITEM: Item collected
+        @ (350, 250)
+[8.50s] ENEMY: Enemy defeated
+        @ (600, 300)
+...
+[59.90s] TIMEOUT: Exceeded 60 seconds
+        @ (1850, 300)
+
+ANALYSIS:
+─────────────────────────────────────────────────────────
+Total Events Logged: 47
+Distance Traveled: ~1850px
+Action Types: INIT, MOVEMENT, JUMP, ITEM, ENEMY, TIMEOUT
+
+RECOMMENDATIONS:
+─────────────────────────────────────────────────────────
+• Level took too long - reduce difficulty
+• Simplify enemy patterns
+• Add more platforms
+• Review logged action sequence for stuck points
+```
+
+### 🔄 Build Status
+- Build: ✅ **PASSING (0 errors, 0 warnings)**
+
+### 📁 Files Created/Modified
+- `Tests/TestLogSystem.cs` - New logging system (200+ lines)
+- `Tests/AutoTestBot.cs` - Updated to use logging
+- `Scenes/AutoTestLevelScene.cs` - UI displays logs directory info
+
+### ✨ Benefits
+
+- ✅ **Detailed Debugging:** Exact timeline of bot actions
+- ✅ **Level Difficulty Analysis:** See where bot fails
+- ✅ **Easy Issue Identification:** Logs show stuck points
+- ✅ **Actionable Recommendations:** Specific fixes suggested
+- ✅ **Progress Tracking:** Before/after log comparison
+- ✅ **Data-Driven:** Copilot can analyze logs to improve bot
+
+### 🎯 Next Steps
+- Run tests and review generated logs
+- Identify unbeatable levels
+- Use log analysis to fix level design
+- Rerun tests to verify improvements
+- Commit once all levels are beatable
+
+---
+
 ## SESSION 66: Automated In-Game Level Beatability Test Bot
 
 **Date/Time:** April 5, 2026  

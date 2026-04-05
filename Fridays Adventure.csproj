@@ -263,6 +263,7 @@
     <Compile Include="Tests\AutoTestBot.cs" />
     <Compile Include="Tests\LevelBeatabilityTest.cs" />
     <Compile Include="Tests\LevelTestRunner.cs" />
+    <Compile Include="Tests\TestLogSystem.cs" />
     <EmbeddedResource Include="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
@@ -279,6 +280,7 @@
     <None Include="docs\ACCELERATED_COMPLETION_ROADMAP.md" />
     <None Include="docs\AI_DOCS.md" />
     <None Include="docs\ART_ASSETS_NEEDED.md" />
+    <None Include="docs\AUTOMATED_TEST_USER_GUIDE.md" />
     <None Include="docs\COMPREHENSIVE_TEAM_FEATURE_AUDIT.md" />
     <None Include="docs\DOCUMENTATION_INDEX.md" />
     <None Include="docs\FEATURE_COMPLETION_AUDIT.md" />

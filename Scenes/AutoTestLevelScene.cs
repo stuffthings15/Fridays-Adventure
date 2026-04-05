@@ -76,13 +76,13 @@ namespace Fridays_Adventure.Scenes
                 g.FillRectangle(br, 0, 0, _canvasWidth, _canvasHeight);
 
             // Title
-            g.DrawString("AUTOMATED LEVEL BEATABILITY TEST", _titleFont, Brushes.Gold, 20, 20);
+            g.DrawString("AUTOMATED LEVEL BEATABILITY TEST - SMART BOT", _titleFont, Brushes.Gold, 20, 20);
 
             if (_testRunning)
             {
                 // Show loading message
-                g.DrawString("🤖 Running bot tests on all 18 levels...", _headFont, Brushes.Cyan, 50, _canvasHeight / 2 - 40);
-                g.DrawString("Please wait. Results will appear in the console.", _bodyFont, Brushes.LimeGreen, 50, _canvasHeight / 2 + 20);
+                g.DrawString("🤖 Running smart bot tests with ability usage...", _headFont, Brushes.Cyan, 50, _canvasHeight / 2 - 40);
+                g.DrawString("Generating detailed logs for analysis... Please wait.", _bodyFont, Brushes.LimeGreen, 50, _canvasHeight / 2 + 20);
             }
             else if (_results.Count == 0)
             {
@@ -103,14 +103,16 @@ namespace Fridays_Adventure.Scenes
             g.DrawString("═══════════════════════════════════════════════════════════", _bodyFont, Brushes.White, 20, 140);
 
             int y = 180;
-            g.DrawString("This system tests all 18 levels using an AI bot.", _bodyFont, Brushes.LimeGreen, 30, y); y += 25;
-            g.DrawString("The bot simulates player behavior:", _bodyFont, Brushes.LimeGreen, 30, y); y += 25;
-            g.DrawString("  • Jumps over gaps and obstacles", _smallFont, Brushes.LimeGreen, 50, y); y += 20;
-            g.DrawString("  • Collects items and coins", _smallFont, Brushes.LimeGreen, 50, y); y += 20;
-            g.DrawString("  • Defeats enemies", _smallFont, Brushes.LimeGreen, 50, y); y += 20;
-            g.DrawString("  • Reaches the exit flag", _smallFont, Brushes.LimeGreen, 50, y); y += 20;
-            g.DrawString("  • Times out if level takes >60 seconds", _smallFont, Brushes.LimeGreen, 50, y); y += 40;
-            g.DrawString("Results are displayed in the console window.", _bodyFont, Brushes.LimeGreen, 30, y); y += 30;
+            g.DrawString("This system tests all 18 levels using an intelligent AI bot.", _bodyFont, Brushes.LimeGreen, 30, y); y += 25;
+            g.DrawString("The bot uses abilities strategically:", _bodyFont, Brushes.LimeGreen, 30, y); y += 25;
+            g.DrawString("  • Frost Ball attacks - Freeze enemies", _smallFont, Brushes.LimeGreen, 50, y); y += 20;
+            g.DrawString("  • Dash ability - Escape obstacles", _smallFont, Brushes.LimeGreen, 50, y); y += 20;
+            g.DrawString("  • Double jump & wall slides", _smallFont, Brushes.LimeGreen, 50, y); y += 20;
+            g.DrawString("  • Stomp attacks on enemies", _smallFont, Brushes.LimeGreen, 50, y); y += 20;
+            g.DrawString("  • Stuck detection & recovery", _smallFont, Brushes.LimeGreen, 50, y); y += 40;
+            g.DrawString("📝 Comprehensive logs generated for analysis:", _bodyFont, Brushes.Yellow, 30, y); y += 25;
+            g.DrawString("  • Action timeline | Ability usage | Bot decisions", _smallFont, Brushes.Cyan, 50, y); y += 20;
+            g.DrawString("  • Saved to: Logs/bot-tests/", _smallFont, Brushes.Cyan, 50, y); y += 20;
 
             // Draw buttons
             int btnY = H - 80;
