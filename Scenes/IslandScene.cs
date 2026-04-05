@@ -1144,12 +1144,18 @@ namespace Fridays_Adventure.Scenes
             // ── Dodge ─────────────────────────────────────────────────────────
             if (input.DodgePressed)
             {
-                if (_player.TryShootFrostBall())
+                bool frostSuccess = _player.TryShootFrostBall();
+                if (frostSuccess)
                 {
                     float fx = _player.FacingRight ? _player.X + _player.Width + 4 : _player.X - 18;
                     float fy = _player.Y + _player.Height * 0.55f;
                     _frostBalls.Add(new FrostBallProjectile(fx, fy, _player.FacingRight));
                     Game.Instance.Audio.BeepFireball();
+                    System.Diagnostics.Debug.WriteLine("[FROST_BALL] Ice projectile fired");
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine("[FROST_BALL] Ice projectile REJECTED - cooldown active");
                 }
             }
 

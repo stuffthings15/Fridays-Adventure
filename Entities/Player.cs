@@ -282,9 +282,10 @@ namespace Fridays_Adventure.Entities
 
             ApplySelectedSprite();
 
-            // Register core abilities — all characters tick cooldowns for IceWall + BreakWall.
+            // Register core abilities — all characters tick cooldowns for IceWall + BreakWall + FrostBall.
             Abilities.Add(_iceWall);
             Abilities.Add(_breakWall);
+            Abilities.Add(_frostBall);   // Frost Ball available to all characters (X key)
 
             // E-key ability differs per archetype: Orca=TidalSlam, Swan=WingDash, Friday=FlashFreeze.
             switch (Archetype)
