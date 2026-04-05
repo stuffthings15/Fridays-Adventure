@@ -264,6 +264,7 @@
     <Compile Include="Systems\VisualDebugger.cs" />
     <Compile Include="Systems\WeatherSystem.cs" />
     <Compile Include="Tests\AutoTestBot.cs" />
+    <Compile Include="Tests\BotComprehensiveTestLogger.cs" />
     <Compile Include="Tests\BotDiagnostics.cs" />
     <Compile Include="Tests\BotPlayerController.cs" />
     <Compile Include="Tests\BotVisualDebugger.cs" />

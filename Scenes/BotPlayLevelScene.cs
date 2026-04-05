@@ -48,6 +48,12 @@ namespace Fridays_Adventure.Scenes
         private const float MAX_LEVEL_TIME = 90f;   // seconds before auto-advance
         private float _elapsed = 0f;
 
+        // ── Event tracking for comprehensive bot logging ─────────────────
+        private int _pickupsCollected = 0;
+        private int _enemiesDefeated = 0;
+        private int _cardRouletteSelectCount = 0;
+        private bool _cardRouletteEntered = false;
+        private float _cardRouletteStartTime = 0f;
         // ── Completion tracking ───────────────────────────────────────────
         /// <summary>
         /// True once the inner scene has pushed its completion scenes (CardRoulette

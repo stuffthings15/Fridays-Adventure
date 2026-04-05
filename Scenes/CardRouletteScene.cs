@@ -129,9 +129,11 @@ namespace Fridays_Adventure.Scenes
             }
 
             // Input: action button stops the next card in sequence.
-            if (!_resultShown && Game.Instance.Input.JumpPressed ||
-                Game.Instance.Input.InteractPressed || Game.Instance.Input.AttackPressed)
+            if (!_resultShown && (Game.Instance.Input.JumpPressed ||
+                Game.Instance.Input.InteractPressed || Game.Instance.Input.AttackPressed))
             {
+                // Log card selection for diagnostics
+                System.Diagnostics.Debug.WriteLine($"[CARD_ROULETTE] Card {_activeCard + 1} stopped. Face: {_cardFace[_activeCard]}");
                 StopNextCard();
             }
 

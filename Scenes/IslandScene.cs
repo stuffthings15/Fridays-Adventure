@@ -1588,6 +1588,10 @@ namespace Fridays_Adventure.Scenes
                     Game.Instance.TotalBerriesCollected++;
                     BountySystem.Award(b.Value);
                     Game.Instance.Audio.BeepBerry();
+
+                    // Log pickup collection for diagnostics
+                    SessionStats.Instance.RecordBerry(b.Value);
+                    System.Diagnostics.Debug.WriteLine($"[PICKUP] Berry collected. Value: {b.Value}, Total this level: {_berriesCollected}, Total overall: {Game.Instance.TotalBerriesCollected}");
                 }
             }
         }
@@ -1602,6 +1606,9 @@ namespace Fridays_Adventure.Scenes
                     PowerUpInventory.AddHealthItem(1);
                     Game.Instance.FloatingText.Spawn("+1 MEDKIT", hp.X, hp.Y - 16, Color.LimeGreen, large: false);
                     Game.Instance.Audio.BeepHeal();
+
+                    // Log health pickup for diagnostics
+                    System.Diagnostics.Debug.WriteLine($"[PICKUP] Health pickup collected at ({hp.X:F0}, {hp.Y:F0})");
                 }
             }
         }
