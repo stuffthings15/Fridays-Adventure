@@ -74,6 +74,10 @@ namespace Fridays_Adventure.Tests
             if (_jumpHoldTimer > 0f)
                 _jumpHoldTimer -= dt;
 
+            // ── CARD ROULETTE HANDLING (Inject Enter every frame to play cards) ─
+            // If we're in CardRouletteScene, inject Enter to select cards automatically
+            input.InjectPressed(Keys.Return);  // Enter key for card selection
+
             // ── Always run right at sprint speed ──────────────────────────
             input.InjectHeld(Keys.Right);
             input.InjectHeld(Keys.ShiftKey);   // sprint — clears wide gaps faster
