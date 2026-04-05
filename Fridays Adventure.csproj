@@ -310,6 +310,7 @@
     <None Include="docs\BOT_AI_WIRING_VERIFICATION.md" />
     <None Include="docs\BOT_DIAGNOSTICS_GUIDE.md" />
     <None Include="docs\BOT_FINAL_DIAGNOSTIC_PROTOCOL.md" />
+    <None Include="docs\BOT_JUMPING_BEHAVIOR_FIX.md" />
     <None Include="docs\BOT_OBSERVABLE_TEST_GUIDE.md" />
     <None Include="docs\BOT_QA_TESTING_COMPLETE_GUIDE.md" />
     <None Include="docs\BOT_STUCK_DETECTION_SYSTEM.md" />

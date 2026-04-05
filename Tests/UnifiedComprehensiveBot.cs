@@ -232,7 +232,7 @@ namespace Fridays_Adventure.Tests
             {
                 CurrentState = "COMBAT";
                 ShouldAttack = true;
-                
+
                 // Jump on enemy if it's below us (stomp attack)
                 if (nearestEnemy.Y > _player.Y - 80f && nearestEnemy.Y < _player.Y + 100f)
                 {
@@ -276,30 +276,25 @@ namespace Fridays_Adventure.Tests
                 if (nearestPickup != null && nearestPickupDistance < 300f)
                 {
                     CurrentState = "COLLECTING";
+                    ShouldJump = false;  // ← DON'T jump over pickups!
                     _activityLogger?.LogItemAction("APPROACHING", "HealthPickup", 
                         nearestPickup.X, nearestPickup.Y, $"Distance: {nearestPickupDistance:F0}px");
                     return;
                 }
             }
 
-            // PRIORITY 3: PLATFORMING - Avoid falling
-            // Jump periodically to maintain height and avoid gaps
+            // PRIORITY 3: PLATFORMING - Only jump to recover from falling, NOT periodically
             CurrentState = "PLATFORMING";
             ShouldMoveRight = true;
-            
-            // Smart jump pattern: jump every 1.5 seconds + extra jumps for safety
-            if ((int)(_elapsedTime * 10f) % 25 == 0)  // Every ~1.5 seconds
-            {
-                ShouldJump = true;
-                _activityLogger?.LogPlatformingAction("PERIODIC_JUMP", "Platforming");
-            }
-            
-            // Jump if falling (Y position increasing)
-            if (_player.Y > 400f)  // Below normal platform level
+            ShouldJump = false;  // ← Default: don't jump!
+
+            // ONLY jump if falling below normal platform level (recovery)
+            if (_player.Y > 400f)  
             {
                 ShouldJump = true;
                 _activityLogger?.LogPlatformingAction("FALL_RECOVERY", $"Y={_player.Y:F0} (falling)");
             }
+            // Otherwise, don't jump. Let the player move naturally without jumping over collectibles
         }
 
         /// <summary>
