@@ -2,6 +2,7 @@ using System;
 using System.Drawing;
 using System.Windows.Forms;
 using Fridays_Adventure.Engine;
+using Fridays_Adventure.Entities;
 using Fridays_Adventure.Tests;
 
 namespace Fridays_Adventure.Scenes
@@ -212,6 +213,48 @@ namespace Fridays_Adventure.Scenes
 
             // ── Inject bot input, run inner scene, clear injected ─────────
             _diagnostics.Update(dt);
+
+            // ════════════════════════════════════════════════════════════════════
+            // BATCH 3: SMART BOT AI INTEGRATION - Real-time decision making
+            // ════════════════════════════════════════════════════════════════════
+
+            // Get the player from the inner scene to query detection
+            Player player = GetPlayerFromScene(_inner);
+            if (player != null)
+            {
+                // Cast inner scene to IslandScene or compatible to get detection methods
+                IslandScene levelScene = _inner as IslandScene;
+                if (levelScene != null)
+                {
+                    // DETECTION PHASE: Gather intelligence about the level
+                    var hazards = levelScene.DetectHazardsNearBot(player);
+                    var enemies = levelScene.DetectEnemiesNearBot(player);
+                    var pickups = levelScene.DetectPickupsNearBot(player);
+
+                    // Provide data to SmartBotAI
+                    _bot.SetDetectedHazards(hazards);
+                    _bot.SetDetectedEnemies(enemies);
+                    _bot.SetDetectedPickups(pickups);
+
+                    // UPDATE AI: Make tactical decisions based on detections
+                    _bot.UpdateSmartAI(
+                        player.X, player.Y,
+                        player.Health, player.MaxHealth);
+
+                    // Log detections for diagnostics
+                    if (hazards.Count > 0)
+                        System.Diagnostics.Debug.WriteLine($"[BOT_BATCH3] Detected {hazards.Count} hazards");
+                    if (enemies.Count > 0)
+                        System.Diagnostics.Debug.WriteLine($"[BOT_BATCH3] Detected {enemies.Count} enemies");
+                    if (pickups.Count > 0)
+                        System.Diagnostics.Debug.WriteLine($"[BOT_BATCH3] Detected {pickups.Count} pickups");
+                }
+            }
+
+            // ════════════════════════════════════════════════════════════════════
+            // END BATCH 3: SmartBotAI has made decisions, now inject keys
+            // ════════════════════════════════════════════════════════════════════
+
             _bot.InjectInput(input, dt);
 
             // Log what the bot is injecting for diagnostics
@@ -224,6 +267,26 @@ namespace Fridays_Adventure.Scenes
 
             _inner.Update(dt);
             input.ClearInjected();
+        }
+
+        /// <summary>
+        /// Helper: Extract player from any scene type.
+        /// Works with IslandScene, StormScene, and other level scenes.
+        /// </summary>
+        private Player GetPlayerFromScene(Scene scene)
+        {
+            if (scene == null) return null;
+
+            // Try reflection to get _player field from known scene types
+            var playerField = scene.GetType().GetField("_player", 
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+
+            if (playerField != null && playerField.FieldType == typeof(Player))
+            {
+                return (Player)playerField.GetValue(scene);
+            }
+
+            return null;
         }
 
         // ── Draw ──────────────────────────────────────────────────────────
@@ -248,7 +311,7 @@ namespace Fridays_Adventure.Scenes
 
             // Semi-transparent dark background
             using (var br = new SolidBrush(Color.FromArgb(160, 0, 0, 0)))
-                g.FillRectangle(br, padX, padY, panelW, panelH);
+
             using (var pen = new Pen(Color.FromArgb(200, Color.Cyan), 1))
                 g.DrawRectangle(pen, padX, padY, panelW, panelH);
 
