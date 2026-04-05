@@ -299,6 +299,7 @@
     <None Include="docs\ART_ASSETS_NEEDED.md" />
     <None Include="docs\AUTOMATED_TEST_USER_GUIDE.md" />
     <None Include="docs\AUTOMATION_QUICK_START.md" />
+    <None Include="docs\BOT_AI_DEBUG_LOG_GUIDE.md" />
     <None Include="docs\BOT_AI_FINAL_STATUS.md" />
     <None Include="docs\BOT_AI_OBSERVABLE_DEBUG_GUIDE.md" />
     <None Include="docs\BOT_AI_WIRING_VERIFICATION.md" />
