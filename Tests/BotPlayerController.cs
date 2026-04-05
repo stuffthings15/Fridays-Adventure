@@ -13,14 +13,16 @@ namespace Fridays_Adventure.Tests
     /// <summary>
     /// Enhanced bot controller that combines:
     /// • SmartBotAI - Detects hazards, enemies, pickups and makes strategic decisions
+    /// • BotDialogueHandler - Auto-skips dialogue and narrative boxes
     /// • Real input injection - Presses actual keys so game engine handles player movement
     ///
     /// Decision hierarchy:
-    /// 1. HEALTH CRITICAL → Seek health items
-    /// 2. HAZARD AHEAD → Dodge/jump
-    /// 3. ENEMY NEARBY → Attack or avoid
-    /// 4. PICKUPS VISIBLE → Collect currency/items
-    /// 5. DEFAULT → Sprint forward with periodic jumps
+    /// 1. DIALOGUE/NARRATIVE → Skip/progress automatically
+    /// 2. HEALTH CRITICAL → Seek health items
+    /// 3. HAZARD AHEAD → Dodge/jump
+    /// 4. ENEMY NEARBY → Attack or avoid
+    /// 5. PICKUPS VISIBLE → Collect currency/items
+    /// 6. DEFAULT → Sprint forward with periodic jumps
     /// </summary>
     public sealed class BotPlayerController
     {
@@ -28,6 +30,7 @@ namespace Fridays_Adventure.Tests
         private float _time         = 0f;   // total elapsed time this level
         private float _jumpInterval = 0f;   // accumulates toward next jump
         private float _jumpHoldTimer = 0f;  // > 0 while Space should stay held
+        private GameDialogueHandler _dialogueHandler;  // Auto-skip dialogue
         private float _frostTimer   = 0f;   // accumulates toward next frost ball
 
         // ── Smart AI ──────────────────────────────────────────────────────
@@ -63,6 +66,19 @@ namespace Fridays_Adventure.Tests
             _frostTimer   = 0f;
             _cardRouletteInputTimer = 0f;
             _enemyStompCooldown = 0f;
+            _dialogueHandler?.Reset();
+        }
+
+        /// <summary>
+        /// Initialize dialogue handler (called when scene loads).
+        /// </summary>
+        public void InitializeDialogueHandler(InputManager input, Scenes.Scene currentScene = null)
+        {
+            _dialogueHandler = new GameDialogueHandler(input);
+            if (currentScene != null)
+            {
+                _dialogueHandler.SetCurrentScene(currentScene);
+            }
         }
 
         // ── CardRoulette timing ──────────────────────────────────────────
@@ -86,6 +102,17 @@ namespace Fridays_Adventure.Tests
             _enemyStompCooldown -= dt;  // Decrement stomp cooldown
             if (_jumpHoldTimer > 0f)
                 _jumpHoldTimer -= dt;
+
+            // ════════════════════════════════════════════════════════════════════
+            // PRIORITY 0: HANDLE DIALOGUE - Always check first!
+            // ════════════════════════════════════════════════════════════════════
+            if (_dialogueHandler != null && _dialogueHandler.Update(dt))
+            {
+                // Dialogue was detected and handled - return early
+                System.Diagnostics.Debug.WriteLine(
+                    $"[BOT_INPUT] Dialogue detected - {_dialogueHandler.GetSummary()}");
+                return;  // Skip all other input until dialogue is cleared
+            }
 
             // ════════════════════════════════════════════════════════════════════
             // CRITICAL: USE SMARTBOTAI DECISIONS - NOT HARD-CODED TIMERS!

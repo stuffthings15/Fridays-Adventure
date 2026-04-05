@@ -1,0 +1,123 @@
+{
+  "vibeConfiguration": {
+    "projectName": "Fridays Adventure II",
+    "projectPath": ".",
+    "buildSystem": "MSBuild",
+    "solutionFile": "Fridays Adventure II.sln",
+    "configuration": "Release",
+    "platform": "AnyCPU",
+    
+    "automation": {
+      "autoBuildonSave": true,
+      "autoPushToGit": true,
+      "buildOnCompletion": true,
+      "createReleaseNotes": true,
+      "minimumChangesBuild": 3,
+      "buildIntervalSeconds": 300
+    },
+    
+    "targets": {
+      "buildOutputDirectory": "bin/Release",
+      "executableName": "Fridays_Adventure.exe",
+      "logDirectory": "build-logs",
+      "artifactsDirectory": "artifacts"
+    },
+    
+    "gitIntegration": {
+      "enabled": true,
+      "repository": "https://github.com/stuffthings15/Fridays-Adventure.git",
+      "branch": "master",
+      "autoCommit": true,
+      "commitTemplate": "Auto-build: Latest features and fixes - {timestamp}",
+      "pushAfterCommit": true,
+      "createTag": true,
+      "tagTemplate": "build-{timestamp}"
+    },
+    
+    "testing": {
+      "runUnitTests": true,
+      "runIntegrationTests": true,
+      "minimumCoverage": 75,
+      "failBuildOnTestFailure": true
+    },
+    
+    "documentation": {
+      "generateBuildReport": true,
+      "updateChangelog": true,
+      "includePerformanceMetrics": true,
+      "archiveLogsPerBuild": true
+    },
+    
+    "notifications": {
+      "notifyOnBuildStart": true,
+      "notifyOnBuildComplete": true,
+      "notifyOnBuildFailure": true,
+      "notifyOnPushSuccess": true,
+      "channels": ["console", "log"]
+    },
+    
+    "customScripts": {
+      "preBuild": "scripts/pre-build.ps1",
+      "postBuild": "build-and-push.ps1",
+      "preCommit": "scripts/validate-code.ps1",
+      "postCommit": "scripts/post-commit.ps1"
+    },
+    
+    "codeQuality": {
+      "checkCompilerWarnings": true,
+      "failOnWarnings": false,
+      "maxAllowedWarnings": 0,
+      "analyzeCode": true,
+      "formatCode": true
+    },
+    
+    "performance": {
+      "trackBuildTime": true,
+      "warnIfSlowBuild": true,
+      "slowBuildThresholdSeconds": 120,
+      "parallelBuild": true,
+      "maxParallelJobs": 8
+    },
+    
+    "environment": {
+      "dotnetVersion": "4.7.2",
+      "csharpVersion": "14.0",
+      "targetFramework": "net472",
+      "requiredTools": [
+        "MSBuild",
+        "dotnet",
+        "git"
+      ]
+    },
+    
+    "features": {
+      "botAI": {
+        "enabled": true,
+        "autoSkipDialogue": true,
+        "multiControllerSupport": true,
+        "touchScreenSupport": true
+      },
+      "inputSystem": {
+        "keyboard": true,
+        "xbox": true,
+        "playstation": true,
+        "nintendoSwitch": true,
+        "genericControllers": true,
+        "touchscreen": true
+      },
+      "gameFeatures": {
+        "levels": 18,
+        "enemies": 6,
+        "abilities": 8,
+        "powerUps": 6
+      }
+    }
+  },
+  
+  "metadata": {
+    "version": "1.0.0",
+    "lastModified": "2024-01-01",
+    "author": "Fridays Adventure Team",
+    "description": "Complete automation configuration for building, testing, and deploying Fridays Adventure II"
+  }
+}
