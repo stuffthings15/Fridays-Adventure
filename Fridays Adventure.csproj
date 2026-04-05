@@ -313,6 +313,7 @@
     <None Include="docs\BOT_OBSERVABLE_TEST_GUIDE.md" />
     <None Include="docs\BOT_QA_TESTING_COMPLETE_GUIDE.md" />
     <None Include="docs\BOT_STUCK_DETECTION_SYSTEM.md" />
+    <None Include="docs\BOT_SYSTEM_FULLY_INTEGRATED.md" />
     <None Include="docs\COMPREHENSIVE_INTELLIGENT_BOT_V3.md" />
     <None Include="docs\COMPREHENSIVE_TEAM_FEATURE_AUDIT.md" />
     <None Include="docs\DOCUMENTATION_INDEX.md" />
