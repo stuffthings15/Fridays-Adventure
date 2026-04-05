@@ -1932,6 +1932,34 @@
 
 ---
 
+## SESSION 53: Clickable Yes/No on Delete Save Confirmation
+
+**Date/Time:** April 5, 2026  
+**Duration:** Quick feature session  
+
+### ✅ Features Implemented
+- **Clickable Yes/No buttons on delete-save confirmation** (Scenes/SaveSlotScene.cs):
+  - Added `_confirmYesBtn` and `_confirmNoBtn` rectangle fields.
+  - Confirmation overlay now renders two styled buttons: green "YES (Y)" and red "NO (N)".
+  - `HandleClick` detects Yes button click → executes delete; No or outside click → cancels.
+  - Keyboard Y and N hotkeys still work as before.
+
+### 🐛 Bugs Fixed
+- Fixed delete-save confirmation not having clickable buttons — any mouse click previously just dismissed the prompt without confirming.
+
+### 📋 Documentation Updated
+- `docs/WEEK_10_LOG_TEMPLATE.md` updated with Session 53 details.
+
+### 🏗️ Build Status
+- Build: ✅ PASSING
+- Git: ✅ Pushed to `origin/master`
+
+### 🎯 Next Steps
+- In-game verify Yes click deletes the save and No click cancels.
+- Verify Y/N keyboard hotkeys still work.
+
+---
+
 ## NOTES & IDEAS
 
 **Recurring Tasks:**
