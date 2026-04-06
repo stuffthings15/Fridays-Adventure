@@ -94,6 +94,9 @@ namespace Fridays_Adventure.Tests
         private const float COMBAT_DASH_TIMEOUT = 1.0f;   // dash if stomp fails for 1 s
         private const float ATTACK_COOLDOWN      = 0.3f;
 
+        // ── Health management ────────────────────────────────────────────
+        private float _medkitCooldown = 0f;  // prevents medkit spam
+
         // ── Stuck detection ───────────────────────────────────────────────
         private float _stuckTimer;
         private float _lastX;
@@ -145,6 +148,12 @@ namespace Fridays_Adventure.Tests
         public bool   ShouldMoveRight   { get; private set; }
         public bool   ShouldMoveLeft    { get; private set; }
         public bool   ShouldDodge       { get; private set; }
+
+        /// <summary>
+        /// True when the bot wants to use a health item (M key) this frame.
+        /// Set when player HP drops below 40%.
+        /// </summary>
+        public bool   ShouldUseMedkit   { get; private set; }
 
         /// <summary>
         /// Exposes the player's grounded state so BotPlayerController can
@@ -233,6 +242,7 @@ namespace Fridays_Adventure.Tests
             _elapsedTime += dt;
             _dt           = dt;    // store for sub-methods that need delta time
             _jumpTimer   += dt;
+            if (_medkitCooldown > 0f) _medkitCooldown -= dt;
 
             // Reset outputs
             ShouldJump        = false;
@@ -241,6 +251,7 @@ namespace Fridays_Adventure.Tests
             ShouldMoveRight   = true;
             ShouldMoveLeft    = false;
             ShouldDodge       = false;
+            ShouldUseMedkit   = false;
             ShouldUseIceWall  = false;
 
             try
@@ -253,6 +264,24 @@ namespace Fridays_Adventure.Tests
                     RunStuckEscape(dt);
                     return;
                 }
+
+                // ── Health management — use medkit when low ────────────────
+                // Call PowerUpInventory.UseHealthItem directly since there's
+                // no keyboard shortcut — the HUD uses mouse clicks only.
+                if (_player.Health < _player.MaxHealth * 0.4f && _medkitCooldown <= 0f)
+                {
+                    if (Fridays_Adventure.Systems.PowerUpInventory.UseHealthItem(_player))
+                    {
+                        _medkitCooldown = 3f;  // don't spam medkits
+                        LogEvent("MEDKIT", $"Used medkit at HP={_player.Health}/{_player.MaxHealth}");
+                    }
+                }
+
+                // ── Hazard avoidance — dodge FireSource and SeaStoneZone ───
+                // Check if any active hazard hitbox is within 80px ahead.
+                // If so, jump over it while maintaining forward movement.
+                if (_player.IsGrounded && !_isSkyIslandScene)
+                    RunHazardAvoidance();
 
                 if (_isStormScene)
                     RunStormLogic();
@@ -914,8 +943,11 @@ namespace Fridays_Adventure.Tests
         private void RunNormalLogic()
         {
             // ── P1: Kill enemies ─────────────────────────────────────────
+            // Only engage enemies that are close enough to be a real threat.
+            // 150px prevents the bot from chasing distant enemies backward
+            // when it should be progressing toward the goal.
             Enemy nearest = FindNearestAliveEnemy();
-            if (nearest != null && Math.Abs(nearest.X - _player.X) < 250f)
+            if (nearest != null && Math.Abs(nearest.X - _player.X) < 150f)
             {
                 RunCombatLogic(nearest);
                 return;
@@ -968,6 +1000,72 @@ namespace Fridays_Adventure.Tests
                 ShouldJump      = true;
                 ShouldMoveRight = true;  // press into wall to trigger wall slide/jump
                 LogEvent("FALL_RECOVERY", $"Y={_player.Y:F0} — mashing jump + wall seek");
+            }
+        }
+
+        // ══════════════════════════════════════════════════════════════════
+        // HAZARD AVOIDANCE — dodge fire, sea stone, and other environmental hazards
+        // ══════════════════════════════════════════════════════════════════
+
+        /// <summary>
+        /// Scans for nearby hazards (FireSource, SeaStoneZone) and jumps
+        /// over them while maintaining forward movement.  Only runs when
+        /// grounded on non-Sky levels.
+        /// </summary>
+        private void RunHazardAvoidance()
+        {
+            float playerLeft  = _player.X;
+            float playerRight = _player.X + _player.Width;
+            float playerFeet  = _player.Y + _player.Height;
+
+            foreach (var h in _detectedHazards)
+            {
+                // Skip water pits — handled by the pit detection system
+                if (h.Type == HazardType.WaterPit) continue;
+
+                float hLeft  = h.X;
+                float hRight = h.X + h.Width;
+                float hTop   = h.Y;
+
+                // Only react to hazards near the player's vertical level
+                if (hTop > playerFeet + 40f || hTop < _player.Y - 100f) continue;
+
+                // Check if the hazard is ahead of the player (within 100px)
+                bool hazardAhead = false;
+                float distToHazard = 0f;
+
+                if (ShouldMoveRight || (!ShouldMoveLeft))
+                {
+                    // Moving right — check hazards to the right
+                    distToHazard = hLeft - playerRight;
+                    hazardAhead = distToHazard > -20f && distToHazard < 100f;
+                }
+                else
+                {
+                    // Moving left — check hazards to the left
+                    distToHazard = playerLeft - hRight;
+                    hazardAhead = distToHazard > -20f && distToHazard < 100f;
+                }
+
+                if (hazardAhead)
+                {
+                    // Jump over the hazard — keep moving forward
+                    ShouldJump = true;
+                    LogEvent("HAZARD_JUMP",
+                        $"Jumping over {h.Type} at dist={distToHazard:F0}px");
+                    break;  // only handle closest hazard
+                }
+
+                // If we're ON TOP of a hazard (overlapping), jump immediately
+                bool overlapping = playerRight > hLeft && playerLeft < hRight
+                                && playerFeet > hTop && _player.Y < hTop + h.Height;
+                if (overlapping)
+                {
+                    ShouldJump = true;
+                    LogEvent("HAZARD_ESCAPE",
+                        $"Standing on {h.Type} — jumping to escape");
+                    break;
+                }
             }
         }
 

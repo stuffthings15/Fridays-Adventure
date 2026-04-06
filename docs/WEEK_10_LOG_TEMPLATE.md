@@ -6,29 +6,74 @@
 
 ---
 
-## SESSION 91-93: Bot AI — Pit Avoidance + Gap Crossing + SkyIsland Climbing
+## SESSION 91-96: Bot AI — Architecture Audit + Reliability Hardening
 
 **Date/Time:** Current Session  
 **Status:** ✅ COMPLETE  
 **Build Status:** ✅ 0 errors, 0 warnings  
 
-### Session 93: SkyIsland Head-Bonk Fix
+### Session 96: Full Architecture Audit + Hazard/Health Systems
 
-**Root Cause:** SkyIslandScene platforms are **SOLID FROM BELOW** (`ResolveV` line 256: rising player pushed DOWN to `p.Bottom`, velocity killed). The bot targeted platform center, walked directly underneath, jumped, and head-bonked the bottom every frame — never climbing.
+**Architecture document created:** `docs/BOT_ARCHITECTURE.md`
+- Full system architecture with component diagrams
+- All 7 analysis areas documented (perception, decisions, navigation, adaptation, failures, testing, risks)
+- Physics tables, platform maps, state machine flows
 
-**Fix — Side-approach climbing algorithm:**
+**Implemented improvements:**
 
+1. **Hazard Avoidance System** — `RunHazardAvoidance()` method added
+   - Detects FireSource, SeaStoneZone within 100px ahead
+   - Jumps over hazards while maintaining forward momentum
+   - Detects if player is standing ON a hazard and escapes
+   - Skips WaterPit (handled by separate pit detection)
+
+2. **Health Management** — Auto-medkit at 40% HP
+   - Calls `PowerUpInventory.UseHealthItem()` directly (no keyboard shortcut exists)
+   - 3-second cooldown prevents medkit spam
+   - Logged as `MEDKIT` event
+
+3. **Combat Range Reduction** — 250px → 150px
+   - Prevents bot from chasing distant enemies backward
+   - Bot prioritizes level progress over enemy kills
+
+### Session 95: Codebase Audit + AutoAdvance Leak Fix
+
+- Verified all 110 Phase 2 features marked complete have corresponding code files
+- Verified all 11 Phase 2 system files exist (Phase2*Systems.cs)
+- Verified all 10 Phase 3 system files exist (Phase3*Systems.cs)
+- Verified all gameplay scenes exist (Island, Storm, Sky, Boss, Underwater, Warlord, Airship, Fortress)
+- Verified LevelSceneFactory routes all 17 level IDs correctly
+- Verified Player has all Team 7 mechanics (WallSlide, AirDash, Parry, Glide, Swim, Crouch, Dash, etc.)
+- **Fixed:** `DialogueScene.AutoAdvance` was never reset on DemoModeScene/AutoTestLevelScene exit — would leak into normal gameplay
+- **Fixed:** AutoTestLevelScene visual mode didn't set `AutoAdvance`, so CardRoulette would hang
+
+### Session 94: Complete SkyIsland Rewrite (Physics-Verified)
+
+**Physics computed from SkyIslandScene.cs:**
+- Gravity=860, JumpForce=-520, single jump=157px, double=314px
+- Platform gap=250px (single jump CAN'T clear — double mandatory)
+- Horizontal range: 350px single / 696px double jump arc
+- Player: 48×81px, MoveSpeed=290px/s
+
+**All 12 platforms mapped with exact X/Y coordinates.**
+
+**Critical bug found & fixed:** Old step-out used signed distance comparison. When player at X=200 targeting platform [250,410], `distToLeftEdge = -50`. Since `-50 < 162`, bot walked LEFT (AWAY from platform). Never jumped.
+
+**New algorithm:**
 | State | Condition | Action |
 |-------|-----------|--------|
-| `SKY_STEP_OUT` | Grounded AND directly below target platform | Walk to nearest edge (left or right) — do NOT jump |
-| `SKY_JUMP_BESIDE` | Grounded AND beside platform (outside its X range) | Jump + drift horizontally toward platform center |
-| `SKY_AIRBORNE_DRIFT` | Airborne | Move toward platform center; double-jump at apex (VelY ∈ [-80, 80]) |
-| `SKY_GOAL_PURSUIT` | Exit zone within 350px | Aim directly at exit, jump + double-jump |
+| `SKY_WALK_TO_LAUNCH` | Grounded, not clear of target | Walk to computed launch X (edge ± 15px outside target) |
+| `SKY_EDGE_JUMP` | At edge of current platform | Force jump toward target center |
+| `SKY_LAUNCH` | At launch position OR already clear | Jump + drift toward target center |
+| `SKY_AIRBORNE` | In air | Drift to target center; double-jump at apex (VelY ∈ [-100, 100]) |
+| `SKY_GOAL` | Exit zone within 350px | Aim directly at exit |
 
-**Additional fixes:**
-- Platform search limited to double-jump reach (340px) — skips unreachable platforms
-- Stuck escape for SkyIsland now **side-steps** instead of jumping forward (which just head-bonked again)
-- Pit avoidance disabled for SkyIsland (jumping off edges is required behavior)
+### Session 93: Card Roulette + Dialogue Support
+
+- **CardRoulette stuck fix:** BotPlayLevelScene gets buried when CardRoulette is pushed — can't inject input. Added auto-stop timer (0.8s/card) via `DialogueScene.AutoAdvance` flag.
+- **CourseClearScene:** Auto-skip bonus countdown in demo mode.
+- **DialogueScene:** Added static `AutoAdvance` flag with 1.5s auto-advance timer.
+- **DemoModeScene:** Triggers MeetFinn dialogue before first level, enables AutoAdvance.
 
 ### Session 91-92: Pit Avoidance + Gap Crossing
 

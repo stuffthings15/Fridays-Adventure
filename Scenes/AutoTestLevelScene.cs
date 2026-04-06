@@ -66,6 +66,9 @@ namespace Fridays_Adventure.Scenes
 
         public override void OnExit()
         {
+            // Reset auto-advance so normal gameplay isn't affected after test
+            DialogueScene.AutoAdvance = false;
+
             _titleFont?.Dispose();
             _headFont?.Dispose();
             _bodyFont?.Dispose();
@@ -757,6 +760,8 @@ namespace Fridays_Adventure.Scenes
             {
                 // ── VISUAL MODE: push the real game scene driven by bot input ──
                 // _testRunning stays false; the BotPlayLevelScene handles everything.
+                // Enable auto-advance for dialogue/CardRoulette/CourseClear scenes
+                DialogueScene.AutoAdvance = true;
                 LaunchNextVisualLevel();
             }
             else

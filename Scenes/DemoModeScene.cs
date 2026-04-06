@@ -95,6 +95,9 @@ namespace Fridays_Adventure.Scenes
 
         public override void OnExit()
         {
+            // Reset auto-advance so normal gameplay isn't affected after demo
+            DialogueScene.AutoAdvance = false;
+
             _fontTitle?.Dispose();
             _fontHead?.Dispose();
             _fontBody?.Dispose();
