@@ -135,10 +135,22 @@ namespace Fridays_Adventure.Tests
 
         // ── Public decision outputs ───────────────────────────────────────
         public bool   ShouldJump        { get; private set; }
+        /// <summary>
+        /// True when the bot wants a double-jump on this jump sequence.
+        /// Used by SkyIsland climbing and large gap crossings.
+        /// BotPlayerController uses this to fire a proper two-press sequence.
+        /// </summary>
+        public bool   ShouldDoubleJump  { get; private set; }
         public bool   ShouldAttack      { get; private set; }
         public bool   ShouldMoveRight   { get; private set; }
         public bool   ShouldMoveLeft    { get; private set; }
         public bool   ShouldDodge       { get; private set; }
+
+        /// <summary>
+        /// Exposes the player's grounded state so BotPlayerController can
+        /// reset the jump sequence when the player lands.
+        /// </summary>
+        public bool   IsPlayerGrounded  => _player != null && _player.IsGrounded;
         /// <summary>
         /// True when the bot wants to place an Ice Wall (Q key) this frame.
         /// Set when an elevated item is unreachable by jumping alone and the
@@ -224,6 +236,7 @@ namespace Fridays_Adventure.Tests
 
             // Reset outputs
             ShouldJump        = false;
+            ShouldDoubleJump  = false;
             ShouldAttack      = false;
             ShouldMoveRight   = true;
             ShouldMoveLeft    = false;
@@ -689,9 +702,10 @@ namespace Fridays_Adventure.Tests
                     ShouldMoveRight = dx > 10f;
                     ShouldMoveLeft  = dx < -10f;
                     if (_player.IsGrounded)
+                    {
                         ShouldJump = true;
-                    else if (_player.VelocityY > -60f && _player.VelocityY < 60f)
-                        ShouldJump = true;
+                        ShouldDoubleJump = true;  // need max height to reach exit
+                    }
                     return;
                 }
             }
@@ -788,6 +802,7 @@ namespace Fridays_Adventure.Tests
                             // Force a jump from here even though not ideal
                             ShouldMoveLeft = false;
                             ShouldJump = true;
+                            ShouldDoubleJump = true;  // always double-jump in Sky
                             ShouldMoveRight = targetCenterX > playerCenterX;
                             ShouldMoveLeft  = targetCenterX < playerCenterX;
                             CurrentState = "SKY_EDGE_JUMP";
@@ -797,6 +812,7 @@ namespace Fridays_Adventure.Tests
                             // At right edge of current platform — can't walk further
                             ShouldMoveRight = false;
                             ShouldJump = true;
+                            ShouldDoubleJump = true;  // always double-jump in Sky
                             ShouldMoveRight = targetCenterX > playerCenterX;
                             ShouldMoveLeft  = targetCenterX < playerCenterX;
                             CurrentState = "SKY_EDGE_JUMP";
@@ -810,9 +826,11 @@ namespace Fridays_Adventure.Tests
                 {
                     // ── LAUNCH JUMP ────────────────────────────────
                     // At launch position or already clear — JUMP NOW.
-                    // Drift toward the target platform center.
+                    // Always double-jump in Sky — single jump (157px) can't
+                    // clear the 250px platform gap.
                     CurrentState = "SKY_LAUNCH";
                     ShouldJump = true;
+                    ShouldDoubleJump = true;
                     float dx = targetCenterX - playerCenterX;
                     ShouldMoveRight = dx > 0f;
                     ShouldMoveLeft  = dx < 0f;
@@ -824,27 +842,19 @@ namespace Fridays_Adventure.Tests
             else
             {
                 // ── AIRBORNE LOGIC ──────────────────────────────────
-                // Drift toward the target platform center so we land on it.
-                // Fire double-jump at apex for maximum height.
+                // BotPlayerController handles the double-jump timing
+                // automatically via the JumpPhase state machine.
+                // Here we just drift toward the target platform.
                 CurrentState = "SKY_AIRBORNE";
 
                 float dx = targetCenterX - playerCenterX;
                 ShouldMoveRight = dx > 5f;
                 ShouldMoveLeft  = dx < -5f;
 
-                // Double-jump at apex: VelocityY transitions from negative
-                // (rising) to positive (falling).  Fire when near 0.
-                // Wider window to avoid missing it.
-                if (_player.VelocityY > -100f && _player.VelocityY < 100f)
-                {
-                    ShouldJump = true;
-                }
-
-                // If we're above the target and falling, stop drifting
-                // away — focus on landing precisely on the platform.
+                // If we're above the target and falling, tighten drift
+                // to land precisely on the platform.
                 if (_player.Y + _player.Height < targetPlat.Top + 30f && _player.VelocityY > 0f)
                 {
-                    // We're above the platform and falling — aim for center
                     ShouldMoveRight = dx > 2f;
                     ShouldMoveLeft  = dx < -2f;
                 }

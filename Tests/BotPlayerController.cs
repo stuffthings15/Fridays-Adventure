@@ -40,6 +40,35 @@ namespace Fridays_Adventure.Tests
         public UnifiedComprehensiveBot _comprehensiveBot = null;  // NEW: Unified bot system
         private bool _useRealAI = true;  // ALWAYS use real AI
 
+        // ── Double-jump sequencing ────────────────────────────────────────
+        // InjectHeld(Space) adds to BOTH _injectedHeld and _injectedPressed,
+        // so JumpPressed fires every frame while Space is held.  This means:
+        //   - First jump fires immediately on the first InjectHeld
+        //   - SkyIslandScene sets _doubleJumpDelay = 0.18s after first jump
+        //   - After 0.18s, _doubleJumpDelay expires → JumpPressed (from held)
+        //     fires the second jump automatically
+        //   - Holding Space prevents the variable-jump-height cap from
+        //     cutting velocity short (cap only fires when JumpHeld=false)
+        //
+        // So all we need to do is:
+        //   1. Press Space to start the sequence
+        //   2. Hold Space for long enough to cover both jumps' rise time
+        //   3. Release when the sequence is done
+
+        /// <summary>How long to hold Space when a double-jump is requested.
+        /// Must cover: first rise (~0.35s) + cooldown (0.18s) + second rise (~0.6s) = ~1.1s.
+        /// Cap at 0.9s to let the player start falling for accurate landing.</summary>
+        private const float DOUBLE_JUMP_HOLD = 0.85f;
+
+        /// <summary>How long to hold Space for a single jump (full height).</summary>
+        private const float SINGLE_JUMP_HOLD = 0.55f;
+
+        /// <summary>True while a jump hold sequence is active.</summary>
+        private bool _jumpHoldActive = false;
+
+        /// <summary>Timer counting down the current jump hold duration.</summary>
+        private float _jumpHoldRemaining = 0f;
+
         // ── Tuning ────────────────────────────────────────────────────────
         /// <summary>Seconds between jump triggers.</summary>
         private const float JumpInterval = 0.55f;
@@ -68,6 +97,8 @@ namespace Fridays_Adventure.Tests
         {
             _time         = 0f;
             _jumpHoldTimer = 0f;
+            _jumpHoldActive = false;
+            _jumpHoldRemaining = 0f;
             _attackCooldown = 0f;
             _dialogueHandler?.Reset();
             _realAI = null;  // Clear AI (will reinitialize on next scene)
@@ -171,7 +202,6 @@ namespace Fridays_Adventure.Tests
                 _comprehensiveBot.Update(dt);
 
                 // GET DECISIONS based on ACTUAL detection and analysis
-                bool shouldJump = _comprehensiveBot.ShouldJump;
                 bool shouldAttack = _comprehensiveBot.ShouldAttack;
                 bool shouldDodge = _comprehensiveBot.ShouldDodge;
                 bool moveRight = _comprehensiveBot.ShouldMoveRight;
@@ -192,16 +222,43 @@ namespace Fridays_Adventure.Tests
                 }
 
                 // Jump based on ACTUAL detection (combat, platforming, etc.)
-                if (shouldJump)
-                {
-                    input.InjectPressed(Keys.Space);
-                    _jumpHoldTimer = 0.35f;  // Hold for jump arc
-                }
+                // InjectHeld(Space) fires JumpPressed every frame (InputManager
+                // adds held keys to _injectedPressed too).  This means:
+                //   - First jump fires on frame 1
+                //   - SkyIsland's 0.18s _doubleJumpDelay blocks frames 2-11
+                //   - Frame 12: cooldown expires → JumpPressed auto-fires second jump
+                //   - Holding Space the whole time prevents variable-jump-height cap
+                bool shouldJump = _comprehensiveBot.ShouldJump;
+                bool wantDouble = _comprehensiveBot.ShouldDoubleJump;
 
-                // Hold space during jump
-                if (_jumpHoldTimer > 0f)
+                if (_jumpHoldActive)
                 {
+                    _jumpHoldRemaining -= dt;
+                    if (_jumpHoldRemaining > 0f)
+                    {
+                        // Keep holding Space — enables full jump height and
+                        // auto-fires the double jump when cooldown expires
+                        input.InjectHeld(Keys.Space);
+                    }
+                    else
+                    {
+                        // Hold expired — stop jumping
+                        _jumpHoldActive = false;
+                    }
+
+                    // If the player lands mid-sequence, end the hold early
+                    if (_comprehensiveBot.IsPlayerGrounded && _jumpHoldRemaining < (wantDouble ? DOUBLE_JUMP_HOLD : SINGLE_JUMP_HOLD) - 0.1f)
+                    {
+                        _jumpHoldActive = false;
+                        _jumpHoldRemaining = 0f;
+                    }
+                }
+                else if (shouldJump)
+                {
+                    // Start a new jump sequence
                     input.InjectHeld(Keys.Space);
+                    _jumpHoldActive = true;
+                    _jumpHoldRemaining = wantDouble ? DOUBLE_JUMP_HOLD : SINGLE_JUMP_HOLD;
                 }
 
                 // Attack based on ACTUAL enemy detection
