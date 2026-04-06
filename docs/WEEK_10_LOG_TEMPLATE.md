@@ -6,11 +6,43 @@
 
 ---
 
-## SESSION 91-96: Bot AI — Architecture Audit + Reliability Hardening
+## SESSION 91-99: Bot AI — Architecture Audit + Reliability Hardening
 
 **Date/Time:** Current Session  
 **Status:** ✅ COMPLETE  
 **Build Status:** ✅ 0 errors, 0 warnings  
+
+### Session 97-99: Dead Code Cleanup + Frost Ball + Combat Retreat
+
+**Dead code removed from BotPlayerController:**
+- `_jumpHoldTimer` field (replaced by `_jumpHoldActive`/`_jumpHoldRemaining`)
+- `JumpInterval`, `JumpHoldTime`, `FrostInterval` constants (unused after rewrite)
+- `_enemyStompCooldown`, `EnemyStompMinDistance`, `EnemyStompMaxDistance` (unused)
+
+**Frost Ball ranged combat added:**
+- New `ShouldFrostBall` output flag in UnifiedComprehensiveBot
+- Fires `Keys.B` via BotPlayerController when enemy is 100-300px away
+- Used in both normal combat and boss fights
+- Also fires during pit-blocked combat (shoot across gaps)
+
+**Combat retreat at low HP:**
+- When HP < 25%: bot retreats FROM the enemy instead of charging
+- Maintains frost ball fire while retreating
+- Jumps while retreating to dodge incoming attacks
+- Logs `COMBAT_RETREAT` state for diagnostics
+
+**Boss fight jump optimization:**
+- Changed from constant jumping to smart stomp-when-close
+- Jump only within 120px (stomp attempt) or every 1.2s (dodge)
+- Allows bot to walk to boss faster between stomps
+
+**SkyIsland exit zone fix:**
+- Changed range from 350px to 300px (player feet to exit Y)
+- Prevents premature SKY_GOAL engagement from platform 11 (360px away)
+- Exit only reachable from platform 12 (110px away, within double-jump)
+
+**Architecture doc updated:**
+- Added input wiring table (all 9 key bindings)
 
 ### Session 96: Full Architecture Audit + Hazard/Health Systems
 

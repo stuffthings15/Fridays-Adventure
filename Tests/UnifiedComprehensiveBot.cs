@@ -150,10 +150,10 @@ namespace Fridays_Adventure.Tests
         public bool   ShouldDodge       { get; private set; }
 
         /// <summary>
-        /// True when the bot wants to use a health item (M key) this frame.
-        /// Set when player HP drops below 40%.
+        /// True when the bot wants to fire a Frost Ball (B key) this frame.
+        /// Used as a ranged attack against enemies and bosses beyond melee range.
         /// </summary>
-        public bool   ShouldUseMedkit   { get; private set; }
+        public bool   ShouldFrostBall   { get; private set; }
 
         /// <summary>
         /// Exposes the player's grounded state so BotPlayerController can
@@ -251,7 +251,7 @@ namespace Fridays_Adventure.Tests
             ShouldMoveRight   = true;
             ShouldMoveLeft    = false;
             ShouldDodge       = false;
-            ShouldUseMedkit   = false;
+            ShouldFrostBall   = false;
             ShouldUseIceWall  = false;
 
             try
@@ -605,14 +605,32 @@ namespace Fridays_Adventure.Tests
                 ShouldMoveLeft  = dirX > 0;
             }
 
-            // Always try to stomp (jump on head)
-            ShouldJump = true;
+            // Jump to stomp when close enough for a head-landing, or to
+            // dodge ground attacks periodically.  Don't jump constantly —
+            // that wastes time in the air when we could be walking to the boss.
+            if (dist < 120f)
+            {
+                // Close to boss — stomp attempt
+                ShouldJump = true;
+            }
+            else if (_jumpTimer >= 1.2f)
+            {
+                // Periodic dodge jump while approaching from range
+                ShouldJump = true;
+                _jumpTimer = 0f;
+            }
 
             // Attack when within melee range
             if (dist < 120f && _elapsedTime - _lastAttackTime > ATTACK_COOLDOWN)
             {
                 ShouldAttack    = true;
                 _lastAttackTime = _elapsedTime;
+            }
+
+            // Frost Ball at range — softens the boss while closing distance
+            if (dist > 80f && dist < 300f)
+            {
+                ShouldFrostBall = true;
             }
 
             // Dash through the boss every 2 seconds if still alive
@@ -721,10 +739,13 @@ namespace Fridays_Adventure.Tests
             }
 
             // ── Exit zone check — aim directly if close ───────────────
+            // Only engage when the exit is within actual double-jump reach
+            // (314px height).  The player must clear the gap between their
+            // feet and the exit zone bottom — subtract player height.
             if (exitZone != Rectangle.Empty)
             {
-                float exitDistY = _player.Y - exitZone.Y;
-                if (exitDistY > 0f && exitDistY < 350f)
+                float exitDistY = playerFeetY - exitZone.Y;
+                if (exitDistY > 0f && exitDistY < 300f)
                 {
                     CurrentState = "SKY_GOAL";
                     float dx = (exitZone.X + exitZone.Width / 2f) - playerCenterX;
@@ -1088,16 +1109,39 @@ namespace Fridays_Adventure.Tests
 
             float combatDuration = _elapsedTime - _combatStartTime;
             float dirX           = target.X - _player.X;
+            float absDist        = Math.Abs(dirX);
+
+            // ── Health-based combat retreat ────────────────────────────────
+            // When HP is critically low (< 25%) and no medkits available,
+            // disengage from combat and prioritize survival / goal pursuit.
+            // Still fire frost balls at range but don't charge in.
+            if (_player.Health < _player.MaxHealth * 0.25f)
+            {
+                CurrentState = "COMBAT_RETREAT";
+                // Move AWAY from enemy to avoid contact damage
+                ShouldMoveRight = dirX < 0;
+                ShouldMoveLeft  = dirX > 0;
+                ShouldJump      = true;   // jump to dodge incoming attacks
+
+                // Fire frost balls at range while retreating
+                if (absDist < 300f)
+                    ShouldFrostBall = true;
+
+                LogEvent("COMBAT_RETREAT",
+                    $"HP={_player.Health}/{_player.MaxHealth} — retreating from {target.GetType().Name}");
+                return;
+            }
 
             // ── Pit-safe movement: never charge toward an enemy across a gap ──
             // Check if ground exists between us and the enemy.  If a pit is
             // between us, disengage and let the universal pit handler take over.
-            if (_player.IsGrounded && !HasGroundAhead(Math.Min(Math.Abs(dirX), EDGE_PROBE_FAR)))
+            if (_player.IsGrounded && !HasGroundAhead(Math.Min(absDist, EDGE_PROBE_FAR)))
             {
                 // There's a gap between us and the enemy — don't pursue
                 ShouldMoveRight = false;
                 ShouldMoveLeft  = false;
-                ShouldAttack    = true;   // ranged attack if possible
+                ShouldFrostBall = absDist < 300f;  // shoot from across the gap
+                ShouldAttack    = true;             // ranged attack if possible
                 LogEvent("COMBAT_PIT_BLOCK",
                     $"Gap between player and enemy at dist={dirX:F0} — holding position");
                 return;
@@ -1111,10 +1155,16 @@ namespace Fridays_Adventure.Tests
             ShouldJump = true;
 
             // Attack key when nearby
-            if (Math.Abs(dirX) < 80f && _elapsedTime - _lastAttackTime > ATTACK_COOLDOWN)
+            if (absDist < 80f && _elapsedTime - _lastAttackTime > ATTACK_COOLDOWN)
             {
                 ShouldAttack    = true;
                 _lastAttackTime = _elapsedTime;
+            }
+
+            // Frost Ball when enemy is beyond melee but within projectile range
+            if (absDist > 100f && absDist < 300f)
+            {
+                ShouldFrostBall = true;
             }
 
             // After 1 s of failed stomping, trigger the character dash ability via
@@ -1128,10 +1178,6 @@ namespace Fridays_Adventure.Tests
                     $"Enemy alive after {combatDuration:F1}s — pressing E to dash through");
                 _combatStartTime = _elapsedTime;
             }
-
-            LogEvent("COMBAT",
-                $"Target={target.GetType().Name} Dist={Math.Abs(dirX):F0} " +
-                $"Duration={combatDuration:F1}s");
         }
 
         // ══════════════════════════════════════════════════════════════════

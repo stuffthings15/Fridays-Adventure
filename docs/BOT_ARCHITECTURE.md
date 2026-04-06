@@ -35,6 +35,20 @@
 └─────────────────────────────────────────────────────┘
 ```
 
+### Input Wiring (BotPlayerController → InputManager)
+
+| Bot Output Flag | Key Injected | Game Action |
+|----------------|-------------|-------------|
+| `ShouldMoveRight` | `Right + Shift` | Move right + sprint |
+| `ShouldMoveLeft` | `Left + Shift` | Move left + sprint |
+| `ShouldJump` | `Space` (held) | Jump (single or double via hold duration) |
+| `ShouldDoubleJump` | (extends hold) | 0.85s hold vs 0.55s single |
+| `ShouldAttack` | `Z` | Melee attack |
+| `ShouldDodge` | `E` | WingDash / TidalSlam / FlashFreeze |
+| `ShouldFrostBall` | `B` | Ranged ice projectile |
+| `ShouldUseIceWall` | `Q` | Place ice wall for climbing |
+| (direct call) | — | `PowerUpInventory.UseHealthItem()` at HP < 40% |
+
 ---
 
 ## 1. Perception System (Object & State Detection)

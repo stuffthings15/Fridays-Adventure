@@ -30,7 +30,6 @@ namespace Fridays_Adventure.Tests
     {
         // ── State ─────────────────────────────────────────────────────────
         private float _time         = 0f;
-        private float _jumpHoldTimer = 0f;
         private float _attackCooldown = 0f;  // Track attack rate
         private GameDialogueHandler _dialogueHandler;
         private ComprehensiveBotActivityLogger _botActivityLogger = null;  // Activity logger
@@ -70,25 +69,8 @@ namespace Fridays_Adventure.Tests
         private float _jumpHoldRemaining = 0f;
 
         // ── Tuning ────────────────────────────────────────────────────────
-        /// <summary>Seconds between jump triggers.</summary>
-        private const float JumpInterval = 0.55f;
-
-        /// <summary>
-        /// How long to hold Space after each press.
-        /// 0.38 s gives a near-maximum jump arc; anything shorter becomes a short-hop.
-        /// </summary>
-        private const float JumpHoldTime = 0.38f;
-
-        /// <summary>Seconds between Frost Ball shots.</summary>
-        private const float FrostInterval = 4.0f;
-
         /// <summary>Minimum time between attack inputs (matches player attack cooldown).</summary>
         private const float AttackCooldown = 0.45f;
-
-        // ── Enemy stomp detection ────────────────────────────────────────
-        private float _enemyStompCooldown = 0f;
-        private const float EnemyStompMinDistance = 80f;   // Start checking when enemy < 80px away
-        private const float EnemyStompMaxDistance = 200f;  // Stop checking when enemy > 200px away
 
         /// <summary>
         /// Resets all timers for a new level run.
@@ -96,7 +78,6 @@ namespace Fridays_Adventure.Tests
         public void Reset()
         {
             _time         = 0f;
-            _jumpHoldTimer = 0f;
             _jumpHoldActive = false;
             _jumpHoldRemaining = 0f;
             _attackCooldown = 0f;
@@ -178,8 +159,6 @@ namespace Fridays_Adventure.Tests
         public void InjectInput(InputManager input, float dt)
         {
             _time += dt;
-            if (_jumpHoldTimer > 0f)
-                _jumpHoldTimer -= dt;
             if (_attackCooldown > 0f)
                 _attackCooldown -= dt;
 
@@ -280,7 +259,12 @@ namespace Fridays_Adventure.Tests
                 if (_comprehensiveBot.ShouldUseIceWall)
                 {
                     input.InjectPressed(Keys.Q);
-                    System.Diagnostics.Debug.WriteLine("[BOT] Q pressed — placing ice wall to reach elevated item");
+                }
+
+                // Frost Ball (B key) — ranged projectile for softening enemies/bosses.
+                if (_comprehensiveBot.ShouldFrostBall)
+                {
+                    input.InjectPressed(Keys.B);
                 }
 
                 return;  // ← Always use comprehensive bot
