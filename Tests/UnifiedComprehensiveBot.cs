@@ -602,9 +602,20 @@ namespace Fridays_Adventure.Tests
         /// The exit is at the top of the level.  The bot must jump upward
         /// across ascending platforms rather than simply moving right.
         ///
-        /// Strategy: find the nearest platform ABOVE the player, move
-        /// horizontally toward it, jump when grounded (or double-jump
-        /// mid-air to gain extra height).  Repeat until exit zone is reached.
+        /// CRITICAL: SkyIslandScene platforms are SOLID FROM BELOW.  Jumping
+        /// directly underneath a platform bonks the player's head and pushes
+        /// them back down.  The bot must approach from the SIDE: position
+        /// just outside the platform's horizontal span, jump, then drift
+        /// horizontally in mid-air to land on top.
+        ///
+        /// Strategy per climb step:
+        ///   1. Find the nearest reachable platform ABOVE the player.
+        ///   2. If the player is directly underneath it → walk to the
+        ///      nearest edge first (left or right, whichever is closer).
+        ///   3. Once beside the platform → jump and move toward the
+        ///      platform center while airborne.
+        ///   4. At the jump apex → fire the double-jump for extra height.
+        ///   5. Land on top.  Repeat.
         /// </summary>
         private void RunVerticalLogic()
         {
@@ -620,23 +631,25 @@ namespace Fridays_Adventure.Tests
             // ── Read platform data from the scene ─────────────────────
             var platforms = GetPlatforms();
             Rectangle exitZone = GetExitFlag();
+            float playerFeetY   = _player.Y + _player.Height;
+            float playerCenterX = _player.X + _player.Width / 2f;
 
             // ── P2: Find the best NEXT platform to climb toward ───────
-            // Look for the lowest platform that is ABOVE the player's feet.
-            // This gives the bot a concrete horizontal target instead of
-            // blindly oscillating.
+            // Among all platforms whose TOP is above the player's feet,
+            // pick the LOWEST one (closest to reach).  Also skip the
+            // current platform the player is standing on (within 10 px).
+            // Only consider platforms within double-jump reach (~300 px).
             Rectangle targetPlat = Rectangle.Empty;
-            float playerFeetY = _player.Y + _player.Height;
-            float bestPlatY = float.MinValue;  // highest Y that is still above player (most negative)
+            float bestPlatY = float.MinValue;
 
             if (platforms != null)
             {
                 foreach (var p in platforms)
                 {
-                    // Platform must be above the player's feet (lower Y value)
-                    if (p.Top >= playerFeetY - 10f) continue;
-                    // Among platforms above us, pick the LOWEST one (closest,
-                    // i.e., largest Y value that is still < playerFeetY)
+                    float vertDist = playerFeetY - p.Top;
+                    // Must be above player's feet and within double-jump reach
+                    if (vertDist < 10f || vertDist > 340f) continue;
+                    // Among reachable platforms above, pick the nearest (largest Top Y)
                     if (p.Top > bestPlatY)
                     {
                         bestPlatY  = p.Top;
@@ -645,31 +658,23 @@ namespace Fridays_Adventure.Tests
                 }
             }
 
-            // ── P3: If exit zone is reachable (within 2 jump heights),
-            //        aim directly at it ────────────────────────────────
+            // ── P3: Exit zone reachable? Aim directly ─────────────────
             if (exitZone != Rectangle.Empty)
             {
                 float exitCenterX = exitZone.X + exitZone.Width / 2f;
-                float exitDistY   = _player.Y - exitZone.Y;  // positive = exit is above
+                float exitDistY   = _player.Y - exitZone.Y;
 
                 if (exitDistY < 350f && exitDistY > 0f)
                 {
-                    // Exit is within reach — aim straight at it
                     CurrentState = "SKY_GOAL_PURSUIT";
-                    float distX = exitCenterX - (_player.X + _player.Width / 2f);
+                    float distX = exitCenterX - playerCenterX;
                     ShouldMoveRight = distX > 15f;
                     ShouldMoveLeft  = distX < -15f;
 
-                    // Jump when grounded, double-jump at apex to gain max height
                     if (_player.IsGrounded)
-                    {
                         ShouldJump = true;
-                    }
-                    else if (_player.VelocityY > -50f && _player.VelocityY < 50f)
-                    {
-                        // Near the apex of the jump — double-jump for extra height
-                        ShouldJump = true;
-                    }
+                    else if (_player.VelocityY > -80f && _player.VelocityY < 80f)
+                        ShouldJump = true;   // double-jump at apex
 
                     LogEvent("SKY_GOAL", $"Exit in reach, DistX={distX:F0} DistY={exitDistY:F0}");
                     return;
@@ -679,58 +684,98 @@ namespace Fridays_Adventure.Tests
             // ── P4: Climb toward the next platform above ──────────────
             if (targetPlat != Rectangle.Empty)
             {
-                CurrentState = "SKY_CLIMBING";
                 float platCenterX = targetPlat.X + targetPlat.Width / 2f;
-                float playerCenterX = _player.X + _player.Width / 2f;
-                float distX = platCenterX - playerCenterX;
 
-                // Move toward the center of the target platform
-                ShouldMoveRight = distX > 15f;
-                ShouldMoveLeft  = distX < -15f;
+                // Check if the player is directly UNDERNEATH the target platform.
+                // If so, jumping would head-bonk the bottom (solid from below).
+                // Margin of 8 px on each side accounts for the player's width.
+                bool directlyBelow = (_player.X + _player.Width) > (targetPlat.Left + 8)
+                                  && _player.X < (targetPlat.Right - 8);
 
                 if (_player.IsGrounded)
                 {
-                    // On the ground or a platform — jump to climb
-                    ShouldJump = true;
-                    LogEvent("SKY_JUMP_UP",
-                        $"Jumping toward platform at Y={targetPlat.Top} X=[{targetPlat.Left}-{targetPlat.Right}], distX={distX:F0}");
+                    if (directlyBelow)
+                    {
+                        // ── STEP OUT: walk to the nearest edge of the platform ──
+                        // so we can jump past it without head-bonking the bottom.
+                        CurrentState = "SKY_STEP_OUT";
+                        float distToLeftEdge  = _player.X - targetPlat.Left;
+                        float distToRightEdge = targetPlat.Right - (_player.X + _player.Width);
+
+                        if (Math.Abs(distToLeftEdge) <= Math.Abs(distToRightEdge))
+                        {
+                            // Closer to the left edge — walk left past it
+                            ShouldMoveLeft  = true;
+                            ShouldMoveRight = false;
+                        }
+                        else
+                        {
+                            // Closer to the right edge — walk right past it
+                            ShouldMoveRight = true;
+                            ShouldMoveLeft  = false;
+                        }
+                        ShouldJump = false;  // do NOT jump while underneath!
+
+                        LogEvent("SKY_STEP_OUT",
+                            $"Under platform Y={targetPlat.Top} X=[{targetPlat.Left}-{targetPlat.Right}] " +
+                            $"— stepping out (distL={distToLeftEdge:F0} distR={distToRightEdge:F0})");
+                    }
+                    else
+                    {
+                        // ── JUMP FROM BESIDE: we're outside the platform's
+                        //    horizontal range — jump now and drift toward it.
+                        CurrentState = "SKY_JUMP_BESIDE";
+                        ShouldJump = true;
+
+                        // Start drifting toward the platform center while launching
+                        float distX = platCenterX - playerCenterX;
+                        ShouldMoveRight = distX > 0f;
+                        ShouldMoveLeft  = distX < 0f;
+
+                        LogEvent("SKY_JUMP_BESIDE",
+                            $"Beside platform Y={targetPlat.Top} — jumping + drifting (distX={distX:F0})");
+                    }
                 }
                 else
                 {
-                    // Airborne — use the double-jump near the apex to
-                    // maximize height.  The apex is where VelocityY
-                    // transitions from negative (rising) to positive (falling).
-                    // JumpForce=-520, apex at roughly VelocityY ≈ 0.
-                    // Fire double-jump when velocity is in [-80, 80] range
-                    // (near apex) for maximum altitude gain.
+                    // ── AIRBORNE: drift toward platform center and double-jump ──
+                    CurrentState = "SKY_AIRBORNE_DRIFT";
+                    float distX = platCenterX - playerCenterX;
+                    ShouldMoveRight = distX > 5f;
+                    ShouldMoveLeft  = distX < -5f;
+
+                    // Double-jump at apex (VelocityY near 0) for max height
                     bool nearApex = _player.VelocityY > -80f && _player.VelocityY < 80f;
                     if (nearApex)
                     {
                         ShouldJump = true;
                         LogEvent("SKY_DOUBLE_JUMP",
-                            $"Double-jump at apex, VelY={_player.VelocityY:F0}");
+                            $"Apex double-jump, VelY={_player.VelocityY:F0}, drifting distX={distX:F0}");
                     }
                 }
 
                 return;
             }
 
-            // ── P5: Fallback — no platforms found above (at the top?) ──
-            // Try to reach exit directly
+            // ── P5: No reachable platform found ───────────────────────
+            // This can happen if the bot is between platform tiers.
+            // Try to reach exit directly or explore upward.
             if (exitZone != Rectangle.Empty)
             {
                 CurrentState = "SKY_GOAL_FALLBACK";
                 float exitCenterX = exitZone.X + exitZone.Width / 2f;
-                float distX = exitCenterX - (_player.X + _player.Width / 2f);
+                float distX = exitCenterX - playerCenterX;
                 ShouldMoveRight = distX > 15f;
                 ShouldMoveLeft  = distX < -15f;
                 ShouldJump = _player.IsGrounded;
             }
             else
             {
-                // No exit, no platforms above — just jump and move right
+                // Fallback: move to level center and jump
                 CurrentState = "SKY_EXPLORE";
-                ShouldMoveRight = true;
+                float toCenter = 450f - playerCenterX;
+                ShouldMoveRight = toCenter > 30f;
+                ShouldMoveLeft  = toCenter < -30f;
                 ShouldJump = _player.IsGrounded;
             }
 
@@ -954,6 +999,29 @@ namespace Fridays_Adventure.Tests
         {
             CurrentState      = "STUCK_ESCAPE";
             _stuckEscapeTimer -= dt;
+
+            // ── Sky Island stuck escape: move to a different X position ───
+            // On vertical levels, "stuck" usually means the bot is head-bonking
+            // the bottom of a platform above.  Moving sideways gets it out from
+            // under the platform so RunVerticalLogic can jump beside it.
+            if (_isSkyIslandScene)
+            {
+                // Alternate direction each stuck escape attempt
+                bool goLeft = ((int)(_elapsedTime * 2f)) % 2 == 0;
+                ShouldMoveRight = !goLeft;
+                ShouldMoveLeft  = goLeft;
+                ShouldJump      = false;  // don't jump while under a platform
+
+                if (_stuckEscapeTimer <= 0f)
+                {
+                    _escapingBackward = false;
+                    _stuckTimer       = 0f;
+                    _stuckAnchorX     = _player.X;
+                    _stuckAnchorY     = _player.Y;
+                    LogEvent("STUCK_RESOLVED", $"SkyIsland side-step complete — resuming at X={_player.X:F0}");
+                }
+                return;
+            }
 
             // If a ledge / water pit is very close ahead, hold position and
             // jump rather than running forward into it.
