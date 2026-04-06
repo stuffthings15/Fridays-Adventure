@@ -6,11 +6,31 @@
 
 ---
 
-## SESSION 91-92: Bot AI — Pit Avoidance + Gap Crossing + Wall-Jump Recovery
+## SESSION 91-93: Bot AI — Pit Avoidance + Gap Crossing + SkyIsland Climbing
 
 **Date/Time:** Current Session  
 **Status:** ✅ COMPLETE  
 **Build Status:** ✅ 0 errors, 0 warnings  
+
+### Session 93: SkyIsland Head-Bonk Fix
+
+**Root Cause:** SkyIslandScene platforms are **SOLID FROM BELOW** (`ResolveV` line 256: rising player pushed DOWN to `p.Bottom`, velocity killed). The bot targeted platform center, walked directly underneath, jumped, and head-bonked the bottom every frame — never climbing.
+
+**Fix — Side-approach climbing algorithm:**
+
+| State | Condition | Action |
+|-------|-----------|--------|
+| `SKY_STEP_OUT` | Grounded AND directly below target platform | Walk to nearest edge (left or right) — do NOT jump |
+| `SKY_JUMP_BESIDE` | Grounded AND beside platform (outside its X range) | Jump + drift horizontally toward platform center |
+| `SKY_AIRBORNE_DRIFT` | Airborne | Move toward platform center; double-jump at apex (VelY ∈ [-80, 80]) |
+| `SKY_GOAL_PURSUIT` | Exit zone within 350px | Aim directly at exit, jump + double-jump |
+
+**Additional fixes:**
+- Platform search limited to double-jump reach (340px) — skips unreachable platforms
+- Stuck escape for SkyIsland now **side-steps** instead of jumping forward (which just head-bonked again)
+- Pit avoidance disabled for SkyIsland (jumping off edges is required behavior)
+
+### Session 91-92: Pit Avoidance + Gap Crossing
 
 ### Root Cause Analysis
 Three compounding failures caused the bot to fall into pits:
