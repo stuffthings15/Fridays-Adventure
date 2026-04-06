@@ -6,6 +6,50 @@
 
 ---
 
+## SESSION 91: Bot AI — Ground-Gap Probing (Pit Avoidance)
+
+**Date/Time:** Current Session  
+**Status:** ✅ COMPLETE  
+**Build Status:** ✅ 0 errors, 0 warnings  
+
+### Root Cause Analysis
+The bot had **zero awareness of actual ground/platform layout**. It only detected `WaterPit` hazard objects via reflection, missing structural gaps between platform rectangles. Blind periodic jumps launched it into death pits. Combat logic charged across gaps toward enemies.
+
+### Fix: Two-Layer Ground Probing
+| Component | Purpose |
+|-----------|---------|
+| `_platformsField` / `_groundYField` | Reflection cache for IslandScene's `List<Rectangle>` platforms and `int _groundY` |
+| `HasGroundAt(x)` | Probes platforms + ground baseline at any world X coordinate |
+| `HasGroundAhead(dist)` | Edge detection at the player's leading edge |
+| `FindNearestGapDistance(range)` | Scans ahead in 16px steps for the first gap |
+| `CanJumpOverGap(dist)` | Validates a landing surface exists beyond the gap |
+| `IsInsideWaterPit(x, y)` | Checks if a probe point falls inside a WaterPit hazard |
+
+### Behavioral Changes
+- Universal pit avoidance uses **two probes** (48px close, 120px far)
+- Close probe empty → **STOP + jump vertically**, only move once airborne
+- Far probe empty → **pre-jump early** to clear gap in flight
+- No landing exists → **RETREAT** away from edge
+- Periodic jumps gated by `HasGroundAhead` (no more blind jumps into pits)
+- Combat checks ground between player and enemy before pursuing
+- Stuck escape checks ledge before running forward
+- WaterPit hazard list kept as fallback layer
+
+### Files Changed
+| File | Changes |
+|------|---------|
+| `Tests/UnifiedComprehensiveBot.cs` | +233/-17: ground probing methods, platform/groundY reflection, safe jump validation, combat pit check |
+
+### 🔄 Build Status
+- Build: ✅ PASSING
+
+### 🎯 Next Steps
+- In-game verify bot avoids Dinosaur Island water pits (X=700, 1360, 2040)
+- Verify bot clears gaps by pre-jumping rather than walking off ledges
+- Verify combat disengages when enemy is across a gap
+
+---
+
 ## SESSION 87-90: Bot QA System — Critical Architecture Fixes
 
 **Date/Time:** Current Session — Multi-prompt continuation  
