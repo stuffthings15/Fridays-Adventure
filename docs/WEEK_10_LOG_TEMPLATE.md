@@ -6,11 +6,28 @@
 
 ---
 
-## SESSION 91-99: Bot AI — Architecture Audit + Reliability Hardening
+## SESSION 91-100: Bot AI — Architecture Audit + Reliability Hardening
 
 **Date/Time:** Current Session  
 **Status:** ✅ COMPLETE  
 **Build Status:** ✅ 0 errors, 0 warnings  
+
+### Session 100: Dead Code in BotPlayLevelScene + Enhanced HUD Overlay
+
+**Dead code removed from BotPlayLevelScene:**
+- `_pathAHoldTimer` / `PATH_A_HOLD_SECONDS` — obsolete result-scene hold (dismiss loop handles this)
+- `_pickupsCollected`, `_enemiesDefeated`, `_cardRouletteSelectCount` — never incremented
+- `_cardRouletteEntered`, `_cardRouletteStartTime` — never used
+- `COMPLETION_HOLD` constant — replaced by inline 1.5f in Path B logic
+
+**Enhanced bot HUD overlay:**
+- Panel height expanded from 56px to 72px
+- Added bot AI state display (`CurrentState` from UnifiedComprehensiveBot)
+- Added real-time player HP display (`HP:X/Y`)
+- Level name and HP shown on same line for density
+- Bot state shown in lime green below level name
+- Timeout bar repositioned to bottom of expanded panel
+- Much more useful for watching bot behavior in real-time
 
 ### Session 97-99: Dead Code Cleanup + Frost Ball + Combat Retreat
 

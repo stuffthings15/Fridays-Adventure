@@ -49,19 +49,9 @@ namespace Fridays_Adventure.Scenes
         private const float MAX_LEVEL_TIME = 90f;   // seconds before auto-advance
         private float _elapsed = 0f;
 
-        // ── Path A result scene hold — lets the user SEE CardRoulette/CourseClear
-        private float _pathAHoldTimer = 0f;
-        private const float PATH_A_HOLD_SECONDS = 4f;  // show result scenes for 4 s
-
-        // ── Event tracking for comprehensive bot logging ─────────────────
-        private int _pickupsCollected = 0;
-        private int _enemiesDefeated = 0;
-        private int _cardRouletteSelectCount = 0;
-        private bool _cardRouletteEntered = false;
-        private float _cardRouletteStartTime = 0f;
-
         // ── Bot Activity Logger ───────────────────────────────────────────
         private Tests.ComprehensiveBotActivityLogger _botActivityLogger = null;
+
         // ── Completion tracking ───────────────────────────────────────────
         /// <summary>
         /// True once the inner scene has signalled completion, either by pushing
@@ -69,7 +59,6 @@ namespace Fridays_Adventure.Scenes
         /// </summary>
         private bool  _innerCompleted = false;
         private float _completionHoldTimer = 0f;
-        private const float COMPLETION_HOLD = 5f;  // show result for 5 s then advance
 
         /// <summary>
         /// True when completion was detected via the inner scene's own boolean
@@ -148,7 +137,6 @@ namespace Fridays_Adventure.Scenes
 
             _bot.Reset();
             _elapsed    = 0f;
-            _pathAHoldTimer = 0f;
             _innerCompleted = false;
             _completedViaReflection = false;
             _completionHoldTimer = 0f;
@@ -570,7 +558,7 @@ namespace Fridays_Adventure.Scenes
         private void DrawBotOverlay(Graphics g)
         {
             const int padX = 8, padY = 8;
-            const int panelW = 300, panelH = 56;
+            const int panelW = 300, panelH = 72;
 
             // Semi-transparent dark background
             using (var br = new SolidBrush(Color.FromArgb(160, 0, 0, 0)))
@@ -583,19 +571,31 @@ namespace Fridays_Adventure.Scenes
             string modeTag = _innerCompleted ? "✅ COMPLETE" : $"T:{_elapsed:F1}s";
             g.DrawString($"🤖 BOT  {modeTag}", _labelFont, Brushes.Cyan, padX + 6, padY + 4);
 
+            // Bot state + player HP (from unified bot)
+            string botState = "";
+            string hpText   = "";
+            if (_bot._comprehensiveBot != null)
+            {
+                botState = _bot._comprehensiveBot.CurrentState ?? "";
+                Player p = GetPlayerFromScene(_inner);
+                if (p != null)
+                    hpText = $"HP:{p.Health}/{p.MaxHealth}";
+            }
+            g.DrawString($"{_levelName}  {hpText}", _hudFont, Brushes.Yellow,
+                padX + 6, padY + 22);
+            g.DrawString(botState, _hudFont, Brushes.LimeGreen,
+                padX + 6, padY + 36);
+
             // Timeout bar
             float pct = Math.Min(1f, _elapsed / MAX_LEVEL_TIME);
             int barW = panelW - 12;
             using (var br = new SolidBrush(Color.FromArgb(80, Color.Gray)))
-                g.FillRectangle(br, padX + 6, padY + 38, barW, 10);
+                g.FillRectangle(br, padX + 6, padY + 54, barW, 10);
             Color barCol = pct > 0.8f ? Color.OrangeRed : Color.LimeGreen;
             using (var br = new SolidBrush(barCol))
-                g.FillRectangle(br, padX + 6, padY + 38, (int)(barW * pct), 10);
+                g.FillRectangle(br, padX + 6, padY + 54, (int)(barW * pct), 10);
             using (var pen = new Pen(Color.White, 1))
-                g.DrawRectangle(pen, padX + 6, padY + 38, barW, 10);
-
-            // Level name label
-            g.DrawString(_levelName, _hudFont, Brushes.Yellow, padX + 6, padY + 22);
+                g.DrawRectangle(pen, padX + 6, padY + 54, barW, 10);
 
             // ESC hint
             SizeF escSz = g.MeasureString("[ESC] Exit bot", _hudFont);
