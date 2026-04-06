@@ -174,12 +174,12 @@ namespace Fridays_Adventure.Scenes
         /// </summary>
         private bool AllIslandsCompleted()
         {
-            // ALL 18 LEVELS REQUIRED FOR VICTORY
+            // ALL 17 LEVELS REQUIRED FOR VICTORY
             string[] allLevelIds = { 
                 // Story Islands (11) - required
                 "dino", "sky", "wano", "harbor", "coral", "tundra", 
                 "dive_gate", "sunken_gate", "kelp", "boiling_vent", "abyss",
-                // Boss/Storm Encounters (7) - ALSO REQUIRED
+                // Boss/Storm Encounters (6) - ALSO REQUIRED
                 "storm1", "blockade", "warlord1", "storm2", "warlord2", "centipede_final"
             };
 
@@ -702,14 +702,16 @@ namespace Fridays_Adventure.Scenes
                 }
             }
 
-            bool allStoriesComplete = totalCompleted == 18; // VICTORY REQUIRES ALL 18 LEVELS
+            // Victory when all levels in the levelIds array are completed
+            int totalLevels = levelIds.Length;  // 17 levels total
+            bool allStoriesComplete = totalCompleted == totalLevels;
             Color titleColor = allStoriesComplete ? Color.Gold : Color.LimeGreen;
-            string titleText = $"VICTORY: {totalCompleted}/18 Levels Complete";
+            string titleText = $"VICTORY: {totalCompleted}/{totalLevels} Levels Complete";
 
             using (var f = new Font("Courier New", 9, FontStyle.Bold))
                 g.DrawString(titleText, f, new SolidBrush(titleColor), panelX + 6, panelY + 2);
 
-            // ── Level list (ALL 18 LEVELS) ──
+            // ── Level list (ALL levels) ──
             int drawCount = 0;
             for (int i = 0; i < levelIds.Length && drawCount < itemsPerPanel; i++)
             {
@@ -739,7 +741,7 @@ namespace Fridays_Adventure.Scenes
                 using (var br = new SolidBrush(Color.FromArgb(100, 200, 160, 0)))
                     g.FillRectangle(br, panelX, victoryY, panelW, 16);
                 using (var f = new Font("Courier New", 9, FontStyle.Bold))
-                    g.DrawString("★ ALL 18 LEVELS BEATEN! ★", f, Brushes.Gold, panelX + 6, victoryY + 1);
+                    g.DrawString("★ ALL LEVELS BEATEN! ★", f, Brushes.Gold, panelX + 6, victoryY + 1);
             }
 
             // ── SECONDARY PANEL: All Levels + Total Counter ──
@@ -762,8 +764,8 @@ namespace Fridays_Adventure.Scenes
             using (var pen = new Pen(Color.FromArgb(120, 200, 100, 255), 2))
                 g.DrawRectangle(pen, counterX, counterY, 100, 24);
 
-            Color counterColor = totalCompleted == 18 ? Color.Gold : Color.Cyan;
-            string counterText = $"{totalCompleted} / 18";
+            Color counterColor = totalCompleted == totalLevels ? Color.Gold : Color.Cyan;
+            string counterText = $"{totalCompleted} / {totalLevels}";
             using (var f = new Font("Courier New", 12, FontStyle.Bold))
                 g.DrawString(counterText, f, new SolidBrush(counterColor), counterX + 18, counterY + 4);
 
@@ -781,8 +783,8 @@ namespace Fridays_Adventure.Scenes
             int barW = panelW - 16;
             using (var br = new SolidBrush(Color.FromArgb(60, 60, 60)))
                 g.FillRectangle(br, panelX + 8, barY, barW, 12);
-            using (var br = new SolidBrush(totalCompleted == 18 ? Color.Gold : Color.Cyan))
-                g.FillRectangle(br, panelX + 8, barY, (int)(barW * totalCompleted / 18f), 12);
+            using (var br = new SolidBrush(totalCompleted == totalLevels ? Color.Gold : Color.Cyan))
+                g.FillRectangle(br, panelX + 8, barY, (int)(barW * totalCompleted / (float)totalLevels), 12);
             using (var pen = new Pen(Color.FromArgb(120, 200, 200, 200)))
                 g.DrawRectangle(pen, panelX + 8, barY, barW, 12);
         }

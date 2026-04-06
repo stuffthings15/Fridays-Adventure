@@ -6,11 +6,21 @@
 
 ---
 
-## SESSION 101: FortressScene Exit Detection + BossKey Grant
+## SESSION 101: FortressScene Exit Detection + BossKey Grant + Victory Condition Fix
 
 **Date/Time:** Current Session  
 **Status:** ✅ COMPLETE  
 **Build Status:** ✅ 0 errors, 0 warnings  
+
+### CRITICAL: Victory condition was impossible (game unwinnable)
+- `OverworldScene.DrawCampaignProgress()` checked `totalCompleted == 18` for victory
+- But only **17** level IDs exist in the `levelIds` array
+- The 18th level was never added — it was a counting error from Session 65
+- Victory could **never** trigger because 17 != 18
+- **Fix:** Replaced all hardcoded `18` with `levelIds.Length` (which is 17)
+- Victory now correctly triggers when all 17 levels are completed
+- Counter now shows "X/17" instead of "X/18"
+- Progress bar correctly fills to 100% at 17/17
 
 ### FortressScene exit detection fix
 - Bot's `_exitFlagField` reflection now also checks for `_exitDoor` (FortressScene's exit field name)
@@ -23,23 +33,18 @@
 - `BotPlayLevelScene.OnEnter()` now grants BossKey automatically when inner scene is FortressScene
 - Gate check at line 245 runs every frame, so BossKey granted after OnEnter still opens the gate on first Update
 
-### Verification of scene exit mechanisms
-| Scene | Exit Field | Mechanism |
-|-------|-----------|-----------|
-| `IslandScene` | `_exitFlag` | Hitbox intersection → Push CardRoulette (Path A) |
-| `SkyIslandScene` | `_exitZone` | Hitbox intersection → `_complete = true` (Path B) |
-| `UnderwaterScene` | `_exitZone` | Hitbox intersection → `_levelComplete = true` (Path B) |
-| `FortressScene` | `_exitDoor` | Gate must be open + hitbox intersection (Path B) |
-| `AirshipLevelScene` | `_exitFlag` | Hitbox intersection → `_levelComplete = true` (Path B) |
-| `StormScene` | N/A | Survive 25 seconds → `_complete = true` (Path B) |
-| `BossScene` | N/A | Defeat boss → `_complete = true` (Path B) |
-| `WarlordBossScene` | N/A | Defeat boss → `_complete = true` (Path B) |
+### Session log cleanup
+- Removed 436 duplicate lines (Sessions 69 and 70 were copy-pasted twice)
+- Restored Session 69 as a condensed entry
+- Log reduced from 4857 to ~4440 lines
 
 ### Files Changed
 | File | Changes |
 |------|---------|
 | `Tests/UnifiedComprehensiveBot.cs` | Added `_exitDoor` to reflection chain (+1 line) |
 | `Scenes/BotPlayLevelScene.cs` | Added BossKey grant for FortressScene (+7 lines) |
+| `Scenes/OverworldScene.cs` | Fixed victory condition: 18→levelIds.Length (17) |
+| `docs/WEEK_10_LOG_TEMPLATE.md` | Removed duplicate sessions, restored Session 69 |
 
 ---
 
@@ -1467,186 +1472,6 @@ private const int MAX_LOG_LINES = 15;
 - Monitor for any console output issues in Release build
 - Consider adding visual bot animation in future iterations
 
-
-
-**Date/Time:** April 5, 2026 (Current Session)  
-**Duration:** UI implementation session  
-
-### ✅ Features Implemented
-
-1. **Exit to Desktop Button in Dev Menu** (Scenes/DevMenuScene.cs):
-   - Added new menu entry: `[EXIT] Exit to Desktop`
-   - Positioned at bottom of dev menu with spacer above it
-   - Calls `Game.RequestClose()` to safely exit application
-   - All game state is saved before exit (automatic via Game.Stop())
-
-2. **Exit to Desktop Button in Options/Pause Menu** (Scenes/OptionsScene.cs):
-   - Added new application section with exit option
-   - Label: `Exit to Desktop`
-   - Calls `Game.RequestClose()` to trigger exit
-   - Works from both main menu and in-game pause menu
-   - Game state automatically saved on exit
-
-3. **Verified Save on Exit Flow** (Engine/Game.cs):
-   - `Game.Stop()` called on application close
-   - Calls `SyncRuntimeToSaveData()` before save
-   - Calls `Save.Save()` to persist game state
-   - All current level data saved to JSON
-   - Audio settings, game progress, and player data all preserved
-
-### 🔍 Investigation Results
-
-**Save Flow Verification:**
-- ✅ Form1.cs: `FormClosed += (s, e) => _game.Stop();`
-- ✅ Form1.cs: `Game.CloseRequested += () => Close();`
-- ✅ Game.cs: `Stop()` method saves all data before exit
-- ✅ Current level automatically preserved in SaveData
-- ✅ No additional save logic needed - existing system handles it
-
-### 📋 Code Changes
-
-**Files Modified:**
-- `Scenes\DevMenuScene.cs` - Added exit button
-- `Scenes\OptionsScene.cs` - Added exit button
-
-**Exit Button Implementation:**
-```csharp
-// DevMenuScene.cs
-new LevelEntry { Label = "[EXIT] Exit to Desktop", Action = () => Game.RequestClose() },
-
-// OptionsScene.cs
-_rows.Add(new Row { Type = RowType.ToolAction, Label = "Exit to Desktop", 
-                    ToolAction = () => Game.RequestClose() });
-```
-
-### 📊 Test Log Analysis
-
-**Current Status:**
-- Test logs location: `Logs/bot-tests/` (auto-created on first test)
-- Log system ready but no tests run yet (logs will be generated on first test run)
-- TestLogSystem.cs: Comprehensive logging framework in place
-- Log entries include: timestamp, type, message, bot position data
-
-### ✅ Build Status
-- **Compilation:** Success (0 errors, 0 warnings)
-- **Phase 1 Features:** Still working
-- **New Buttons:** Functional in all menus
-
-### 🎮 User Experience
-1. **Main Menu (TitleScene):** EXIT button already present (uses `Game.RequestClose()`)
-2. **Dev Menu (DevMenuScene):** NEW - EXIT button at bottom of list
-3. **Options/Pause Menu (OptionsScene):** NEW - EXIT button under APPLICATION section
-4. **Exit Behavior:** Saves current level and all game state before closing
-
-### ⏭️ Next Steps
-- Run automated tests and monitor generated logs
-- Check log format and content from bot testing
-- Verify save files persist correctly after exit
-
----
-
-## SESSION 70: Console Allocation Fix + Live Test Progress Visualization
-
-**Date/Time:** April 5, 2026  
-**Duration:** Debug and implementation session  
-
-### 🐛 Bugs Fixed
-
-1. **System.IO.IOException: The handle is invalid**
-   - **Root Cause:** Application compiled as `WinExe` (Windows Forms) without console window
-   - **When Occurs:** `Console.Clear()` called in `LevelAutoTestManager.RunAllTests()`
-   - **Solution:** Added `AllocConsole()` P/Invoke from kernel32.dll
-   - **Location:** Tests/AutoTestBot.cs - `LevelAutoTestManager` class
-   - **Implementation:**
-     ```csharp
-     [DllImport("kernel32.dll", SetLastError = true)]
-     private static extern bool AllocConsole();
-     ```
-   - **Applied Before:** All console operations in `RunAllTests()`
-   - **Error Handling:** Try-catch logs failures to Debug output
-
-2. **Console Test Ran Without Visual Feedback**
-   - **Issue:** Tests ran synchronously, blocking the render loop
-   - **Result:** No on-screen progress visible; users couldn't see bot testing
-   - **Solution:** Refactored test execution for asynchronous frame-by-frame progress
-   - **Location:** Scenes/AutoTestLevelScene.cs + Tests/AutoTestBot.cs
-
-### ✅ Features Implemented
-
-1. **Live Test Progress Visualization** (Scenes/AutoTestLevelScene.cs):
-   - New `DrawLiveTestProgress()` method displays:
-     - **Current level being tested** with index count
-     - **Live log output** (last 15 messages) with color coding
-     - **Progress bar** showing test completion percentage
-     - **Dynamic color coding:**
-       - ✅ Green for beatable levels
-       - ❌ Red for unbeatable levels
-       - 🤖 Cyan for bot activity
-   - Font sizes optimized for on-screen readability
-
-2. **Asynchronous Frame-by-Frame Testing** (Scenes/AutoTestLevelScene.cs):
-   - `ProcessNextTestLevel()` tests one level per render frame
-   - Tests run smoothly without blocking rendering
-   - Users see real-time progress on screen
-   - Scene Update calls `ProcessNextTestLevel()` during `_testRunning` state
-
-3. **On-Screen Test Logging** (Scenes/AutoTestLevelScene.cs):
-   - `AddLog()` method maintains circular buffer of last 15 log lines
-   - `_onScreenLog` list displays in real-time
-   - Messages auto-scroll as new entries added
-   - Color-coded output for status visibility
-
-4. **New TestLevelSingle() Method** (Tests/AutoTestBot.cs):
-   - Extracted single-level test logic from `RunAllTests()`
-   - Tests one level and returns `LevelAutoTestResult`
-   - Used by live progress visualization
-   - No blocking console operations
-
-5. **Refactored StartTest() & RerunTest()** (Scenes/AutoTestLevelScene.cs):
-   - Initialize level ID and name arrays
-   - Clear all test state before starting
-   - Set `_testRunning = true` to begin async testing
-   - Processing happens frame-by-frame in Update loop
-
-### 📋 Code Changes
-
-**Files Modified:**
-- `Tests\AutoTestBot.cs` (Added TestLevelSingle method, AllocConsole P/Invoke)
-- `Scenes\AutoTestLevelScene.cs` (Added live progress visualization, async testing)
-
-**New Private Fields** (AutoTestLevelScene):
-```csharp
-private int _currentTestLevelIndex = 0;
-private string[] _testLevelIds = new string[0];
-private string[] _testLevelNames = new string[0];
-private List<string> _onScreenLog = new List<string>();
-private const int MAX_LOG_LINES = 15;
-```
-
-**New Methods** (AutoTestLevelScene):
-- `DrawLiveTestProgress(Graphics g, int W, int H)` - Renders live test visualization
-- `ProcessNextTestLevel()` - Tests one level per frame
-- `AddLog(string message)` - Adds message to on-screen log
-
-### ✅ Build Status
-- **Compilation:** Success (0 errors, 0 warnings)
-- **Phase 1 Features:** Still working
-- **New Functionality:** Live test progress visualization confirmed working
-
-### 🎮 Testing Instructions
-1. Navigate to Auto Test Level Scene
-2. Click "START TEST" button
-3. **Watch on-screen progress:**
-   - Levels tested sequentially
-   - Live log updates in real-time
-   - Progress bar fills as tests complete
-   - Color-coded results visible immediately
-
-### ⏭️ Next Steps
-- Deploy and verify on-screen visualization works end-to-end
-- Monitor for any console output issues in Release build
-- Consider adding visual bot animation in future iterations
-
 ---
 
 ## SESSION 69: Auto Test Scene UI Improvements — Prominent Buttons + Enter Key Support
@@ -1657,249 +1482,20 @@ private const int MAX_LOG_LINES = 15;
 ### ✅ Features Implemented
 
 1. **Enter Key Support** (Scenes/AutoTestLevelScene.cs):
-   - Added keyboard input handling in Update method
-   - **Enter key now starts the test** on instruction screen
-   - **Enter key reruns the test** on results screen
-   - **Esc key exits** the scene from any screen
+   - Enter key starts the test on instruction screen
+   - Enter key reruns the test on results screen
+   - Esc key exits the scene from any screen
 
-2. **Prominent Start Button** (Scenes/AutoTestLevelScene.cs):
-   - Added large, clickable **gold "START TEST" button** on instructions screen
-   - Button is **300px wide × 50px tall** with:
-     - Gold background with yellow border
-     - Large bold text: `[ENTER] START TEST`
-     - Centered on screen for easy visibility
-   - Clickable with mouse or keyboard (Enter)
-
-3. **Prominent Rerun Button** (Scenes/AutoTestLevelScene.cs):
-   - Added large, clickable **green "RERUN TEST" button** on results screen
-   - Button is **250px wide × 40px tall** with:
-     - Lime green background with green border
-     - Bold text: `[ENTER] RERUN TEST`
-     - Centered above back button
-   - Clickable with mouse or keyboard (Enter)
-
-4. **Enhanced Back Button** (Scenes/AutoTestLevelScene.cs):
-   - Added clickable **orange "BACK" button** on both screens
-   - Button is **200px wide × 40px tall** with:
-     - Dark orange background with orange border
-     - Text: `[ESC] BACK`
-     - Aligned below action buttons
-   - Clickable with mouse or keyboard (Esc)
-
-5. **Button Rectangle Tracking** (Scenes/AutoTestLevelScene.cs):
-   - Added `_startButtonRect`, `_rerunButtonRect`, `_backButtonRect` fields
-   - Used for accurate mouse click detection
-   - HandleClick method now uses `Contains()` for reliable button detection
-
-
-
-**Date/Time:** April 5, 2026 (Current Session)  
-**Duration:** Debug and implementation session  
-
-### 🐛 Bugs Fixed
-
-1. **System.IO.IOException: The handle is invalid**
-   - **Root Cause:** Application compiled as `WinExe` (Windows Forms) without console window
-   - **When Occurs:** `Console.Clear()` called in `LevelAutoTestManager.RunAllTests()`
-   - **Solution:** Added `AllocConsole()` P/Invoke from kernel32.dll
-   - **Location:** Tests/AutoTestBot.cs - `LevelAutoTestManager` class
-   - **Implementation:**
-     ```csharp
-     [DllImport("kernel32.dll", SetLastError = true)]
-     private static extern bool AllocConsole();
-     ```
-   - **Applied Before:** All console operations in `RunAllTests()`
-   - **Error Handling:** Try-catch logs failures to Debug output
-
-2. **Console Test Ran Without Visual Feedback**
-   - **Issue:** Tests ran synchronously, blocking the render loop
-   - **Result:** No on-screen progress visible; users couldn't see bot testing
-   - **Solution:** Refactored test execution for asynchronous frame-by-frame progress
-   - **Location:** Scenes/AutoTestLevelScene.cs + Tests/AutoTestBot.cs
-
-### ✅ Features Implemented
-
-1. **Live Test Progress Visualization** (Scenes/AutoTestLevelScene.cs):
-   - New `DrawLiveTestProgress()` method displays:
-     - **Current level being tested** with index count
-     - **Live log output** (last 15 messages) with color coding
-     - **Progress bar** showing test completion percentage
-     - **Dynamic color coding:**
-       - ✅ Green for beatable levels
-       - ❌ Red for unbeatable levels
-       - 🤖 Cyan for bot activity
-   - Font sizes optimized for on-screen readability
-
-2. **Asynchronous Frame-by-Frame Testing** (Scenes/AutoTestLevelScene.cs):
-   - `ProcessNextTestLevel()` tests one level per render frame
-   - Tests run smoothly without blocking rendering
-   - Users see real-time progress on screen
-   - Scene Update calls `ProcessNextTestLevel()` during `_testRunning` state
-
-3. **On-Screen Test Logging** (Scenes/AutoTestLevelScene.cs):
-   - `AddLog()` method maintains circular buffer of last 15 log lines
-   - `_onScreenLog` list displays in real-time
-   - Messages auto-scroll as new entries added
-   - Color-coded output for status visibility
-
-4. **New TestLevelSingle() Method** (Tests/AutoTestBot.cs):
-   - Extracted single-level test logic from `RunAllTests()`
-   - Tests one level and returns `LevelAutoTestResult`
-   - Used by live progress visualization
-   - No blocking console operations
-
-5. **Refactored StartTest() & RerunTest()** (Scenes/AutoTestLevelScene.cs):
-   - Initialize level ID and name arrays
-   - Clear all test state before starting
-   - Set `_testRunning = true` to begin async testing
-   - Processing happens frame-by-frame in Update loop
-
-### 📋 Code Changes
-
-**Files Modified:**
-- `Tests\AutoTestBot.cs` (Added TestLevelSingle method, AllocConsole P/Invoke)
-- `Scenes\AutoTestLevelScene.cs` (Added live progress visualization, async testing)
-
-**New Private Fields** (AutoTestLevelScene):
-```csharp
-private int _currentTestLevelIndex = 0;
-private string[] _testLevelIds = new string[0];
-private string[] _testLevelNames = new string[0];
-private List<string> _onScreenLog = new List<string>();
-private const int MAX_LOG_LINES = 15;
-```
-
-**New Methods** (AutoTestLevelScene):
-- `DrawLiveTestProgress(Graphics g, int W, int H)` - Renders live test visualization
-- `ProcessNextTestLevel()` - Tests one level per frame
-- `AddLog(string message)` - Adds message to on-screen log
-
-### ✅ Build Status
-- **Compilation:** Success (0 errors, 0 warnings)
-- **Phase 1 Features:** Still working
-- **New Functionality:** Live test progress visualization confirmed working
-
-### 🎮 Testing Instructions
-1. Navigate to Auto Test Level Scene
-2. Click "START TEST" button
-3. **Watch on-screen progress:**
-   - Levels tested sequentially
-   - Live log updates in real-time
-   - Progress bar fills as tests complete
-   - Color-coded results visible immediately
-
-### ⏭️ Next Steps
-- Deploy and verify on-screen visualization works end-to-end
-- Monitor for any console output issues in Release build
-- Consider adding visual bot animation in future iterations
-
----
-
-## SESSION 69: Auto Test Scene UI Improvements — Prominent Buttons + Enter Key Support
-
-**Date/Time:** April 5, 2026  
-**Duration:** UI enhancement session  
-
-### ✅ Features Implemented
-
-1. **Enter Key Support** (Scenes/AutoTestLevelScene.cs):
-   - Added keyboard input handling in Update method
-   - **Enter key now starts the test** on instruction screen
-   - **Enter key reruns the test** on results screen
-   - **Esc key exits** the scene from any screen
-
-2. **Prominent Start Button** (Scenes/AutoTestLevelScene.cs):
-   - Added large, clickable **gold "START TEST" button** on instructions screen
-   - Button is **300px wide × 50px tall** with:
-     - Gold background with yellow border
-     - Large bold text: `[ENTER] START TEST`
-     - Centered on screen for easy visibility
-   - Clickable with mouse or keyboard (Enter)
-
-3. **Prominent Rerun Button** (Scenes/AutoTestLevelScene.cs):
-   - Added large, clickable **green "RERUN TEST" button** on results screen
-   - Button is **250px wide × 40px tall** with:
-     - Lime green background with green border
-     - Bold text: `[ENTER] RERUN TEST`
-     - Centered above back button
-   - Clickable with mouse or keyboard (Enter)
-
-4. **Enhanced Back Button** (Scenes/AutoTestLevelScene.cs):
-   - Added clickable **orange "BACK" button** on both screens
-   - Button is **200px wide × 40px tall** with:
-     - Dark orange background with orange border
-     - Text: `[ESC] BACK`
-     - Aligned below action buttons
-   - Clickable with mouse or keyboard (Esc)
-
-5. **Button Rectangle Tracking** (Scenes/AutoTestLevelScene.cs):
-   - Added `_startButtonRect`, `_rerunButtonRect`, `_backButtonRect` fields
-   - Used for accurate mouse click detection
-   - HandleClick method now uses `Contains()` for reliable button detection
-
-
-
-### 📊 Visual Improvements
-
-**Instructions Screen Now Shows:**
-- Prominent **gold START button** that jumps out visually
-- Clear "Press Enter to Start" behavior
-- Obvious back button below
-
-**Results Screen Now Shows:**
-- Navigation info and progress bar
-- Prominent **green RERUN button** for running tests again
-- Obvious back button below
-
-### 🎮 User Experience
-
-**Keyboard:**
-1. Enter Dev Menu → Navigate to Featured QA Test Button
-2. Press Enter → Launches AutoTestLevelScene
-3. See instructions with prominent gold button
-4. Press Enter (or click button) → Tests start
-5. Results displayed with green Rerun button
-6. Press Enter (or click) → Tests rerun
-7. Press Esc (or click Back) → Return to Dev Menu
-
-**Mouse:**
-1. Click Featured QA Test Button → Launches AutoTestLevelScene
-2. See instructions with prominent gold button
-3. Click gold button → Tests start
-4. Results displayed with green Rerun button
-5. Click green button → Tests rerun
-6. Click orange Back button → Return to Dev Menu
-
-### 🐛 Bugs Fixed
-- Fixed Enter key not working in AutoTestLevelScene
-- Fixed Esc key not working in AutoTestLevelScene
-- Fixed missing button click detection
-- Fixed buttons not being visually prominent or accessible
-
-### 📋 Documentation Updated
-- `docs/WEEK_10_LOG_TEMPLATE.md` updated with Session 69 details.
+2. **Prominent Start Button** — gold "START TEST" button (300×50px)
+3. **Prominent Rerun Button** — green "RERUN TEST" button (250×40px)
+4. **Enhanced Back Button** — orange "BACK" button (200×40px)
+5. **Button Rectangle Tracking** — `_startButtonRect`, `_rerunButtonRect`, `_backButtonRect` fields
 
 ### 🔄 Build Status
-- Build: ✅ **PASSING (0 errors, 0 warnings)**
+- Build: ✅ PASSING (0 errors, 0 warnings)
 
-### 📁 Files Created/Modified
-- `Scenes/AutoTestLevelScene.cs` - Enhanced with keyboard input, prominent buttons, better UI
-
-### ✨ Benefits
-
-- ✅ **Keyboard Control:** Enter key starts/reruns tests, Esc goes back
-- ✅ **Visual Buttons:** Large, colorful buttons clearly show what to do
-- ✅ **Mouse Support:** All buttons are clickable
-- ✅ **Clear Feedback:** Gold button on start, green button on rerun
-- ✅ **Accessibility:** Multiple ways to interact (keyboard + mouse)
-- ✅ **Professional Look:** Well-spaced, color-coded buttons
-
-### 🎯 Next Steps
-- In-game verify Enter key starts test from instructions screen
-- In-game verify Enter key reruns test from results screen
-- In-game verify Esc key exits from any screen
-- In-game verify button clicks work correctly
-- Verify button visibility and prominence
+### 📁 Files Modified
+- `Scenes/AutoTestLevelScene.cs` - Enhanced with keyboard input, prominent buttons
 
 ---
 
