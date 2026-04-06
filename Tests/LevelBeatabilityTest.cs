@@ -7,12 +7,12 @@ namespace Fridays_Adventure.Tests
     /// <summary>
     /// PHASE 2 - Team 10: Engine Programmer
     /// Feature: Level Beatability Verification Test
-    /// Purpose: Ensures all 18 levels can be completed without impossible geometry
+    /// Purpose: Ensures all 17 levels can be completed without impossible geometry
     /// </summary>
     public class LevelBeatabilityTest
     {
         /// <summary>
-        /// All 18 levels that must be beatable for victory
+        /// All 17 levels that must be beatable for victory
         /// </summary>
         private static readonly string[] ALL_LEVEL_IDS = {
             "dino", "storm1", "sky", "blockade", "wano", "warlord1",
@@ -53,12 +53,12 @@ namespace Fridays_Adventure.Tests
         }
 
         /// <summary>
-        /// Run beatability test on all 18 levels
+        /// Run beatability test on all 17 levels
         /// </summary>
         public static List<LevelTestResult> RunBeatabilityTest()
         {
             Console.WriteLine("════════════════════════════════════════════════════════════");
-            Console.WriteLine("LEVEL BEATABILITY TEST - All 18 Levels");
+            Console.WriteLine("LEVEL BEATABILITY TEST - All 17 Levels");
             Console.WriteLine("════════════════════════════════════════════════════════════\n");
 
             var results = new List<LevelTestResult>();
@@ -68,7 +68,7 @@ namespace Fridays_Adventure.Tests
                 string levelId = ALL_LEVEL_IDS[i];
                 string levelName = LEVEL_NAMES[i];
 
-                Console.WriteLine($"[{i + 1}/18] Testing: {levelName}...");
+                Console.WriteLine($"[{i + 1}/{ALL_LEVEL_IDS.Length}] Testing: {levelName}...");
 
                 var result = TestLevel(levelId, levelName);
                 results.Add(result);
@@ -334,8 +334,8 @@ namespace Fridays_Adventure.Tests
             int beatableCount = results.Count(r => r.IsBeatableResult);
             int problematicCount = results.Count(r => !r.IsBeatableResult);
 
-            Console.WriteLine($"✅ Beatable Levels:    {beatableCount}/18");
-            Console.WriteLine($"❌ Problematic Levels: {problematicCount}/18\n");
+            Console.WriteLine($"✅ Beatable Levels:    {beatableCount}/{results.Count}");
+            Console.WriteLine($"❌ Problematic Levels: {problematicCount}/{results.Count}\n");
 
             if (problematicCount > 0)
             {

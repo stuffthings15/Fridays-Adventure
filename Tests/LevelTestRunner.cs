@@ -21,7 +21,7 @@ namespace Fridays_Adventure
             Console.WriteLine("║                                                            ║");
             Console.WriteLine("║        FRIDAYS ADVENTURE - LEVEL BEATABILITY TEST          ║");
             Console.WriteLine("║                                                            ║");
-            Console.WriteLine("║        Testing all 18 levels for completability           ║");
+            Console.WriteLine("║        Testing all 17 levels for completability           ║");
             Console.WriteLine("║                                                            ║");
             Console.WriteLine("╚════════════════════════════════════════════════════════════╝");
             Console.WriteLine("\n");

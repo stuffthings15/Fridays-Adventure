@@ -169,7 +169,7 @@ namespace Fridays_Adventure.Scenes
         }
 
         /// <summary>
-        /// Returns true if ALL 18 levels have been completed (11 story islands + 7 bosses).
+        /// Returns true if ALL 17 levels have been completed (11 story islands + 6 bosses).
         /// Victory requires beating every area in the game, not just islands.
         /// </summary>
         private bool AllIslandsCompleted()
@@ -635,7 +635,7 @@ namespace Fridays_Adventure.Scenes
         }
 
         /// <summary>
-        /// Draws a complete level progression checklist showing all 18 levels:
+        /// Draws a complete level progression checklist showing all 17 levels:
         /// - 11 Story Island levels (required for victory)
         /// - 7 Boss/Storm encounter levels (blocking progression gates)
         /// Shows checkmark (✓) for visited, bullet (•) for unvisited.
@@ -643,7 +643,7 @@ namespace Fridays_Adventure.Scenes
         /// </summary>
         private void DrawIslandChecklist(Graphics g, int W, int H)
         {
-            // All 18 levels in progression order
+            // All 17 levels in progression order
             string[] levelIds = { 
                 "dino", "storm1", "sky", "blockade", "wano", "warlord1",
                 "harbor", "coral", "tundra", "storm2", "warlord2",
@@ -683,7 +683,7 @@ namespace Fridays_Adventure.Scenes
             int itemsPerPanel = 12;
             int panelH = 16 + (itemsPerPanel * 14) + 20;
 
-            // ── MAIN PANEL: ALL 18 LEVELS (ALL REQUIRED FOR VICTORY) ──
+            // ── MAIN PANEL: ALL 17 LEVELS (ALL REQUIRED FOR VICTORY) ──
             using (var br = new SolidBrush(Color.FromArgb(200, 20, 30, 60)))
                 g.FillRectangle(br, panelX, panelY, panelW, panelH);
             using (var pen = new Pen(Color.FromArgb(160, Color.Gold), 2))
@@ -756,7 +756,7 @@ namespace Fridays_Adventure.Scenes
             using (var f = new Font("Courier New", 10, FontStyle.Bold))
                 g.DrawString("ALL LEVELS", f, Brushes.LimeGreen, panelX + 8, panel2Y + 2);
 
-            // Draw counter: total/18
+            // Draw counter: total/17
             int counterX = panelX + 140;
             int counterY = panel2Y + 2;
             using (var br = new SolidBrush(Color.FromArgb(180, 40, 40, 80)))

@@ -50,7 +50,7 @@ namespace Fridays_Adventure.Scenes
             _levels = new List<LevelEntry>
             {
                 // ── FEATURED QA TESTING (Always Visible at Top) ────────────
-                new LevelEntry { Label = "★ QA AUTOMATED TEST (All 18 Levels) ★", Create = () => new AutoTestLevelScene(), IsFeatured = true },
+                new LevelEntry { Label = "★ QA AUTOMATED TEST (All 17 Levels) ★", Create = () => new AutoTestLevelScene(), IsFeatured = true },
 
                 // ── Original ──────────────────────────────────────────────
                 new LevelEntry { Label = "Overworld Map",                   Create = () => new OverworldScene() },

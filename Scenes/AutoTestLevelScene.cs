@@ -540,7 +540,7 @@ namespace Fridays_Adventure.Scenes
             g.DrawString("═══════════════════════════════════════════════════════════", _bodyFont, Brushes.White, 20, 140);
 
             int y = 180;
-            g.DrawString("This system tests all 18 levels using an intelligent AI bot.", _bodyFont, Brushes.LimeGreen, 30, y); y += 25;
+            g.DrawString("This system tests all 17 levels using an intelligent AI bot.", _bodyFont, Brushes.LimeGreen, 30, y); y += 25;
             g.DrawString("The bot uses abilities strategically:", _bodyFont, Brushes.LimeGreen, 30, y); y += 25;
             g.DrawString("  • Frost Ball attacks - Freeze enemies", _smallFont, Brushes.LimeGreen, 50, y); y += 20;
             g.DrawString("  • Dash ability - Escape obstacles", _smallFont, Brushes.LimeGreen, 50, y); y += 20;

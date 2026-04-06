@@ -357,7 +357,7 @@ namespace Fridays_Adventure.Tests
         }
 
         /// <summary>
-        /// Run automated tests on all 18 levels (blocking)
+        /// Run automated tests on all 17 levels (blocking)
         /// </summary>
         public static void RunAllTests()
         {
@@ -380,11 +380,11 @@ namespace Fridays_Adventure.Tests
             Console.WriteLine("║                                                            ║");
             Console.WriteLine("║     FRIDAYS ADVENTURE - AUTOMATED LEVEL BEATABILITY TEST   ║");
             Console.WriteLine("║                                                            ║");
-            Console.WriteLine("║        AI Bot Testing All 18 Levels                        ║");
+            Console.WriteLine("║        AI Bot Testing All 17 Levels                        ║");
             Console.WriteLine("║                                                            ║");
             Console.WriteLine("╚════════════════════════════════════════════════════════════╝\n");
 
-            _logger.WriteLine("Starting automated test run of all 18 levels...");
+            _logger.WriteLine("Starting automated test run of all 17 levels...");
             _logger.WriteBlankLine();
 
             // Test each level
@@ -405,7 +405,7 @@ namespace Fridays_Adventure.Tests
 
             for (int i = 0; i < levelIds.Length; i++)
             {
-                string testMessage = $"[{i + 1}/18] Testing: {levelNames[i]}...";
+                string testMessage = $"[{i + 1}/{levelIds.Length}] Testing: {levelNames[i]}...";
                 Console.WriteLine(testMessage);
                 _logger.WriteLine(testMessage);
 
@@ -547,8 +547,8 @@ namespace Fridays_Adventure.Tests
             Console.WriteLine("⚠  Use Visual Mode (key 2 in-game) for real results.");
             Console.WriteLine("════════════════════════════════════════════════════════════\n");
 
-            Console.WriteLine($"✅ Beatable (simulation): {beatableCount}/18");
-            Console.WriteLine($"❌ Not beatable (simulation): {unbeatableCount}/18\n");
+            Console.WriteLine($"✅ Beatable (simulation): {beatableCount}/{AllResults.Count}");
+            Console.WriteLine($"❌ Not beatable (simulation): {unbeatableCount}/{AllResults.Count}\n");
 
             // Log summary
             _logger.LogTestSummary(AllResults.Count, beatableCount, unbeatableCount);
