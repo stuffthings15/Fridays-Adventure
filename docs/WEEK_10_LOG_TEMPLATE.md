@@ -6,83 +6,50 @@
 
 ---
 
-## SESSION 87-89: Bot QA System — Critical Architecture Fixes
+## SESSION 87-90: Bot QA System — Critical Architecture Fixes
 
 **Date/Time:** Current Session — Multi-prompt continuation  
 **Status:** ✅ COMPLETE  
 **Build Status:** ✅ 0 errors, 0 warnings  
 
 ### Summary
-Comprehensive overhaul of the bot-driven QA system (BotPlayLevelScene, UnifiedComprehensiveBot, LevelSceneFactory, LevelBeatabilityTest). Fixed 12+ critical bugs that prevented the bot from completing non-IslandScene levels and caused stack corruption crashes.
+Comprehensive overhaul of the bot-driven QA system (BotPlayLevelScene, UnifiedComprehensiveBot, LevelSceneFactory, LevelBeatabilityTest). Fixed 18+ critical bugs that prevented the bot from completing non-IslandScene levels, caused stack corruption crashes, and left CardRoulette hanging indefinitely.
 
 ### ✅ Features Implemented / Bugs Fixed
 
 #### P0 — Crash/Corruption Fixes
-1. **Stack corruption from inner scene Pop/Replace (BotPlayLevelScene.cs)**
-   - Root cause: inner scenes (StormScene, BossScene, etc.) call `Scenes.Pop()` or `Scenes.Replace()` on completion, but the inner scene is NOT on the stack — BotPlayLevelScene is. This pops/replaces the wrong scene.
-   - Fix: Added Path B completion detection via reflection (`_complete`, `_levelComplete`, `_victory` fields). When Path B triggers, `_inner.Update()` is never called again, preventing the Pop/Replace from firing.
-   - Added `_completedViaReflection` flag to distinguish from Path A (stack push).
+1. **Path A dismiss was dead code (BotPlayLevelScene.cs)** — CRITICAL
+   - Root cause: `Game.OnTick` only calls `Scenes.Current.Update()`. Once IslandScene pushes CardRoulette, BotPlayLevelScene is paused beneath it and its Update never runs again. All Path A dismiss logic (injecting Enter/Space/Z to skip CardRoulette) was unreachable.
+   - Fix: After `_inner.Update(dt)` detects a depth increase, immediately runs a tight dismiss loop in the **same frame**: inject action keys → update the pushed scene → advance SceneTransition → repeat until depth returns to entry. Keys are only injected when SceneTransition is idle to prevent `Begin()` from silently failing during an active curtain wipe.
 
-2. **Infinite recursion in Draw/Update (BotPlayLevelScene.cs)**
-   - Root cause: On Path B completion, `Game.Instance.Scenes.Current` is BotPlayLevelScene itself. Calling `Current?.Update()` or `Current?.Draw()` caused infinite recursion.
-   - Fix: Path B skips all `Scenes.Current` calls; draws `_inner` directly; finishes after 1.5s hold.
+2. **Post-update corruption guard false positive**
+   - Root cause: After IslandScene pushes CardRoulette, `Scenes.Current != this` is true but this is normal (not corruption). The guard was falsely popping CardRoulette and aborting the level.
+   - Fix: Post-update now checks `Depth > entry` first (Path A normal) before checking `Current != this` (corruption).
 
-3. **Player death → GameOverScene stack corruption (BotPlayLevelScene.cs)**
-   - Root cause: When player dies, inner scene calls `Scenes.Replace(GameOverScene)`, popping BotPlayLevelScene and breaking the demo callback chain.
-   - Fix: Pre-update death guard checks `!p.IsAlive` and `_failed` flag BEFORE `_inner.Update()`. Post-update safety check detects if `Scenes.Current != this` after the inner update and recovers by popping rogue scenes and invoking `_onFinished(false)`.
+3. **Path B + Path A completion timing (IslandScene)**
+   - Root cause: IslandScene sets `_levelComplete = true` 0.35s before pushing CardRoulette. Path B reflection would fire prematurely, stop updating inner scene, and prevent the Push.
+   - Fix: `_innerUsesPathA` flag gates Path B — disabled for IslandScene.
 
-4. **`_failed` flag detection (BotPlayLevelScene.cs)**
-   - StormScene sets `_failed = true` one frame before calling `Scenes.Replace(GameOverScene)`. Added reflection field `_innerFailedField` to catch this early.
+4-7. *(Previous session fixes: reflection completion, infinite recursion, death guard, _failed flag)*
 
-5. **`blockade` level misrouted (LevelSceneFactory.cs)**
-   - Was falling through to `IslandScene`; mapped to `BossScene`.
-
-6. **`abyss` level misrouted (LevelSceneFactory.cs)**
-   - Was falling through to `IslandScene`; mapped to `UnderwaterScene` (has case in UnderwaterScene.OnEnter background switch).
-
-#### P1 — Bot AI Missing Modes
-7. **Exit field fallback (UnifiedComprehensiveBot.cs)**
-   - `_exitFlagField` only looked for `_exitFlag`. Added fallback to `_exitZone` (used by SkyIslandScene and UnderwaterScene).
-
-8. **Boss-fight AI (UnifiedComprehensiveBot.cs)**
-   - Added `RunBossFightLogic()`: reads `_boss` via reflection, closes distance, stomps + attacks, dashes every 2s, seeks health when low.
-   - Added `GetBossEnemy()` helper; `RefreshLists` now adds boss to `_detectedEnemies`.
-
-9. **Vertical climbing AI (UnifiedComprehensiveBot.cs)**
-   - Added `RunVerticalLogic()` for SkyIslandScene: oscillates horizontally across platforms, jumps constantly, pursues `_exitZone` at top.
-
-10. **Underwater navigation AI (UnifiedComprehensiveBot.cs)**
-    - Added `RunUnderwaterLogic()`: swims toward `_exitZone`, periodically swims upward, collects items.
-
-11. **2D stuck detection (UnifiedComprehensiveBot.cs)**
-    - Stuck detection was X-only. Added Y-axis tracking (`_stuckAnchorY`) and 2D Euclidean distance for SkyIsland/Underwater/Boss scenes.
-
-12. **StormScene health pickup duck-typing (UnifiedComprehensiveBot.cs)**
-    - StormScene uses a private nested `HealthPickup` class incompatible with `Entities.HealthPickup`. Added reflection-based duck-typing to read `X`, `Y`, `Active` fields and create synthetic pickups.
-
-#### P2 — Correctness Fixes
-13. **Duplicate `_hazardsField` assignment removed (UnifiedComprehensiveBot.cs)**
-14. **DrawBotOverlay missing FillRectangle (BotPlayLevelScene.cs)** — background brush was created but never used.
-15. **LevelBeatabilityTest scene mappings fixed** — coral/dive_gate/sunken_gate/kelp/boiling_vent/abyss → UnderwaterScene; centipede_final → BossScene.
-16. **LevelJustCompleted set for Path B** — `Finish(true)` now sets `Game.Instance.LevelJustCompleted = true` for reflection-detected completions.
-17. **Diagnostics report includes completion path** — "Path A (stack push)" vs "Path B (reflection flag)".
+#### P1 — Bot AI Fixes
+8-13. *(Previous session fixes: exit fallback, boss/vertical/underwater AI, 2D stuck detection, StormScene pickups)*
 
 ### Files Changed
-| File | Changes |
-|------|---------|
-| `Scenes/BotPlayLevelScene.cs` | Path A/B completion, death guard, _failed detection, post-update recovery, Draw fix, FillRectangle fix, LevelJustCompleted, diagnostics |
-| `Tests/UnifiedComprehensiveBot.cs` | Boss/Vertical/Underwater AI, exit fallback, 2D stuck, StormScene pickup duck-typing, duplicate field fix, scene-type flags |
-| `Scenes/LevelSceneFactory.cs` | blockade → BossScene, abyss → UnderwaterScene |
-| `Tests/LevelBeatabilityTest.cs` | Scene name mappings corrected for all 17 levels |
+| File | Key Changes |
+|------|-------------|
+| `Scenes/BotPlayLevelScene.cs` | Tight dismiss loop, post-update restructure, Path A/B split, death guard, corruption recovery |
+| `Tests/UnifiedComprehensiveBot.cs` | Boss/Vertical/Underwater AI, 2D stuck, StormScene pickup duck-typing |
+| `Scenes/LevelSceneFactory.cs` | blockade→BossScene, abyss→UnderwaterScene |
+| `Tests/LevelBeatabilityTest.cs` | 17 scene mappings corrected |
 
 ### 🔄 Build Status
 - Build: ✅ PASSING (0 errors, 0 warnings)
 
 ### 🎯 Next Steps
-- Run Demo Mode in-game to verify all 17 levels complete without crashes
-- Verify StormScene and BossScene detect completion via Path B
-- Verify player death gracefully returns to DemoModeScene without stack corruption
-- Monitor pass rate improvement (estimated ~70-80% up from ~25%)
+- Run Demo Mode in-game to verify full 17-level run completes without hangs
+- Verify CardRoulette + CourseClear dismiss in tight loop (no visible freeze)
+- Monitor pass rate improvement
 
 ---
 
