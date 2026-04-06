@@ -78,6 +78,15 @@ namespace Fridays_Adventure.Tests
         private const float EDGE_PROBE_FAR       = 120f; // mid-range gap scan
         private const float GROUND_SEARCH_DEPTH  = 200f; // how far below feet to search
 
+        // ── Pit-crossing state machine ────────────────────────────────────
+        // Tracks whether the bot is actively crossing a gap so it can
+        // maintain forward movement while airborne instead of stopping.
+        private bool  _crossingGap = false;     // true while airborne over a validated gap
+        private float _crossingDir = 1f;        // +1 = right, -1 = left
+        private float _lastGroundedY;           // Y when the bot last stood on ground
+        private float _fallingTimer = 0f;       // how long the bot has been falling
+        private const float FALL_WALL_JUMP_TIME = 0.3f;  // start wall-jumping after falling this long
+
         // ── Combat ────────────────────────────────────────────────────────
         private Enemy _lastEnemy;
         private float _combatStartTime;
@@ -243,79 +252,172 @@ namespace Fridays_Adventure.Tests
                 else
                     RunNormalLogic();
 
-                // ── Universal pit / ledge avoidance (runs after ALL state logic) ──
-                // Two-layer detection:
-                //   Layer 1 (close): probe EDGE_PROBE_AHEAD px ahead for ground.
-                //            If no ground → stop walking, pre-jump.
-                //   Layer 2 (mid):   probe EDGE_PROBE_FAR px ahead.  If a gap
-                //            exists AND a landing exists beyond it, start the jump
-                //            early so the bot clears the gap in flight.
-                // Also falls back to WaterPit hazard list for extra safety.
-                if (!_isStormScene && _player.IsGrounded)
+                // ── Universal pit / ledge avoidance + gap crossing ─────────────
+                // Three phases:
+                //   GROUNDED: detect edges and initiate jump WITH forward momentum.
+                //   AIRBORNE CROSSING: maintain forward movement to reach the far side.
+                //   FALLING RECOVERY: wall-jump or mash to escape if we fell in.
+                if (!_isStormScene)
                 {
-                    bool closeGround = HasGroundAhead(EDGE_PROBE_AHEAD);
-                    bool farGround   = HasGroundAhead(EDGE_PROBE_FAR);
-
-                    if (!closeGround)
+                    // ── Sinking recovery (WaterPit) — highest priority ─────
+                    // When player has Sinking status, mash all inputs to escape.
+                    if (_player.HasEffect(StatusEffect.Sinking))
                     {
-                        // Ledge right at our feet — STOP and jump vertically first.
-                        // Only move forward once airborne so we don't walk off.
-                        if (CanJumpOverGap(0f))
+                        ShouldJump      = true;
+                        ShouldMoveRight = true;
+                        ShouldMoveLeft  = false;
+                        ShouldAttack    = true;  // counts as "mash"
+                        LogEvent("SINKING_MASH", "Mashing to escape water pit");
+                    }
+                    else if (_player.IsGrounded)
+                    {
+                        // ── Phase 1: GROUNDED — edge detection ────────────────
+                        _crossingGap   = false;
+                        _fallingTimer  = 0f;
+                        _lastGroundedY = _player.Y;
+
+                        bool closeGround = HasGroundAhead(EDGE_PROBE_AHEAD);
+                        bool farGround   = HasGroundAhead(EDGE_PROBE_FAR);
+
+                        if (!closeGround)
                         {
-                            ShouldJump      = true;
-                            ShouldMoveRight = false;
-                            ShouldMoveLeft  = false;
-                            LogEvent("EDGE_STOP",
-                                $"No ground {EDGE_PROBE_AHEAD}px ahead — stopping + jumping");
+                            // Ledge right at our feet
+                            if (CanJumpOverGap(0f))
+                            {
+                                // Jump AND keep moving forward — momentum carries
+                                // the bot over the gap. Stopping here was the old bug.
+                                ShouldJump   = true;
+                                _crossingGap = true;
+                                _crossingDir = ShouldMoveLeft ? -1f : 1f;
+                                // Ensure forward movement is ON so the arc clears the gap
+                                if (_crossingDir > 0f) ShouldMoveRight = true;
+                                else                   ShouldMoveLeft  = true;
+                                LogEvent("EDGE_JUMP",
+                                    $"No ground {EDGE_PROBE_AHEAD}px ahead — jumping + moving to clear gap");
+                            }
+                            else
+                            {
+                                // No landing exists — reverse away from the edge
+                                ShouldMoveRight = false;
+                                ShouldMoveLeft  = true;
+                                ShouldJump      = false;
+                                LogEvent("EDGE_RETREAT",
+                                    $"No ground ahead and no landing — retreating");
+                            }
+                        }
+                        else if (!farGround)
+                        {
+                            // Gap approaching — start the jump early with forward momentum
+                            float gapDist = FindNearestGapDistance(EDGE_PROBE_FAR);
+                            if (gapDist != float.MaxValue && CanJumpOverGap(gapDist))
+                            {
+                                ShouldJump   = true;
+                                _crossingGap = true;
+                                _crossingDir = ShouldMoveLeft ? -1f : 1f;
+                                LogEvent("GAP_PREJUMP",
+                                    $"Gap at {gapDist:F0}px — pre-jumping to clear");
+                            }
                         }
                         else
                         {
-                            // No landing exists — reverse away from the edge
-                            ShouldMoveRight = false;
-                            ShouldMoveLeft  = true;
-                            ShouldJump      = false;
-                            LogEvent("EDGE_RETREAT",
-                                $"No ground ahead and no landing — retreating");
-                        }
-                    }
-                    else if (!farGround)
-                    {
-                        // Ground is present close but missing farther ahead — gap
-                        // is approaching.  Start jumping early to clear it in flight.
-                        float gapDist = FindNearestGapDistance(EDGE_PROBE_FAR);
-                        if (gapDist != float.MaxValue && CanJumpOverGap(gapDist))
-                        {
-                            ShouldJump = true;
-                            LogEvent("GAP_PREJUMP",
-                                $"Gap at {gapDist:F0}px — pre-jumping to clear");
+                            // Both probes have ground — check WaterPit hazards as fallback
+                            float pitX = FindNearestPitAheadX();
+                            if (pitX != float.MaxValue)
+                            {
+                                float gap = pitX - (_player.X + _player.Width);
+                                if (gap < 80f)
+                                {
+                                    // Close to pit — jump to clear it, keep moving forward
+                                    ShouldJump   = true;
+                                    _crossingGap = true;
+                                    _crossingDir = 1f;
+                                    ShouldMoveRight = true;
+                                }
+                            }
                         }
                     }
                     else
                     {
-                        // Both probes have ground — also check WaterPit hazards
-                        // as a fallback (covers hazards the platform list misses).
-                        float pitX = FindNearestPitAheadX();
-                        if (pitX != float.MaxValue)
+                        // ── Phase 2: AIRBORNE — maintain crossing or recover ──
+
+                        // Track falling duration for wall-jump recovery
+                        if (_player.VelocityY > 0f)
+                            _fallingTimer += _dt;
+                        else
+                            _fallingTimer = 0f;
+
+                        if (_crossingGap)
                         {
-                            ShouldJump = true;
-                            float gap = pitX - (_player.X + _player.Width);
-                            if (gap < 60f)
+                            // Actively crossing a gap — keep moving toward the far side
+                            // This is critical: without this, the bot jumps straight up
+                            // and lands in the same spot repeatedly.
+                            ShouldMoveRight = _crossingDir > 0f;
+                            ShouldMoveLeft  = _crossingDir < 0f;
+
+                            // If we've reached ground on the far side, stop crossing
+                            if (HasGroundAhead(EDGE_PROBE_AHEAD))
                             {
-                                ShouldMoveRight = false;
-                                ShouldMoveLeft  = false;
+                                _crossingGap = false;
                             }
                         }
-                    }
-                }
-                // Airborne over a gap: allow forward movement toward the landing
-                else if (!_isStormScene && !_player.IsGrounded)
-                {
-                    // If the bot is airborne and there IS ground ahead, move forward
-                    // to reach the landing.  If there is NO ground, hold position.
-                    if (!HasGroundAhead(EDGE_PROBE_FAR) && !HasGroundAhead(EDGE_PROBE_AHEAD))
-                    {
-                        // Still over the gap — keep moving to reach the far side
-                        // (the jump was validated before takeoff).
+
+                        // ── Wall-jump recovery ────────────────────────────────
+                        // If falling for too long (fell into a pit), press into
+                        // the nearest wall and jump to wall-kick out.
+                        bool fellIntoPit = _player.Y > _lastGroundedY + 60f
+                                           && _fallingTimer > FALL_WALL_JUMP_TIME;
+
+                        if (fellIntoPit)
+                        {
+                            // Try wall jump if touching a wall
+                            if (_player.IsOnLeftWall || _player.IsOnRightWall)
+                            {
+                                ShouldJump = true;
+                                // After wall jump, move AWAY from the wall to kick out
+                                ShouldMoveRight = _player.IsOnLeftWall;
+                                ShouldMoveLeft  = _player.IsOnRightWall;
+                                LogEvent("WALL_JUMP_RECOVERY",
+                                    $"Wall-jumping out of pit — OnLeft={_player.IsOnLeftWall} OnRight={_player.IsOnRightWall}");
+                            }
+                            else
+                            {
+                                // Not touching a wall yet — press into nearest wall
+                                // to initiate wall slide, then jump catches wall contact.
+                                float playerCenterX = _player.X + _player.Width / 2f;
+                                var platforms = GetPlatforms();
+                                float nearestWallDist = float.MaxValue;
+                                bool wallIsRight = true;
+
+                                if (platforms != null)
+                                {
+                                    foreach (var plat in platforms)
+                                    {
+                                        // Only consider platforms whose top is reachable
+                                        if (plat.Top > _player.Y + _player.Height + 80f) continue;
+
+                                        float distToLeft  = Math.Abs(playerCenterX - plat.Left);
+                                        float distToRight = Math.Abs(playerCenterX - plat.Right);
+
+                                        if (distToLeft < nearestWallDist)
+                                        {
+                                            nearestWallDist = distToLeft;
+                                            wallIsRight = playerCenterX < plat.Left;
+                                        }
+                                        if (distToRight < nearestWallDist)
+                                        {
+                                            nearestWallDist = distToRight;
+                                            wallIsRight = playerCenterX < plat.Right;
+                                        }
+                                    }
+                                }
+
+                                ShouldMoveRight = wallIsRight;
+                                ShouldMoveLeft  = !wallIsRight;
+                                ShouldJump      = true;  // mash jump — catches wall contact
+                                LogEvent("PIT_RECOVERY",
+                                    $"Falling in pit Y={_player.Y:F0} — seeking wall (right={wallIsRight})");
+                            }
+                        }
                     }
                 }
             }
@@ -649,11 +751,13 @@ namespace Fridays_Adventure.Tests
                 _jumpTimer  = 0f;
             }
 
-            // Emergency fall recovery
+            // Emergency fall recovery — if near the bottom of the screen,
+            // mash jump and press into the nearest wall for a wall-kick.
             if (_player.Y > Game.Instance.CanvasHeight - 50f)
             {
-                ShouldJump = true;
-                LogEvent("FALL_RECOVERY", $"Y={_player.Y:F0}");
+                ShouldJump      = true;
+                ShouldMoveRight = true;  // press into wall to trigger wall slide/jump
+                LogEvent("FALL_RECOVERY", $"Y={_player.Y:F0} — mashing jump + wall seek");
             }
         }
 
