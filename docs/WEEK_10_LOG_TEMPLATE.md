@@ -6,6 +6,32 @@
 
 ---
 
+## SESSION 105: Storm Survival Timer Now Visible During Gameplay
+
+**Date/Time:** Current Session  
+**Status:** ✅ COMPLETE  
+**Build Status:** ✅ 0 errors, 0 warnings  
+
+### Storm Scene survival timer was invisible to the player
+- `StormScene` had a fully implemented `DrawHUD()` method with:
+  - "Survive: X.Xs" countdown timer
+  - Color-coded progress bar (blue→cyan→lime as time passes)
+  - Warning strike counter for danger telemetry
+- But `DrawHUD()` was **never called** from the `Draw()` method — same pattern as Session 62 (DrawExitFlag)
+- Players had no idea how long they needed to survive or how close they were to clearing
+- **Fix:** Added `DrawHUD()` call after `GameHUD.Draw()` in the Draw method
+- **Refactored** `DrawHUD()` to render below the GameHUD band (at `BandHeight + 4`) instead of overlapping it
+  - Removed duplicate HP/score/controls display (already shown by GameHUD)
+  - Kept only storm-specific info: survival countdown, progress bar, warning count
+  - Semi-transparent background for readability against storm lightning flashes
+
+### Files Changed
+| File | Changes |
+|------|---------|
+| `Scenes/StormScene.cs` | Wired `DrawHUD()` call in Draw(); refactored to render below GameHUD band |
+
+---
+
 ## SESSION 104: Centipede Boss Route Fix + Stale Comment Cleanup
 
 **Date/Time:** Current Session  

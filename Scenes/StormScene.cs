@@ -422,6 +422,8 @@ namespace Fridays_Adventure.Scenes
             // ── Unified HUD (single call, screen space) ───────────────────────
             g.ResetTransform();
             GameHUD.Draw(g, _player, W, H);
+            // ── Storm-specific survival timer + progress bar ─────────────────
+            DrawHUD(g, W, H);
             if (_complete) DrawComplete(g, W, H);
             DrawDevMenuButton(g);
         }
@@ -476,37 +478,28 @@ namespace Fridays_Adventure.Scenes
 
         private void DrawHUD(Graphics g, int W, int H)
         {
-            // Solid black HUD panel for readability against storm flashes.
-            g.FillRectangle(Brushes.Black, 0, 0, W, 70);
-            g.DrawLine(Pens.DimGray, 0, 70, W, 70);
+            // ── Storm-specific survival overlay (below GameHUD band) ─────────
+            int topY = GameHUD.BandHeight + 4;
 
-            // Primary objective line.
+            // Semi-transparent panel behind storm info for readability.
+            using (var br = new SolidBrush(Color.FromArgb(160, 0, 0, 0)))
+                g.FillRectangle(br, 6, topY, 330, 32);
+
+            // Primary objective line: countdown timer.
             float remaining = Math.Max(0, SurvivalGoal - _survivalTimer);
-            g.DrawString($"Survive the storm: {remaining:F1}s", _hudFont, Brushes.Cyan, 10, 6);
+            g.DrawString($"Survive: {remaining:F1}s", _hudFont, Brushes.Cyan, 10, topY + 2);
 
             // Progress bar shifts color as the player gets closer to clearing.
             float pct = _survivalTimer / SurvivalGoal;
-            g.FillRectangle(Brushes.DarkSlateBlue, 10, 28, 300, 10);
+            int barY = topY + 18;
+            g.FillRectangle(Brushes.DarkSlateBlue, 10, barY, 300, 8);
             Color progressColor = pct < 0.5f ? Color.DeepSkyBlue : (pct < 0.85f ? Color.Cyan : Color.Lime);
             using (var br = new SolidBrush(Color.FromArgb(180, progressColor)))
-                g.FillRectangle(br, 10, 28, (int)(300 * pct), 10);
+                g.FillRectangle(br, 10, barY, (int)(300 * pct), 8);
 
-            // Health readout.
-            g.DrawString("HP", _hudFont, Brushes.White, W - 170, 6);
-            g.FillRectangle(Brushes.DarkRed, W - 140, 8, 120, 12);
-            using (var br = new SolidBrush(Color.LimeGreen))
-                g.FillRectangle(br, W - 140, 8, (int)(120 * (float)_player.Health / _player.MaxHealth), 12);
-
-            // Live danger telemetry to help player decision-making.
+            // Live danger telemetry.
             Brush dangerBrush = _warningStrikeCount > 0 ? Brushes.Orange : Brushes.DarkGray;
-            g.DrawString($"Warnings: {_warningStrikeCount}", _hudFont, dangerBrush, W - 180, 28);
-
-            // Score line.
-            g.DrawString($"SCORE: {BountySystem.Formatted()}", _hudFont, Brushes.Gold, W - 220, 48);
-
-            // Quick controls help for this mode (SMB3-style readability + onboarding).
-            using (var f = new Font("Courier New", 9, FontStyle.Bold))
-                g.DrawString("Move A/D  Jump Space  Dodge X  Pause Esc", f, Brushes.DimGray, 10, 48);
+            g.DrawString($"Warnings: {_warningStrikeCount}", _hudFont, dangerBrush, W - 180, topY + 2);
         }
 
         private void DrawComplete(Graphics g, int W, int H)
