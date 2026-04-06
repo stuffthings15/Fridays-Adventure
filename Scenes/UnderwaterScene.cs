@@ -250,8 +250,12 @@ namespace Fridays_Adventure.Scenes
                 }
                 _jellies[i] = j;
 
-                var jRect = new Rectangle((int)j.X, (int)j.Y, 32, 28);
-                if (jRect.IntersectsWith(pr)) _player.TakeDamage(1);
+                // Frozen jellyfish are harmless — only deal damage when active
+                if (_jellyFreezeTimer <= 0f)
+                {
+                    var jRect = new Rectangle((int)j.X, (int)j.Y, 32, 28);
+                    if (jRect.IntersectsWith(pr)) _player.TakeDamage(1);
+                }
             }
 
             // ── Exit ──────────────────────────────────────────────────────────

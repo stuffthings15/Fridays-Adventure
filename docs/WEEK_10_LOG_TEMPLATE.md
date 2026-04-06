@@ -6,6 +6,45 @@
 
 ---
 
+## SESSION 108: Frozen Jellyfish Still Damage Player + Missing SessionStats Tracking in 5 Scenes
+
+**Date/Time:** Current Session  
+**Status:** ✅ COMPLETE  
+**Build Status:** ✅ 0 errors, 0 warnings  
+
+### BUG: Frozen jellyfish still dealt contact damage in UnderwaterScene
+- FlashFreeze ability correctly stopped jellyfish movement (`_jellyFreezeTimer > 0`)
+- But the damage check (`jRect.IntersectsWith(pr) → TakeDamage(1)`) ran **regardless of freeze state**
+- Players used FlashFreeze expecting safety, but still took contact damage from frozen jellyfish
+- **Fix:** Wrapped damage check inside `if (_jellyFreezeTimer <= 0f)` so frozen jellyfish are harmless
+
+### CRITICAL: SessionStats.RecordLevelComplete() missing from 5 scenes
+- Only UnderwaterScene, FortressScene, and AirshipLevelScene called `RecordLevelComplete()`
+- **Missing from:** IslandScene, BossScene, WarlordBossScene, StormScene, SkyIslandScene
+- This broke achievements that depend on completion tracking:
+  - `ach_first_step` (1+ levels) — never incremented for island/boss/storm/sky levels
+  - `ach_no_death` (0 deaths in a level) — always triggered since deaths weren't counted either
+  - `ach_full_clear` (4+ levels) — only counted underwater/fortress/airship completions
+- **Fix:** Added `SessionStats.Instance.RecordLevelComplete()` to all 5 scenes
+
+### CRITICAL: SessionStats.RecordDeath() missing from same 5 scenes
+- Same 5 scenes never called `RecordDeath()` on player death
+- The `ach_no_death` achievement was always granted for those levels since death count stayed at 0
+- **Fix:** Added `SessionStats.Instance.RecordDeath()` to all 5 death handlers
+- All 8 gameplay scenes now consistently track both completions and deaths
+
+### Files Changed
+| File | Changes |
+|------|---------|
+| `Scenes/UnderwaterScene.cs` | Frozen jellyfish no longer deal damage (+2 lines) |
+| `Scenes/IslandScene.cs` | Added `RecordLevelComplete()` + `RecordDeath()` |
+| `Scenes/BossScene.cs` | Added `RecordLevelComplete()` + `RecordDeath()` |
+| `Scenes/WarlordBossScene.cs` | Added `RecordLevelComplete()` + `RecordDeath()` |
+| `Scenes/StormScene.cs` | Added `RecordLevelComplete()` + `RecordDeath()` |
+| `Scenes/SkyIslandScene.cs` | Added `RecordLevelComplete()` + `RecordDeath()` |
+
+---
+
 ## SESSION 107: UnderwaterScene Missing _player.Update() — Status Effects, Auto-Health, Cooldowns Broken
 
 **Date/Time:** Current Session  

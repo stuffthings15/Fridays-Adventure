@@ -232,7 +232,7 @@ namespace Fridays_Adventure.Scenes
             ThreatSystem.Tick(dt);
             _stormAnim += dt;
 
-            if (_complete) { _completeTimer += dt; if (_completeTimer >= 1.0f) { Game.Instance.LevelJustCompleted = true; Game.Instance.Scenes.Pop(); } return; }
+            if (_complete) { _completeTimer += dt; if (_completeTimer >= 1.0f) { SessionStats.Instance.RecordLevelComplete(); Game.Instance.LevelJustCompleted = true; Game.Instance.Scenes.Pop(); } return; }
             if (_failed)   { Game.Instance.Scenes.Replace(new GameOverScene(() => new StormScene())); return; }
 
             UpdateDeck(dt);
@@ -251,7 +251,7 @@ namespace Fridays_Adventure.Scenes
 
             _survivalTimer += dt;
             if (_survivalTimer >= SurvivalGoal) OnComplete();
-            if (!_player.IsAlive) _failed = true;
+            if (!_player.IsAlive) { SessionStats.Instance.RecordDeath(); _failed = true; }
         }
 
         private void UpdateDeck(float dt)

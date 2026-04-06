@@ -304,7 +304,10 @@ namespace Fridays_Adventure.Scenes
                 return;
             }
             if (!_player.IsAlive)
+            {
+                SessionStats.Instance.RecordDeath();
                 Game.Instance.Scenes.Replace(new GameOverScene(() => new BossScene()));
+            }
 
             // Phase transition at 50 % boss HP
             if (_phase == 1 && _boss.Health <= _boss.MaxHealth / 2)
@@ -337,6 +340,7 @@ namespace Fridays_Adventure.Scenes
                     () =>
                     {
                         // Signal level cleared so OverworldScene increments CurrentLevel
+                        SessionStats.Instance.RecordLevelComplete();
                         Game.Instance.LevelJustCompleted = true;
                         Game.Instance.Scenes.Pop();
                     }));

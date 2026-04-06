@@ -133,7 +133,7 @@ namespace Fridays_Adventure.Scenes
 
         public override void Update(float dt)
         {
-            if (_levelComplete) { _completeTimer += dt; if (_completeTimer >= 1.0f) { Game.Instance.LevelJustCompleted = true; Game.Instance.Scenes.Pop(); } return; }
+            if (_levelComplete) { _completeTimer += dt; if (_completeTimer >= 1.0f) { SessionStats.Instance.RecordLevelComplete(); Game.Instance.LevelJustCompleted = true; Game.Instance.Scenes.Pop(); } return; }
 
             UpdateWind(dt);
             HandleInput(dt);
@@ -330,7 +330,7 @@ namespace Fridays_Adventure.Scenes
                     Game.Instance.Audio.BeepHurt();
                 }
             }
-            if (!_player.IsAlive) Game.Instance.Scenes.Replace(new GameOverScene());
+            if (!_player.IsAlive) { SessionStats.Instance.RecordDeath(); Game.Instance.Scenes.Replace(new GameOverScene()); }
         }
 
         private void CheckExit()

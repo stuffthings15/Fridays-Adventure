@@ -1988,6 +1988,7 @@ namespace Fridays_Adventure.Scenes
                         name, time, dead,
                         onContinue: () =>
                         {
+                            SessionStats.Instance.RecordLevelComplete();
                             Game.Instance.LevelJustCompleted = true;
                             Game.Instance.Scenes.Pop();  // pop CourseClear
                             Game.Instance.Scenes.Pop();  // pop IslandScene → Overworld
@@ -2017,6 +2018,7 @@ namespace Fridays_Adventure.Scenes
         private void GameOver()
         {
             _deathCount++;  // track deaths for CourseClearScene grade
+            SessionStats.Instance.RecordDeath();
             // Pass a retry factory so the defeat screen can offer "Try Again"
             string id = _islandId, name = _islandName;
             Game.Instance.Scenes.Replace(new GameOverScene(() => new IslandScene(id, name)));

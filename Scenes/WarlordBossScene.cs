@@ -150,7 +150,7 @@ namespace Fridays_Adventure.Scenes
 
         public override void Update(float dt)
         {
-            if (_victory)         { _victoryTimer += dt; if (_victoryTimer >= 4f) { var cfg = _config; Game.Instance.Scenes.Replace(new VictoryScene($"{cfg.Name.ToUpper()} DEFEATED!", "+3500 Bounty   +3 Crew Bonds   Threat -20%", () => { Game.Instance.LevelJustCompleted = true; Game.Instance.Scenes.Replace(new CreditsScene()); })); } return; }
+            if (_victory)         { _victoryTimer += dt; if (_victoryTimer >= 4f) { var cfg = _config; Game.Instance.Scenes.Replace(new VictoryScene($"{cfg.Name.ToUpper()} DEFEATED!", "+3500 Bounty   +3 Crew Bonds   Threat -20%", () => { SessionStats.Instance.RecordLevelComplete(); Game.Instance.LevelJustCompleted = true; Game.Instance.Scenes.Replace(new CreditsScene()); })); } return; }
             if (_phaseTransition) { _phaseTimer   -= dt; if (_phaseTimer   <= 0) _phaseTransition = false; return; }
 
             ThreatSystem.Tick(dt);
@@ -424,7 +424,10 @@ namespace Fridays_Adventure.Scenes
             }
 
             if (!_player.IsAlive)
+            {
+                SessionStats.Instance.RecordDeath();
                 Game.Instance.Scenes.Replace(new GameOverScene(() => new WarlordBossScene(_config)));
+            }
 
             // Phase transition at 50 % boss HP.
             if (_phase == 1 && _boss.Health <= _boss.MaxHealth / 2)
