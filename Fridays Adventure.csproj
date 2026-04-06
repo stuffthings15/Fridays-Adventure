@@ -315,12 +315,17 @@
     <None Include="docs\BOT_FINAL_DIAGNOSTIC_PROTOCOL.md" />
     <None Include="docs\BOT_JUMPING_BEHAVIOR_FIX.md" />
     <None Include="docs\BOT_OBSERVABLE_TEST_GUIDE.md" />
+    <None Include="docs\BOT_OSCILLATION_FIX.md" />
     <None Include="docs\BOT_QA_TESTING_COMPLETE_GUIDE.md" />
     <None Include="docs\BOT_STUCK_DETECTION_SYSTEM.md" />
     <None Include="docs\BOT_SYSTEM_FULLY_INTEGRATED.md" />
     <None Include="docs\CHARACTER_SELECT_INPUT_FIX.md" />
     <None Include="docs\COMPREHENSIVE_INTELLIGENT_BOT_V3.md" />
     <None Include="docs\COMPREHENSIVE_TEAM_FEATURE_AUDIT.md" />
+    <None Include="docs\DASH_CONTACT_DAMAGE_FIX.md" />
+    <None Include="docs\DASH_FIX_TESTING_GUIDE.md" />
+    <None Include="docs\DASH_FREEZE_FIX.md" />
+    <None Include="docs\DASH_VELOCITY_FIX.md" />
     <None Include="docs\DOCUMENTATION_INDEX.md" />
     <None Include="docs\FEATURE_COMPLETION_AUDIT.md" />
     <None Include="docs\FINAL_BUILD_EXECUTABLE_SUMMARY.md" />
@@ -355,6 +360,7 @@
     <None Include="docs\REAL_DIALOGUE_DETECTION_HANDLING.md" />
     <None Include="docs\REAL_SMART_BOT_AI_REWRITE.md" />
     <None Include="docs\RUNTIME_WIRING_VERIFICATION.md" />
+    <None Include="docs\SESSIONS_83_84_COMPLETE_SUMMARY.md" />
     <None Include="docs\SESSION_2_SUMMARY.md" />
     <None Include="docs\SESSION_3_COMPLETION_CERTIFICATE.md" />
     <None Include="docs\SESSION_3_COMPREHENSIVE_SUMMARY.md" />

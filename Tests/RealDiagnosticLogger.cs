@@ -17,15 +17,19 @@ namespace Fridays_Adventure.Tests
         {
             try
             {
-                // Create Logs directory
-                string logsDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Logs");
+                // Use BaseDirectory to ensure logs go to same location regardless of working directory
+                // (important for F5 debugging in Visual Studio where working directory may vary)
+                string baseDir = AppDomain.CurrentDomain.BaseDirectory;
+
+                // Create Logs directory with absolute path
+                string logsDir = Path.Combine(baseDir, "Logs", "Diagnostics");
                 Directory.CreateDirectory(logsDir);
 
                 // Create timestamped session dir
                 string sessionDir = Path.Combine(logsDir, DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss"));
                 Directory.CreateDirectory(sessionDir);
 
-                // Create level log file
+                // Create level log file with absolute path
                 _logPath = Path.Combine(sessionDir, $"{levelName}_diagnostic.txt");
                 _writer = new StreamWriter(_logPath, false, Encoding.UTF8);
                 _writer.AutoFlush = true;
@@ -36,6 +40,8 @@ namespace Fridays_Adventure.Tests
                 WriteLine($"DIAGNOSTIC LOG - {levelName}");
                 WriteLine("═══════════════════════════════════════════════════════════════");
                 WriteLine($"Started: {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
+                WriteLine($"Working Directory: {Environment.CurrentDirectory}");
+                WriteLine($"Base Directory: {baseDir}");
                 WriteLine($"Log file: {_logPath}");
                 WriteLine("───────────────────────────────────────────────────────────────");
                 WriteLine("");

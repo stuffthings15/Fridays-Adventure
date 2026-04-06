@@ -48,6 +48,11 @@ namespace Fridays_Adventure.Scenes
                     Game.Instance.Audio.BeepHeal();
                     SMB3Hud.ShowToast($"Used medkit. Remaining: {PowerUpInventory.HealthItemCount}");
                 }
+                else
+                {
+                    SMB3Hud.ShowToast("No medkit available (or HP is full).");
+                }
+            }
 
             // Use reserve item while inventory is open.
             if (input.IsPressed(System.Windows.Forms.Keys.R))
@@ -61,11 +66,6 @@ namespace Fridays_Adventure.Scenes
                 else
                 {
                     SMB3Hud.ShowToast("Reserve box is empty.");
-                }
-            }
-                else
-                {
-                    SMB3Hud.ShowToast("No medkit available (or HP is full).");
                 }
             }
 

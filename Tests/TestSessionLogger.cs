@@ -30,28 +30,35 @@ namespace Fridays_Adventure.Tests
         /// </summary>
         public void InitializeSession()
         {
-            // Create timestamped session folder
+            // Use absolute path based on BaseDirectory so logs work in F5 debugging
+            // (working directory may differ from executable location)
+            string baseDir = AppDomain.CurrentDomain.BaseDirectory;
+
+            // Create timestamped session folder with absolute path
             _sessionId = DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss");
-            _logDirectory = Path.Combine("Logs", "TestSessions", _sessionId);
-            
+            _logDirectory = Path.Combine(baseDir, "Logs", "TestSessions", _sessionId);
+
             try
             {
                 // Create directories if they don't exist
                 Directory.CreateDirectory(_logDirectory);
-                
+
                 // Create main session log file
                 _mainLogPath = Path.Combine(_logDirectory, "SESSION_LOG.txt");
                 _mainLogWriter = new StreamWriter(_mainLogPath, false, Encoding.UTF8);
                 _mainLogWriter.AutoFlush = true;
-                
+
                 _isInitialized = true;
-                
+
                 // Write session header
                 WriteLine("═══════════════════════════════════════════════════════════════");
                 WriteLine("FRIDAY'S ADVENTURE - AUTOMATED TEST SESSION LOG");
                 WriteLine("═══════════════════════════════════════════════════════════════");
                 WriteLine($"Session ID: {_sessionId}");
                 WriteLine($"Started: {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
+                WriteLine($"Working Directory: {Environment.CurrentDirectory}");
+                WriteLine($"Base Directory: {baseDir}");
+                WriteLine($"Log Directory: {_logDirectory}");
                 WriteLine("───────────────────────────────────────────────────────────────");
                 WriteLine("");
             }

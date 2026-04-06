@@ -294,7 +294,8 @@ namespace Fridays_Adventure.Tests
         }
 
         /// <summary>
-        /// Map level ID to scene name
+        /// Map level ID to scene name.
+        /// Must match the routing in <see cref="Scenes.LevelSceneFactory"/>.
         /// </summary>
         private static string GetSceneNameForLevel(string levelId)
         {
@@ -307,16 +308,16 @@ namespace Fridays_Adventure.Tests
                 "wano" => "IslandScene",
                 "warlord1" => "WarlordBossScene",
                 "harbor" => "IslandScene",
-                "coral" => "IslandScene",
+                "coral" => "UnderwaterScene",
                 "tundra" => "IslandScene",
                 "storm2" => "StormScene",
                 "warlord2" => "WarlordBossScene",
-                "dive_gate" => "IslandScene",
-                "sunken_gate" => "IslandScene",
-                "kelp" => "IslandScene",
-                "boiling_vent" => "IslandScene",
-                "abyss" => "IslandScene",
-                "centipede_final" => "WarlordBossScene",
+                "dive_gate" => "UnderwaterScene",
+                "sunken_gate" => "UnderwaterScene",
+                "kelp" => "UnderwaterScene",
+                "boiling_vent" => "UnderwaterScene",
+                "abyss" => "UnderwaterScene",
+                "centipede_final" => "BossScene",
                 _ => null
             };
         }

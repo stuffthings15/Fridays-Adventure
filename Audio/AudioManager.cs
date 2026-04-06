@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading;
+using System.Windows.Forms;
 using NAudio.Wave;
 
 namespace Fridays_Adventure.Audio
@@ -79,7 +80,11 @@ namespace Fridays_Adventure.Audio
 
         public AudioManager()
         {
-            _syncCtx = SynchronizationContext.Current ?? new SynchronizationContext();
+            // Capture the UI thread's synchronization context. If running on the UI thread,
+            // Current will be set. If not, use WindowsFormsSynchronizationContext to ensure
+            // Post() calls are marshaled to the UI thread's message pump, preventing COM
+            // context disconnection errors during deferred disposal of NAudio objects.
+            _syncCtx = SynchronizationContext.Current ?? new WindowsFormsSynchronizationContext();
         }
 
         public IReadOnlyList<string> GetPlaylist(string mood)

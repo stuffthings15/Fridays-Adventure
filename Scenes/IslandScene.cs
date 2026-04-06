@@ -88,6 +88,12 @@ namespace Fridays_Adventure.Scenes
 
         private Bitmap _bg;
         private Bitmap _uiPanel;
+        /// <summary>
+        /// Pre-rendered terrain bitmap baked once in BuildLevel so DrawPlatforms
+        /// is a single BitBlt instead of dozens of GDI+ allocations per frame.
+        /// This eliminates the GDI pressure freeze when entities first hit the ground.
+        /// </summary>
+        private Bitmap _terrainCache;
         private static readonly Font _hudFont  = new Font("Courier New", 16, FontStyle.Bold);
         private static readonly Font _infoFont = new Font("Courier New", 12, FontStyle.Bold);
         public IslandScene(string id, string name) { _islandId = id; _islandName = name; }
@@ -117,7 +123,8 @@ namespace Fridays_Adventure.Scenes
         public override void OnExit()
         {
             WeatherSystem.Set(WeatherSystem.Mode.None);  // clear weather on exit
-            _bg?.Dispose(); _bg = null;
+            _bg?.Dispose();           _bg           = null;
+            _terrainCache?.Dispose(); _terrainCache = null;
         }
 
         // ════════════════════════════════════════════════════════════════════════
@@ -512,7 +519,8 @@ namespace Fridays_Adventure.Scenes
 
             ApplyLevelScale();
 
-            // Level-entry drop — all characters fall in from above the screen
+            // Bake terrain into a single bitmap so DrawPlatforms is one BitBlt per frame.
+            BakeTerrainCache();
             _introActive       = true;
             _player.Y          = -120f;
             _player.IsGrounded = false;
@@ -649,9 +657,9 @@ namespace Fridays_Adventure.Scenes
             _hammerBros.Add(new HammerBroEnemy(2100, _groundY - 44, 2050, 2300));
 
             // Star coins — 3 hidden collectibles per level (Team 4 — Idea 6)
-            _starCoins.Add(new StarCoinPickup(350 + 50, _groundY - 200));
-            _starCoins.Add(new StarCoinPickup(1050 + 70, _groundY - 160));
-            _starCoins.Add(new StarCoinPickup(2300 + 80, _groundY - 240));
+            _starCoins.Add(new StarCoinPickup(350 + 50, _groundY - 80));
+            _starCoins.Add(new StarCoinPickup(1050 + 70, _groundY - 80));
+            _starCoins.Add(new StarCoinPickup(2300 + 80, _groundY - 80));
         }
 
         private void BuildBladeNation()
@@ -919,12 +927,12 @@ namespace Fridays_Adventure.Scenes
 
         private void SpawnDinoBerries()
         {
-            // Elevated platforms — reward exploration
-            AddBerryRow(380, _groundY - 132, 3, 40);
-            AddBerryRow(1080, _groundY - 112, 3, 60);
-            AddBerryRow(1720, _groundY - 142, 3, 50);
-            AddBerryRow(2330, _groundY - 162, 4, 50);
-            // Arcs over water pits — risk/reward
+            // Rows placed at max-jump height so the bot can always reach them
+            AddBerryRow(380,  _groundY - 80, 3, 40);
+            AddBerryRow(1080, _groundY - 80, 3, 60);
+            AddBerryRow(1720, _groundY - 80, 3, 50);
+            AddBerryRow(2330, _groundY - 80, 4, 50);
+            // Arcs over water pits — risk/reward (already within jump height)
             AddBerry(720, _groundY - 60); AddBerry(750, _groundY - 80); AddBerry(780, _groundY - 60);
             AddBerry(1380, _groundY - 70); AddBerry(1410, _groundY - 70);
             AddBerry(2060, _groundY - 70); AddBerry(2090, _groundY - 80);
@@ -932,37 +940,37 @@ namespace Fridays_Adventure.Scenes
 
         private void SpawnBladeBerries()
         {
-            AddBerryRow(320, _groundY - 152, 3, 50);
-            AddBerryRow(830, _groundY - 132, 3, 50);
-            AddBerryRow(1370, _groundY - 152, 3, 40);
-            AddBerryRow(2020, _groundY - 172, 4, 50);
+            AddBerryRow(320,  _groundY - 80, 3, 50);
+            AddBerryRow(830,  _groundY - 80, 3, 50);
+            AddBerryRow(1370, _groundY - 80, 3, 40);
+            AddBerryRow(2020, _groundY - 80, 4, 50);
         }
 
         private void SpawnHarborBerries()
         {
-            AddBerryRow(300,  _groundY - 122, 3, 40);
-            AddBerryRow(780,  _groundY - 142, 3, 50);
-            AddBerryRow(1320, _groundY - 162, 3, 40);
+            AddBerryRow(300,  _groundY - 80, 3, 40);
+            AddBerryRow(780,  _groundY - 80, 3, 50);
+            AddBerryRow(1320, _groundY - 80, 3, 40);
             AddBerry(510, _groundY - 60); AddBerry(535, _groundY - 80); AddBerry(560, _groundY - 60);
             AddBerry(1030, _groundY - 70); AddBerry(1055, _groundY - 70);
         }
 
         private void SpawnCoralBerries()
         {
-            AddBerryRow(340,  _groundY - 122, 3, 50);
-            AddBerryRow(910,  _groundY - 142, 3, 50);
-            AddBerryRow(1490, _groundY - 162, 3, 50);
-            AddBerryRow(2080, _groundY - 182, 4, 50);
+            AddBerryRow(340,  _groundY - 80, 3, 50);
+            AddBerryRow(910,  _groundY - 80, 3, 50);
+            AddBerryRow(1490, _groundY - 80, 3, 50);
+            AddBerryRow(2080, _groundY - 80, 4, 50);
             AddBerry(550, _groundY - 65); AddBerry(580, _groundY - 80);
             AddBerry(1110, _groundY - 70); AddBerry(1140, _groundY - 70);
         }
 
         private void SpawnTundraBerries()
         {
-            AddBerryRow(280,  _groundY - 162, 3, 50);
-            AddBerryRow(790,  _groundY - 182, 3, 50);
-            AddBerryRow(1350, _groundY - 202, 3, 40);
-            AddBerryRow(1930, _groundY - 222, 4, 50);
+            AddBerryRow(280,  _groundY - 80, 3, 50);
+            AddBerryRow(790,  _groundY - 80, 3, 50);
+            AddBerryRow(1350, _groundY - 80, 3, 40);
+            AddBerryRow(1930, _groundY - 80, 4, 50);
         }
 
         private void AddBerryRow(float x, float y, int count, float spacing)
@@ -987,36 +995,36 @@ namespace Fridays_Adventure.Scenes
 
         private void SpawnDinoHealthPickups()
         {
-            _healthPickups.Add(new HealthPickup(410,  _groundY - 120));
-            _healthPickups.Add(new HealthPickup(1510, _groundY - 130));
-            _healthPickups.Add(new HealthPickup(2340, _groundY - 155));
+            _healthPickups.Add(new HealthPickup(410,  _groundY - 80));
+            _healthPickups.Add(new HealthPickup(1510, _groundY - 80));
+            _healthPickups.Add(new HealthPickup(2340, _groundY - 80));
         }
 
         private void SpawnBladeHealthPickups()
         {
-            _healthPickups.Add(new HealthPickup(330,  _groundY - 142));
-            _healthPickups.Add(new HealthPickup(1380, _groundY - 142));
-            _healthPickups.Add(new HealthPickup(2040, _groundY - 165));
+            _healthPickups.Add(new HealthPickup(330,  _groundY - 80));
+            _healthPickups.Add(new HealthPickup(1380, _groundY - 80));
+            _healthPickups.Add(new HealthPickup(2040, _groundY - 80));
         }
 
         private void SpawnHarborHealthPickups()
         {
-            _healthPickups.Add(new HealthPickup(290,  _groundY - 112));
-            _healthPickups.Add(new HealthPickup(1310, _groundY - 152));
+            _healthPickups.Add(new HealthPickup(290,  _groundY - 80));
+            _healthPickups.Add(new HealthPickup(1310, _groundY - 80));
         }
 
         private void SpawnCoralHealthPickups()
         {
-            _healthPickups.Add(new HealthPickup(340,  _groundY - 112));
-            _healthPickups.Add(new HealthPickup(1480, _groundY - 152));
-            _healthPickups.Add(new HealthPickup(2080, _groundY - 172));
+            _healthPickups.Add(new HealthPickup(340,  _groundY - 80));
+            _healthPickups.Add(new HealthPickup(1480, _groundY - 80));
+            _healthPickups.Add(new HealthPickup(2080, _groundY - 80));
         }
 
         private void SpawnTundraHealthPickups()
         {
-            _healthPickups.Add(new HealthPickup(280,  _groundY - 152));
-            _healthPickups.Add(new HealthPickup(1350, _groundY - 192));
-            _healthPickups.Add(new HealthPickup(1940, _groundY - 212));
+            _healthPickups.Add(new HealthPickup(280,  _groundY - 80));
+            _healthPickups.Add(new HealthPickup(1350, _groundY - 80));
+            _healthPickups.Add(new HealthPickup(1940, _groundY - 80));
         }
 
         /// <summary>
@@ -1027,15 +1035,15 @@ namespace Fridays_Adventure.Scenes
             switch (_islandId)
             {
                 case "wano":
-                    _starCoins.Add(new StarCoinPickup(360,  _groundY - 180));
-                    _starCoins.Add(new StarCoinPickup(1440, _groundY - 200));
-                    _starCoins.Add(new StarCoinPickup(2220, _groundY - 220));
+                    _starCoins.Add(new StarCoinPickup(360,  _groundY - 80));
+                    _starCoins.Add(new StarCoinPickup(1440, _groundY - 80));
+                    _starCoins.Add(new StarCoinPickup(2220, _groundY - 80));
                     break;
 
                 case "harbor":
-                    _starCoins.Add(new StarCoinPickup(320,  _groundY - 150));
-                    _starCoins.Add(new StarCoinPickup(920,  _groundY - 170));
-                    _starCoins.Add(new StarCoinPickup(1820, _groundY - 190));
+                    _starCoins.Add(new StarCoinPickup(320,  _groundY - 80));
+                    _starCoins.Add(new StarCoinPickup(920,  _groundY - 80));
+                    _starCoins.Add(new StarCoinPickup(1820, _groundY - 80));
                     break;
 
                 case "coral":
@@ -1044,27 +1052,27 @@ namespace Fridays_Adventure.Scenes
                 case "kelp":
                 case "boiling_vent":
                 case "abyss":
-                    _starCoins.Add(new StarCoinPickup(420,  _groundY - 160));
-                    _starCoins.Add(new StarCoinPickup(1540, _groundY - 210));
-                    _starCoins.Add(new StarCoinPickup(2440, _groundY - 240));
+                    _starCoins.Add(new StarCoinPickup(420,  _groundY - 80));
+                    _starCoins.Add(new StarCoinPickup(1540, _groundY - 80));
+                    _starCoins.Add(new StarCoinPickup(2440, _groundY - 80));
                     break;
 
                 case "tundra":
-                    _starCoins.Add(new StarCoinPickup(300,  _groundY - 200));
-                    _starCoins.Add(new StarCoinPickup(980,  _groundY - 230));
-                    _starCoins.Add(new StarCoinPickup(2060, _groundY - 260));
+                    _starCoins.Add(new StarCoinPickup(300,  _groundY - 80));
+                    _starCoins.Add(new StarCoinPickup(980,  _groundY - 80));
+                    _starCoins.Add(new StarCoinPickup(2060, _groundY - 80));
                     break;
 
                 case "sky":
-                    _starCoins.Add(new StarCoinPickup(420,  _groundY - 220));
-                    _starCoins.Add(new StarCoinPickup(1200, _groundY - 250));
-                    _starCoins.Add(new StarCoinPickup(2200, _groundY - 280));
+                    _starCoins.Add(new StarCoinPickup(420,  _groundY - 80));
+                    _starCoins.Add(new StarCoinPickup(1200, _groundY - 80));
+                    _starCoins.Add(new StarCoinPickup(2200, _groundY - 80));
                     break;
 
                 default:
-                    _starCoins.Add(new StarCoinPickup(420,  _groundY - 170));
-                    _starCoins.Add(new StarCoinPickup(1320, _groundY - 200));
-                    _starCoins.Add(new StarCoinPickup(2320, _groundY - 230));
+                    _starCoins.Add(new StarCoinPickup(420,  _groundY - 80));
+                    _starCoins.Add(new StarCoinPickup(1320, _groundY - 80));
+                    _starCoins.Add(new StarCoinPickup(2320, _groundY - 80));
                     break;
             }
         }
@@ -1074,8 +1082,9 @@ namespace Fridays_Adventure.Scenes
             var raw = LoadBackgroundForIsland(_islandId);
             if (raw != null)
             {
-                // Pre-scale background to screen size once at high quality so the
-                // fast NearestNeighbor runtime renderer draws a 1:1 bitmap.
+                // Pre-scale background to screen size using fast interpolation.
+                // HighQualityBicubic is VERY expensive (~10s freeze) — use NearestNeighbor instead.
+                // This trades imperceptible visual quality for instant level load times.
                 int sw = Game.Instance.CanvasWidth;
                 int sh = Game.Instance.CanvasHeight;
                 if (sw > 0 && sh > 0 && (raw.Width != sw || raw.Height != sh))
@@ -1083,8 +1092,9 @@ namespace Fridays_Adventure.Scenes
                     var scaled = new Bitmap(sw, sh);
                     using (var sg = Graphics.FromImage(scaled))
                     {
-                        sg.InterpolationMode  = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
-                        sg.CompositingQuality = System.Drawing.Drawing2D.CompositingQuality.HighQuality;
+                        // Use fast NearestNeighbor interpolation to avoid 10-second freeze
+                        sg.InterpolationMode  = System.Drawing.Drawing2D.InterpolationMode.NearestNeighbor;
+                        sg.CompositingQuality = System.Drawing.Drawing2D.CompositingQuality.AssumeLinear;
                         sg.DrawImage(raw, 0, 0, sw, sh);
                     }
                     raw.Dispose();
@@ -1191,6 +1201,12 @@ namespace Fridays_Adventure.Scenes
             _speedRunTimer += dt;
             Game.Instance.LevelElapsedSeconds = _speedRunTimer;
 
+            // Music heartbeat — restart island track if the audio device stalled or
+            // was never started (e.g. first frame audio was not yet ready on entry).
+            // ContinueOrPlay is a no-op while music is already playing.
+            if (_speedRunTimer % 5f < dt)
+                Game.Instance.Audio.ContinueOrPlay("island");
+
             var input = Game.Instance.Input;
 
             HandleInput(input, dt);
@@ -1231,6 +1247,9 @@ namespace Fridays_Adventure.Scenes
             UpdateBerries(dt);
             UpdateHealthPickups(dt);
             UpdatePowerUps(dt);
+            // Update star coins — checks player hitbox and awards score on collection.
+            // Previously missing from the update loop, making star coins uncollectible.
+            foreach (var sc in _starCoins) sc.Update(dt, _player);
 
             // ── Update projectiles ──────────────────────────────────────────
             // Update and cull fireballs (Fire Flower projectiles)
@@ -1265,17 +1284,34 @@ namespace Fridays_Adventure.Scenes
             float sprintMult = _player.IsSprinting ? 1.35f : 1.0f;
             float moveSpd = _player.MoveSpeed * (_player.PMeterActive ? 1.4f : 1.0f) * sprintMult;
 
-            if (input.LeftHeld)
+            // Determine if currently dashing
+            bool isDashing = _player.IsDashing || _player.HasEffect(StatusEffect.Dodging);
+
+            if (!isDashing)
             {
-                if (!_player.IsWallJumping) { _player.VelocityX = -moveSpd; _player.FacingRight = false; }
-            }
-            else if (input.RightHeld)
-            {
-                if (!_player.IsWallJumping) { _player.VelocityX = moveSpd; _player.FacingRight = true; }
+                // ── NORMAL MOVEMENT - Apply input normally
+                if (input.LeftHeld)
+                {
+                    if (!_player.IsWallJumping) { _player.VelocityX = -moveSpd; _player.FacingRight = false; }
+                }
+                else if (input.RightHeld)
+                {
+                    if (!_player.IsWallJumping) { _player.VelocityX = moveSpd; _player.FacingRight = true; }
+                }
+                else
+                {
+                    if (!_player.IsWallJumping) _player.VelocityX = 0;
+                }
             }
             else
             {
-                if (!_player.IsWallJumping) _player.VelocityX = 0;
+                // ── DASH/DODGE ACTIVE - Preserve velocity momentum
+                // Only update facing direction, don't override velocity
+                if (input.LeftHeld)
+                    _player.FacingRight = false;
+                else if (input.RightHeld)
+                    _player.FacingRight = true;
+                // Do NOT set VelocityX - let the dash velocity persist
             }
 
             // ── Phase 2 T7 #1: Wall Slide ──────────────────────────────────────
@@ -1571,6 +1607,11 @@ namespace Fridays_Adventure.Scenes
                 else if (c.VelocityX < 0) c.X = wb.Right;
                 c.VelocityX = 0;
             }
+
+            // Hazards (fire, water pits, sea-stone, etc.) are NOT solid — characters walk and
+            // fall through them freely. Damage is applied via DevilFruitRules.Check() each frame.
+            // DO NOT add hazard collision geometry here; it blocks enemies, stops the player at
+            // water edges, and prevents falls into pits.
         }
 
         private void ResolveVertical(Character c)
@@ -1607,6 +1648,11 @@ namespace Fridays_Adventure.Scenes
                     c.VelocityY = 0;
                 }
             }
+
+            // Hazards are NOT solid vertically — the player and enemies must fall through water
+            // pits and fire zones. Standing on water or hovering over holes was caused by this
+            // block pushing Y upward; it has been removed. Damage is via DevilFruitRules.Check().
+
             // Fall recovery (no fall damage): falling below the level resets the player.
             if (c.Y > Game.Instance.CanvasHeight + 200)
             {
@@ -1713,6 +1759,26 @@ namespace Fridays_Adventure.Scenes
                             AchievementSystem.Grant("ach_ground_pound");
                         stomped = true;
                     }
+                }
+
+                // ── DASH/DODGE CONTACT DAMAGE ──────────────────────────────────────
+                // Swan's WingDash deals 18 damage on contact with enemies
+                if (!stomped && e.IsAlive && _player.HasEffect(StatusEffect.Dodging) &&
+                    _player.Hitbox.IntersectsWith(e.Hitbox))
+                {
+                    bool wasAlive = e.IsAlive;
+                    e.TakeDamage(18);  // WingDash contact damage
+                    if (wasAlive && !e.IsAlive)
+                    {
+                        BountySystem.Award(e.ScoreValue);
+                        Game.Instance.TotalBerriesCollected += 10;
+                        TryDropPowerUp(e.CenterX, e.Y);
+                        Game.Instance.Audio.BeepAttack();
+                    }
+                    // Knockback from dash
+                    float kbDir = _player.FacingRight ? 1f : -1f;
+                    e.VelocityX = kbDir * 200f;
+                    e.VelocityY = -100f;
                 }
 
                 // Regular attack
@@ -2072,8 +2138,100 @@ namespace Fridays_Adventure.Scenes
             }
        }
 
+        /// <summary>
+        /// Pre-renders all platforms into a world-space bitmap once after BuildLevel.
+        /// DrawPlatforms then does a single g.DrawImage instead of looping and allocating
+        /// GDI+ brushes/pens every frame, eliminating the first-frame GDI freeze.
+        /// </summary>
+        private void BakeTerrainCache()
+        {
+            _terrainCache?.Dispose();
+            if (_platforms == null || _platforms.Count == 0) return;
+
+            // Terrain bitmap covers the full level width at screen height
+            int bmpW = _levelWidth;
+            int bmpH = Game.Instance.CanvasHeight > 0 ? Game.Instance.CanvasHeight : 600;
+
+            _terrainCache = new Bitmap(bmpW, bmpH);
+            using (var tg = Graphics.FromImage(_terrainCache))
+            {
+                tg.Clear(Color.Transparent);
+
+                // Resolve the per-island colour palette once
+                Color baseCol, topCol, brickCol;
+                switch (_islandId)
+                {
+                    case "wano":
+                        baseCol  = Color.FromArgb(90,  80,  70);
+                        topCol   = Color.FromArgb(60,  70,  80);
+                        brickCol = Color.FromArgb(50,  55,  60);
+                        break;
+                    case "sky":
+                        baseCol  = Color.FromArgb(200, 200, 220);
+                        topCol   = Color.FromArgb(240, 240, 255);
+                        brickCol = Color.FromArgb(180, 185, 210);
+                        break;
+                    case "harbor":
+                        baseCol  = Color.FromArgb(145,  95,  48);
+                        topCol   = Color.FromArgb(188, 138,  68);
+                        brickCol = Color.FromArgb(105,  62,  22);
+                        break;
+                    case "coral":
+                    case "sunken_gate":
+                    case "kelp":
+                    case "boiling_vent":
+                    case "abyss":
+                        baseCol  = Color.FromArgb(18,  52,  96);
+                        topCol   = Color.FromArgb(22, 138, 152);
+                        brickCol = Color.FromArgb(10,  33,  65);
+                        break;
+                    case "tundra":
+                        baseCol  = Color.FromArgb(195, 215, 245);
+                        topCol   = Color.FromArgb(235, 248, 255);
+                        brickCol = Color.FromArgb(155, 180, 225);
+                        break;
+                    default:
+                        baseCol  = Color.FromArgb(210, 160,  80);
+                        topCol   = Color.FromArgb(60,  170,  50);
+                        brickCol = Color.FromArgb(155, 100,  40);
+                        break;
+                }
+
+                // Create brushes and pens once — reuse across all platforms
+                using (var baseBr   = new SolidBrush(baseCol))
+                using (var topBr    = new SolidBrush(topCol))
+                using (var highlBr  = new SolidBrush(Color.FromArgb(90, 255, 255, 255)))
+                using (var brickPen = new Pen(Color.FromArgb(55, brickCol), 1))
+                {
+                    foreach (var p in _platforms)
+                    {
+                        tg.FillRectangle(baseBr, p);
+
+                        if (p.Height > 16)
+                        {
+                            for (int tx = p.Left + 32; tx < p.Right; tx += 32)
+                                tg.DrawLine(brickPen, tx, p.Top, tx, p.Bottom);
+                            for (int ty = p.Top + 16; ty < p.Bottom; ty += 16)
+                                tg.DrawLine(brickPen, p.Left, ty, p.Right, ty);
+                        }
+
+                        tg.FillRectangle(topBr,   p.X, p.Y, p.Width, 6);
+                        tg.FillRectangle(highlBr, p.X, p.Y, p.Width, 2);
+                    }
+                }
+            }
+        }
+
         private void DrawPlatforms(Graphics g, int H)
         {
+            // Single BitBlt from the pre-baked terrain bitmap — no per-frame GDI allocations
+            if (_terrainCache != null)
+            {
+                g.DrawImage(_terrainCache, 0, 0);
+                return;
+            }
+
+            // ── Fallback: live render if cache is missing ─────────────────────
             // ── Per-island SMB3 tile palette ─────────────────────────────────
             Color baseCol, topCol, brickCol;
             switch (_islandId)

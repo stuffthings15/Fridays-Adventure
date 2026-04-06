@@ -46,7 +46,12 @@ namespace Fridays_Adventure.Scenes
                 case "sunken_gate":
                 case "kelp":
                 case "boiling_vent":
+                case "abyss":
                     return new UnderwaterScene();
+
+                // Marine Blockade boss (Garp)
+                case "blockade":
+                    return new BossScene();
 
                 // Warlord boss fights
                 case "warlord1":
@@ -58,7 +63,7 @@ namespace Fridays_Adventure.Scenes
                 case "centipede_final":
                     return new BossScene();
 
-                // All remaining island levels (dino, blockade, wano, harbor,
+                // All remaining island levels (dino, wano, harbor,
                 // tundra, abyss, etc.)
                 default:
                     return new IslandScene(levelId, levelName);

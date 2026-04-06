@@ -143,6 +143,9 @@ namespace Fridays_Adventure.Scenes
             if (input.IsPressed(System.Windows.Forms.Keys.L))
                 Engine.Game.RequestOpenLogbook();
 
+            if (input.InventoryPressed)
+                Game.Instance.Scenes.Push(new InventoryScene());
+
             if (input.PausePressed)
                 Game.Instance.Scenes.Push(new OptionsScene());
         }

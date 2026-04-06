@@ -55,14 +55,28 @@ namespace Fridays_Adventure.Scenes
         private int _cardRouletteSelectCount = 0;
         private bool _cardRouletteEntered = false;
         private float _cardRouletteStartTime = 0f;
+
+        // ── Bot Activity Logger ───────────────────────────────────────────
+        private Tests.ComprehensiveBotActivityLogger _botActivityLogger = null;
         // ── Completion tracking ───────────────────────────────────────────
         /// <summary>
-        /// True once the inner scene has pushed its completion scenes (CardRoulette
-        /// / CourseClear) onto the stack, meaning the level was beaten.
+        /// True once the inner scene has signalled completion, either by pushing
+        /// result scenes (Path A) or by setting an internal flag (Path B).
         /// </summary>
         private bool  _innerCompleted = false;
         private float _completionHoldTimer = 0f;
         private const float COMPLETION_HOLD = 5f;  // show result for 5 s then advance
+
+        /// <summary>
+        /// True when completion was detected via the inner scene's own boolean
+        /// flag (_complete, _levelComplete, _victory) rather than a stack Push.
+        /// Path B scenes (StormScene, BossScene, SkyIslandScene, UnderwaterScene)
+        /// will call Scenes.Pop() or Scenes.Replace() in their next Update(),
+        /// which would corrupt the stack because the inner scene is NOT on the
+        /// stack — BotPlayLevelScene is.  When this flag is true we must NEVER
+        /// call _inner.Update() again, and we finish immediately.
+        /// </summary>
+        private bool _completedViaReflection = false;
 
         private int _innerSceneDepthAtEnter;  // stack depth when we entered
 
@@ -74,6 +88,19 @@ namespace Fridays_Adventure.Scenes
 
         // ── Diagnostics system for comprehensive bot action tracking ───────────
         private BotDiagnostics _diagnostics = new BotDiagnostics();
+
+        // ── Reflection-based completion fields (Pop/Replace scenes) ──────
+        // Scenes that complete via Pop() or Replace() don't increase stack
+        // depth, so depth-based detection misses them.  We also check for
+        // _complete, _levelComplete, and _victory fields on the inner scene.
+        private System.Reflection.FieldInfo _innerCompleteField;
+        private System.Reflection.FieldInfo _innerLevelCompleteField;
+        private System.Reflection.FieldInfo _innerVictoryField;
+
+        // ── Reflection-based failure fields ──────────────────────────────
+        // StormScene sets _failed=true before calling Scenes.Replace(GameOverScene).
+        // We detect it first so we can bail before the Replace corrupts the stack.
+        private System.Reflection.FieldInfo _innerFailedField;
 
         // ── Callback fired when this level is done ────────────────────────
         private readonly Action<bool, float> _onFinished;  // (wasBeaten, timeElapsed)
@@ -109,6 +136,7 @@ namespace Fridays_Adventure.Scenes
             _bot.Reset();
             _elapsed    = 0f;
             _innerCompleted = false;
+            _completedViaReflection = false;
             _completionHoldTimer = 0f;
             _aiInitialized = false;  // Reset AI init flag
 
@@ -125,6 +153,14 @@ namespace Fridays_Adventure.Scenes
             // Start diagnostics tracking
             _diagnostics.StartLevel(_levelName);
 
+            // Initialize bot activity logger for file-based logging
+            _botActivityLogger = new Tests.ComprehensiveBotActivityLogger();
+            _botActivityLogger.InitializeForLevel(
+                System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Logs"),
+                _levelName,
+                _levelName
+            );
+
             // Record how deep the scene stack is right now.  When the inner
             // scene pushes CardRoulette/CourseClear on top, the depth increases;
             // that is how we detect "level beaten".
@@ -132,6 +168,17 @@ namespace Fridays_Adventure.Scenes
 
             // Enter the inner scene so it initialises (loads level, spawns player, etc.)
             _inner.OnEnter();
+
+            // Cache reflection fields for completion detection on scenes that
+            // use Pop() or Replace() instead of Push() (StormScene, BossScene,
+            // WarlordBossScene, SkyIslandScene, UnderwaterScene).
+            var bindFlags = System.Reflection.BindingFlags.NonPublic |
+                            System.Reflection.BindingFlags.Instance;
+            var innerType = _inner.GetType();
+            _innerCompleteField      = innerType.GetField("_complete",      bindFlags);
+            _innerLevelCompleteField = innerType.GetField("_levelComplete", bindFlags);
+            _innerVictoryField       = innerType.GetField("_victory",       bindFlags);
+            _innerFailedField        = innerType.GetField("_failed",        bindFlags);
 
             // Quick test to verify AI can see entities
             Player player = GetPlayerFromScene(_inner);
@@ -154,8 +201,11 @@ namespace Fridays_Adventure.Scenes
             Game.Instance.GodMode = _previousGodMode;
 
             // Generate and display diagnostics report
+            string completionPath = _innerCompleted
+                ? (_completedViaReflection ? "Path B (reflection flag)" : "Path A (stack push)")
+                : "Not completed";
             string report = _diagnostics.GenerateReport(_innerCompleted, _elapsed,
-                _innerCompleted ? "" : "Level not beaten within timeout");
+                _innerCompleted ? completionPath : "Level not beaten within timeout");
             Console.WriteLine(report);
         }
 
@@ -183,33 +233,113 @@ namespace Fridays_Adventure.Scenes
                 return;
             }
 
-            // ── Completion detection ──────────────────────────────────────
-            // When the inner scene pushes CardRoulette/CourseClear the scene
-            // stack depth grows above the value recorded at entry.  That is
-            // our signal that the level was beaten.
-            if (!_innerCompleted && Game.Instance.Scenes.Depth > _innerSceneDepthAtEnter)
+            // ── Player death guard ────────────────────────────────────────
+            // If the player dies the inner scene will call
+            // Scenes.Replace(GameOverScene) — that would replace
+            // BotPlayLevelScene (the actual stack top) and corrupt the demo.
+            // Detect death BEFORE updating the inner scene and bail out.
+            // Also check the inner scene's _failed flag (StormScene sets this
+            // before calling Replace on the next frame).
+            if (_aiInitialized && !_innerCompleted)
             {
-                _innerCompleted = true;
+                Player p = GetPlayerFromScene(_inner);
+                bool playerDead = p != null && !p.IsAlive;
+                bool sceneFailed = CheckInnerSceneFailedFlag();
+
+                if (playerDead || sceneFailed)
+                {
+                    string reason = sceneFailed ? "scene _failed flag" : "HP reached 0";
+                    System.Diagnostics.Debug.WriteLine(
+                        $"[BOT] ☠️ Player died at T={_elapsed:F1}s ({reason}) — finishing level as failed");
+                    _diagnostics.LogStateChange("PLAYING", "PLAYER_DEATH",
+                        $"{reason} at elapsed={_elapsed:F1}s");
+                    Finish(false);
+                    return;
+                }
             }
 
-            // If beaten, let those result scenes run for a few seconds then advance.
+            // ── Completion detection ──────────────────────────────────────
+            // Primary (Path A): the inner scene pushes CardRoulette/CourseClear
+            // onto the stack, increasing depth above the recorded entry value.
+            // Secondary (Path B): scenes that exit via Pop() or Replace()
+            // (StormScene, BossScene, WarlordBossScene, SkyIslandScene,
+            // UnderwaterScene) set an internal boolean flag instead.
+            // We check both paths every frame.
+            if (!_innerCompleted)
+            {
+                // Path A — depth-based (Push scenes like IslandScene)
+                if (Game.Instance.Scenes.Depth > _innerSceneDepthAtEnter)
+                {
+                    _innerCompleted = true;
+                    _completedViaReflection = false;
+                    System.Diagnostics.Debug.WriteLine(
+                        $"[BOT] ✅ Completion detected via stack depth increase");
+                    _diagnostics.LogStateChange("PLAYING", "COMPLETED_PUSH",
+                        "Inner scene pushed result scenes onto the stack");
+                }
+                // Path B — reflection-based (Pop/Replace scenes)
+                else if (CheckInnerSceneCompletionFlag())
+                {
+                    _innerCompleted = true;
+                    _completedViaReflection = true;
+                    System.Diagnostics.Debug.WriteLine(
+                        $"[BOT] ✅ Completion detected via inner scene flag " +
+                        $"— will NOT update inner scene again to prevent stack corruption");
+                    _diagnostics.LogStateChange("PLAYING", "COMPLETED_FLAG",
+                        "Inner scene set completion flag (Pop/Replace path)");
+                }
+            }
+
+            // ── Handle post-completion ────────────────────────────────────
             if (_innerCompleted)
             {
                 _completionHoldTimer += dt;
                 _diagnostics.Update(dt);
 
-                // CardRoulette / CourseClear screens require dismissal.
-                // The bot should interact with them to progress.
+                // ── Path B (reflection): the inner scene has NOT pushed any
+                // result scenes.  Its next Update() would call Scenes.Pop() or
+                // Scenes.Replace(), which would corrupt the stack because the
+                // inner scene is held by reference — BotPlayLevelScene is the
+                // real stack top.  We must NOT update the inner scene.
+                // Finish immediately after a short animation hold.
+                if (_completedViaReflection)
+                {
+                    // Short hold so the victory/complete text is visible in
+                    // the draw call, then advance.
+                    if (_completionHoldTimer >= 1.5f)
+                    {
+                        Finish(true);
+                        return;
+                    }
+                    // We still draw the inner scene (via Draw()) but never
+                    // call its Update() again.
+                    return;
+                }
+
+                // ── Path A (push): CardRoulette / CourseClear are on the
+                // stack above us.  Spam dismiss keys to skip them quickly.
                 var currentScene = Game.Instance.Scenes.Current;
                 string sceneName = currentScene?.GetType().Name ?? "Unknown";
 
-                // Inject Enter key to dismiss dialogs / advance card roulette
-                if (_completionHoldTimer > 0.3f)
+                bool isCardRoulette = sceneName.Contains("CardRoulette") ||
+                                      sceneName.Contains("Roulette");
+
+                if (_completionHoldTimer > 0.2f)
                 {
-                    input.InjectPressed(Keys.Enter);
-                    _diagnostics.LogMiniGameInteraction(sceneName, "ADVANCE", "");
+                    input.InjectPressed(System.Windows.Forms.Keys.Enter);
+                    input.InjectPressed(System.Windows.Forms.Keys.Space);
+
+                    if (isCardRoulette)
+                    {
+                        input.InjectPressed(System.Windows.Forms.Keys.Z);
+                        System.Diagnostics.Debug.WriteLine(
+                            $"[BOT] CardRoulette dismiss at t={_completionHoldTimer:F1}s");
+                    }
+
+                    _diagnostics.LogMiniGameInteraction(sceneName, "DISMISS", "");
                 }
 
+                // Hard cap: after COMPLETION_HOLD seconds, force-advance
                 if (_completionHoldTimer >= COMPLETION_HOLD)
                 {
                     input.ClearInjected();
@@ -217,7 +347,7 @@ namespace Fridays_Adventure.Scenes
                     return;
                 }
 
-                // Let the current top scene (CardRoulette / CourseClear) update normally.
+                // Let the pushed result scene update so it can process dismissals
                 Game.Instance.Scenes.Current?.Update(dt);
                 input.ClearInjected();
                 return;
@@ -248,7 +378,7 @@ namespace Fridays_Adventure.Scenes
                     System.Diagnostics.Debug.WriteLine($"Scene: {_inner.GetType().Name}");
                     System.Diagnostics.Debug.WriteLine($"Player: X={player.X:F0} Y={player.Y:F0} HP={player.Health}");
 
-                    _bot.InitializeForScene(player, _inner, Game.Instance.Input);
+                    _bot.InitializeForScene(player, _inner, Game.Instance.Input, _botActivityLogger);
                     _aiInitialized = true;
 
                     System.Diagnostics.Debug.WriteLine("[BOT] ✅ ObservableBotAI initialized!");
@@ -262,9 +392,22 @@ namespace Fridays_Adventure.Scenes
             }
 
             // ── Now inject bot input using OBSERVABLE AI ─────────────────
-            if (_aiInitialized)
+            // Suppress input while the level intro drop animation is running.
+            // During intro, HandleInput is blocked by the scene so injecting
+            // keys has no effect — but the bot's stuck timer still ticks and
+            // fires a backward escape that moves the player to X=0 before the
+            // level has even started.
+            bool introActive = GetIntroActiveFromScene(_inner);
+            if (_aiInitialized && !introActive)
             {
                 _bot.InjectInput(Game.Instance.Input, dt);
+            }
+            else if (introActive)
+            {
+                // Intro is running — keep the stuck anchor current so the timer
+                // doesn't accumulate during the fixed-Y drop and immediately fire
+                // a backward escape the moment the player touches down.
+                _bot.ResetStuckAnchor();
             }
             else
             {
@@ -273,6 +416,29 @@ namespace Fridays_Adventure.Scenes
 
             _inner.Update(dt);
             input.ClearInjected();
+
+            // ── Post-update stack corruption recovery ─────────────────────
+            // If the player died DURING _inner.Update(), the inner scene may
+            // have called Scenes.Replace(GameOverScene), which pops
+            // BotPlayLevelScene and pushes GameOverScene in its place.
+            // Detect this by checking whether we're still on the stack.
+            // If corrupted, pop the rogue scene(s), restore the stack to
+            // the depth recorded at entry, and signal failure via callback.
+            if (Game.Instance.Scenes.Current != this && !_innerCompleted)
+            {
+                System.Diagnostics.Debug.WriteLine(
+                    $"[BOT] ⚠️ Stack corrupted — inner scene called Replace/Pop during Update. " +
+                    $"Recovering... Depth now={Game.Instance.Scenes.Depth} expected≥{_innerSceneDepthAtEnter}");
+
+                // Pop whatever the inner scene pushed until we're back to the
+                // caller's level (DemoModeScene or AutoTestLevelScene).
+                // Note: BotPlayLevelScene.OnExit() was already called by the
+                // Replace, so we must NOT call it again.
+                while (Game.Instance.Scenes.Depth > _innerSceneDepthAtEnter - 1)
+                    Game.Instance.Scenes.Pop();
+
+                _onFinished?.Invoke(false, _elapsed);
+            }
         }
 
         /// <summary>
@@ -295,15 +461,87 @@ namespace Fridays_Adventure.Scenes
             return null;
         }
 
+        /// <summary>
+        /// Returns true while the inner scene's drop-in intro animation is running.
+        /// During this window the game blocks HandleInput, so injecting bot keys
+        /// is pointless and triggers spurious stuck-escapes that move the player
+        /// backward before the level has even properly started.
+        /// </summary>
+        private bool GetIntroActiveFromScene(Scene scene)
+        {
+            if (scene == null) return false;
+            var field = scene.GetType().GetField("_introActive",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            return field != null && field.FieldType == typeof(bool) && (bool)field.GetValue(scene);
+        }
+
+        /// <summary>
+        /// Checks whether the inner scene has set one of its completion flags
+        /// (_complete, _levelComplete, or _victory) to true.  Used to detect
+        /// level completion on scenes that exit via Pop() or Replace() instead
+        /// of pushing result scenes onto the stack.
+        /// </summary>
+        private bool CheckInnerSceneCompletionFlag()
+        {
+            try
+            {
+                if (_innerCompleteField != null &&
+                    _innerCompleteField.FieldType == typeof(bool) &&
+                    (bool)_innerCompleteField.GetValue(_inner))
+                    return true;
+
+                if (_innerLevelCompleteField != null &&
+                    _innerLevelCompleteField.FieldType == typeof(bool) &&
+                    (bool)_innerLevelCompleteField.GetValue(_inner))
+                    return true;
+
+                if (_innerVictoryField != null &&
+                    _innerVictoryField.FieldType == typeof(bool) &&
+                    (bool)_innerVictoryField.GetValue(_inner))
+                    return true;
+            }
+            catch { /* reflection is best-effort */ }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Checks whether the inner scene has set its failure flag (_failed)
+        /// to true.  StormScene sets this when the player dies, then calls
+        /// Scenes.Replace(GameOverScene) on the next Update.  We must detect
+        /// this BEFORE calling _inner.Update() to prevent stack corruption.
+        /// </summary>
+        private bool CheckInnerSceneFailedFlag()
+        {
+            try
+            {
+                if (_innerFailedField != null &&
+                    _innerFailedField.FieldType == typeof(bool) &&
+                    (bool)_innerFailedField.GetValue(_inner))
+                    return true;
+            }
+            catch { /* reflection is best-effort */ }
+
+            return false;
+        }
+
         // ── Draw ──────────────────────────────────────────────────────────
         public override void Draw(Graphics g)
         {
             // Draw the real game scene first — full resolution, full fidelity.
-            if (_innerCompleted)
-                // When the level is beaten the top of the stack is the result scene
+            if (_innerCompleted && !_completedViaReflection)
+            {
+                // Path A: result scenes (CardRoulette/CourseClear) are on the
+                // stack above us — draw whatever is on top.
                 Game.Instance.Scenes.Current?.Draw(g);
+            }
             else
+            {
+                // Not completed yet, or Path B (reflection): draw the inner
+                // scene directly.  We must NOT call Scenes.Current?.Draw()
+                // here because Current is BotPlayLevelScene (infinite recursion).
                 _inner.Draw(g);
+            }
 
             // ── Small bot HUD overlay (top-left corner) ───────────────────
             DrawBotOverlay(g);
@@ -317,6 +555,7 @@ namespace Fridays_Adventure.Scenes
 
             // Semi-transparent dark background
             using (var br = new SolidBrush(Color.FromArgb(160, 0, 0, 0)))
+                g.FillRectangle(br, padX, padY, panelW, panelH);
 
             using (var pen = new Pen(Color.FromArgb(200, Color.Cyan), 1))
                 g.DrawRectangle(pen, padX, padY, panelW, panelH);
@@ -348,9 +587,18 @@ namespace Fridays_Adventure.Scenes
         // ── Finish helpers ─────────────────────────────────────────────────
         private void Finish(bool beaten)
         {
-            // Pop any result scenes that the inner scene may have pushed
+            // Pop any result scenes that the inner scene may have pushed (Path A)
             while (Game.Instance.Scenes.Depth > _innerSceneDepthAtEnter)
                 Game.Instance.Scenes.Pop();
+
+            // For Path B completions the inner scene never got to call
+            // Scenes.Pop() / set LevelJustCompleted itself, so we do it here.
+            if (beaten && _completedViaReflection)
+            {
+                Game.Instance.LevelJustCompleted = true;
+                System.Diagnostics.Debug.WriteLine(
+                    $"[BOT] Setting LevelJustCompleted=true for Path B completion");
+            }
 
             _onFinished?.Invoke(beaten, _elapsed);
         }

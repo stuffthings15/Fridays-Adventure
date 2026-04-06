@@ -31,7 +31,9 @@ namespace Fridays_Adventure.Tests
         // ── State ─────────────────────────────────────────────────────────
         private float _time         = 0f;
         private float _jumpHoldTimer = 0f;
+        private float _attackCooldown = 0f;  // Track attack rate
         private GameDialogueHandler _dialogueHandler;
+        private ComprehensiveBotActivityLogger _botActivityLogger = null;  // Activity logger
 
         // ── REAL AI (Replaces fake periodic timers) ──────────────────────
         public ObservableBotAI _realAI = null;  // For compatibility
@@ -51,6 +53,9 @@ namespace Fridays_Adventure.Tests
         /// <summary>Seconds between Frost Ball shots.</summary>
         private const float FrostInterval = 4.0f;
 
+        /// <summary>Minimum time between attack inputs (matches player attack cooldown).</summary>
+        private const float AttackCooldown = 0.45f;
+
         // ── Enemy stomp detection ────────────────────────────────────────
         private float _enemyStompCooldown = 0f;
         private const float EnemyStompMinDistance = 80f;   // Start checking when enemy < 80px away
@@ -63,21 +68,32 @@ namespace Fridays_Adventure.Tests
         {
             _time         = 0f;
             _jumpHoldTimer = 0f;
+            _attackCooldown = 0f;
             _dialogueHandler?.Reset();
             _realAI = null;  // Clear AI (will reinitialize on next scene)
         }
 
         /// <summary>
+        /// Slides the stuck-detection anchor to the player's current X and
+        /// zeroes the stuck timer. Called every frame during the level intro
+        /// drop so the timer never accumulates while HandleInput is blocked.
+        /// </summary>
+        public void ResetStuckAnchor() => _comprehensiveBot?.ResetStuckAnchor();
+
+        /// <summary>
         /// Initialize bot for a new scene with UNIFIED COMPREHENSIVE BOT AI.
         /// Call this when level starts!
         /// </summary>
-        public void InitializeForScene(Entities.Player player, Scenes.Scene scene, InputManager input)
+        public void InitializeForScene(Entities.Player player, Scenes.Scene scene, InputManager input, ComprehensiveBotActivityLogger logger = null)
         {
             if (player == null || scene == null)
                 throw new System.ArgumentNullException("Player and scene required!");
 
-            // Initialize UNIFIED comprehensive bot (replaces all previous systems)
-            _comprehensiveBot = new UnifiedComprehensiveBot(player, scene, null);
+            // Store the activity logger for comprehensive logging
+            _botActivityLogger = logger;
+
+            // Initialize UNIFIED comprehensive bot (with logger for file output)
+            _comprehensiveBot = new UnifiedComprehensiveBot(player, scene, logger);
             _useRealAI = true;
 
             // Keep ObservableBotAI for compatibility but don't use it
@@ -133,6 +149,8 @@ namespace Fridays_Adventure.Tests
             _time += dt;
             if (_jumpHoldTimer > 0f)
                 _jumpHoldTimer -= dt;
+            if (_attackCooldown > 0f)
+                _attackCooldown -= dt;
 
             // ════════════════════════════════════════════════════════════════════
             // PRIORITY 0: HANDLE DIALOGUE - Always check first!
@@ -157,13 +175,19 @@ namespace Fridays_Adventure.Tests
                 bool shouldAttack = _comprehensiveBot.ShouldAttack;
                 bool shouldDodge = _comprehensiveBot.ShouldDodge;
                 bool moveRight = _comprehensiveBot.ShouldMoveRight;
+                bool moveLeft = _comprehensiveBot.ShouldMoveLeft;
 
                 // ── APPLY COMPREHENSIVE BOT DECISIONS ──────────────────────────
 
-                // Move right based on state
-                if (moveRight)
+                // Move in the correct direction
+                if (moveRight && !moveLeft)
                 {
                     input.InjectHeld(Keys.Right);
+                    input.InjectHeld(Keys.ShiftKey);  // Sprint
+                }
+                else if (moveLeft && !moveRight)
+                {
+                    input.InjectHeld(Keys.Left);
                     input.InjectHeld(Keys.ShiftKey);  // Sprint
                 }
 
@@ -181,15 +205,25 @@ namespace Fridays_Adventure.Tests
                 }
 
                 // Attack based on ACTUAL enemy detection
-                if (shouldAttack)
+                if (shouldAttack && _attackCooldown <= 0f)
                 {
                     input.InjectPressed(Keys.Z);
+                    _attackCooldown = AttackCooldown;  // Reset cooldown after attacking
                 }
 
-                // Dodge based on hazard detection
+                // Dodge/character ability (E key) based on AI decision
                 if (shouldDodge)
                 {
-                    input.InjectPressed(Keys.X);  // Dodge key
+                    input.InjectPressed(Keys.E);  // E = WingDash / TidalSlam / FlashFreeze
+                }
+
+                // Ice Wall climb (Q key) — bot places a wall to step up to elevated items.
+                // Q goes through the normal UseIceWall() path with cooldown + energy checks,
+                // exactly as a human would press it.
+                if (_comprehensiveBot.ShouldUseIceWall)
+                {
+                    input.InjectPressed(Keys.Q);
+                    System.Diagnostics.Debug.WriteLine("[BOT] Q pressed — placing ice wall to reach elevated item");
                 }
 
                 return;  // ← Always use comprehensive bot

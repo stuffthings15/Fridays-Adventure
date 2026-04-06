@@ -65,6 +65,10 @@ namespace Fridays_Adventure.Tests
         private float _lastAttackTime = 0f;
         private const float ATTACK_COOLDOWN = 0.3f;
         private const float ENEMY_DETECTION_RANGE = 400f;
+
+        // Combat persistence tracking — if enemy survives head jump for 1 second, dash it
+        private float _combatStartTime = 0f;
+        private const float COMBAT_DASH_TIMEOUT = 1.0f;  // Dash if enemy alive after 1 second
         
         // Gap & platform detection
         private const float GAP_CHECK_DISTANCE = 150f;
@@ -198,16 +202,47 @@ namespace Fridays_Adventure.Tests
         private void DetectGapsAhead()
         {
             _gapAhead = false;
-            
-            // Simple gap detection: check if platform is solid ahead
-            // In a real implementation, cast a ray or check tilemap
-            const float checkDistance = 100f;
-            float checkX = _player.X + checkDistance;
-            
-            // If we can't find a solid platform within lookahead, gap exists
-            // This is a simplified version - full implementation would check actual level geometry
-            
-            _debugLog.Add($"Gap check: {(_gapAhead ? "GAP AHEAD" : "Platform safe")}");
+
+            // Check ahead for gaps by looking at nearby enemies/obstacles
+            // If there's an impassable obstacle (enemy, hazard) directly ahead and we can't dodge around it,
+            // we need to jump/dash
+
+            try
+            {
+                // Check 150px ahead
+                const float checkDistance = 150f;
+                float checkX = _player.X + checkDistance;
+
+                // Look for obstacles directly in path
+                var field = _scene.GetType().GetField("_enemies",
+                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+
+                if (field != null)
+                {
+                    var enemies = field.GetValue(_scene) as List<Enemy>;
+                    if (enemies != null)
+                    {
+                        foreach (var enemy in enemies)
+                        {
+                            if (!enemy.IsAlive) continue;
+
+                            float distX = Math.Abs(_player.X - enemy.X);
+                            float distY = Math.Abs(_player.Y - enemy.Y);
+
+                            // Obstacle blocking path (within 150px horizontally, within 100px vertically)
+                            if (distX < checkDistance && distX > 50f && distY < 100f)
+                            {
+                                _gapAhead = true;
+                                _debugLog.Add($"Obstacle ahead: enemy at {distX:F0}px");
+                                return;
+                            }
+                        }
+                    }
+                }
+            }
+            catch { }
+
+            _debugLog.Add($"Gap check: {(_gapAhead ? "OBSTACLE AHEAD" : "Path clear")}");
         }
 
         private void DetectHazardsAhead()
@@ -319,16 +354,34 @@ namespace Fridays_Adventure.Tests
             Enemy closeEnemy = FindClosestEnemy(100f);  // Within 100px
             if (closeEnemy != null)
             {
-                _currentEnemyTarget = closeEnemy;
+                // Track combat duration with this enemy
+                if (_currentEnemyTarget != closeEnemy)
+                {
+                    _combatStartTime = _elapsedTime;  // Start combat timer on new enemy
+                    _currentEnemyTarget = closeEnemy;
+                }
+
                 CurrentState = BotStateEnum.FightingEnemy;
-                
-                // Head stomp logic
-                if (closeEnemy.Y > _player.Y - 50f)  // Enemy head is below or level
+
+                // Calculate how long we've been fighting this enemy
+                float combatDuration = _elapsedTime - _combatStartTime;
+
+                // Head stomp logic — prioritize when combat just started
+                if (combatDuration < COMBAT_DASH_TIMEOUT && closeEnemy.Y > _player.Y - 50f)
                 {
                     ShouldJump = true;  // Jump on head
-                    _debugLog.Add("STOMP: Jumping on enemy head!");
+                    _debugLog.Add($"STOMP: Jumping on enemy head! (Combat: {combatDuration:F1}s)");
                 }
-                
+
+                // If enemy survived head jump for 1 second, press E to trigger the character
+                // dash ability through the normal input path — same as a human pressing E.
+                if (combatDuration >= COMBAT_DASH_TIMEOUT && closeEnemy.IsAlive)
+                {
+                    ShouldDodge = true;  // BotPlayerController injects Keys.E
+                    _debugLog.Add($"AGGRESSIVE DASH: pressing E after {COMBAT_DASH_TIMEOUT}s");
+                    _combatStartTime = _elapsedTime;
+                }
+
                 // Attack when in range
                 if (_elapsedTime - _lastAttackTime > ATTACK_COOLDOWN)
                 {
@@ -336,7 +389,19 @@ namespace Fridays_Adventure.Tests
                     _lastAttackTime = _elapsedTime;
                     _debugLog.Add("ATTACK: Striking enemy!");
                 }
+
+                // Also try initial dash if available (before timeout)
+                if (combatDuration < 0.3f && !_player.IsDashing && closeEnemy.IsAlive)
+                {
+                    // Let head stomp take priority first, but have dash ready as backup
+                }
                 return;
+            }
+            else
+            {
+                // Reset combat timer when no close enemy
+                _currentEnemyTarget = null;
+                _combatStartTime = 0f;
             }
 
             // ── PRIORITY 4: HAZARD AVOIDANCE ────────────────────────────
@@ -349,7 +414,7 @@ namespace Fridays_Adventure.Tests
                 return;
             }
 
-            // ── PRIORITY 5: GAP CROSSING ────────────────────────────────
+            // ── PRIORITY 5: GAP/OBSTACLE CROSSING ────────────────────────
             if (_gapAhead)
             {
                 ShouldJump = true;
@@ -360,17 +425,42 @@ namespace Fridays_Adventure.Tests
 
             // ── PRIORITY 6: DISTANT ENEMY ───────────────────────────────
             Enemy distantEnemy = FindClosestEnemy(ENEMY_DETECTION_RANGE);
-            if (distantEnemy != null && Distance(_player.X, distantEnemy.X) > 150f)
+            if (distantEnemy != null)
             {
-                _targetEnemy = distantEnemy;
-                CurrentState = BotStateEnum.FightingEnemy;
-                
-                // Fire ranged attacks
-                if (_elapsedTime - _lastAttackTime > 0.5f)
+                float distToEnemy = Distance(_player.X, distantEnemy.X);
+
+                // If enemy is ahead and within dash range, try to close distance
+                if (distToEnemy > 100f && distToEnemy < 250f && distantEnemy.X > _player.X)
                 {
-                    ShouldAttack = true;
-                    _lastAttackTime = _elapsedTime;
-                    _debugLog.Add("RANGED: Firing at distant enemy!");
+                    _targetEnemy = distantEnemy;
+                    CurrentState = BotStateEnum.FightingEnemy;
+
+                    // Press E to close gap with the character ability (same as human).
+                        ShouldDodge = true;
+                        _debugLog.Add("DASH: pressing E to close gap to enemy");
+
+                    // Attack when in range
+                    if (_elapsedTime - _lastAttackTime > 0.5f && distToEnemy < 150f)
+                    {
+                        ShouldAttack = true;
+                        _lastAttackTime = _elapsedTime;
+                        _debugLog.Add("RANGED: Firing at distant enemy!");
+                    }
+                    return;
+                }
+                else if (distToEnemy < 150f)
+                {
+                    // Enemy is close enough to fight
+                    _targetEnemy = distantEnemy;
+                    CurrentState = BotStateEnum.FightingEnemy;
+
+                    if (_elapsedTime - _lastAttackTime > 0.5f)
+                    {
+                        ShouldAttack = true;
+                        _lastAttackTime = _elapsedTime;
+                        _debugLog.Add("RANGED: Attacking distant enemy!");
+                    }
+                    return;
                 }
             }
 
@@ -390,16 +480,13 @@ namespace Fridays_Adventure.Tests
             {
                 CurrentState = BotStateEnum.Exploring;
                 ShouldMoveRight = true;
-                
-                // Periodic jump for platforming (ONLY if no hazard/gap ahead)
-                if (!_hazardAhead && !_gapAhead)
+
+                // Jump periodically for platforming
+                // Increase jump frequency to handle obstacles better
+                if ((int)(_elapsedTime * 10f) % 15 == 0)  // ~1.5s intervals for more frequent jumps
                 {
-                    // Jump every 2-3 seconds for natural platforming
-                    if ((int)(_elapsedTime * 10f) % 25 == 0)  // ~2.5s intervals
-                    {
-                        ShouldJump = true;
-                        _debugLog.Add("EXPLORE: Jumping for platforming");
-                    }
+                    ShouldJump = true;
+                    _debugLog.Add("EXPLORE: Jumping for platforming");
                 }
             }
         }
