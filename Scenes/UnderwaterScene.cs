@@ -204,6 +204,10 @@ namespace Fridays_Adventure.Scenes
             _player.Y = Math.Max(0, Math.Min(H - _player.Height, _player.Y));
             _player.IsGrounded = false;
 
+            // Tick player internals (status effects, blink timer, ability cooldowns,
+            // auto-health, animation). Without this call the player entity is inert.
+            _player.Update(dt);
+
             // ── Platform collisions ───────────────────────────────────────────
             foreach (var p in _platforms) ResolvePlayerPlatform(p);
             foreach (var iceWall in _iceWalls)

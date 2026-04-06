@@ -6,6 +6,35 @@
 
 ---
 
+## SESSION 107: UnderwaterScene Missing _player.Update() — Status Effects, Auto-Health, Cooldowns Broken
+
+**Date/Time:** Current Session  
+**Status:** ✅ COMPLETE  
+**Build Status:** ✅ 0 errors, 0 warnings  
+
+### CRITICAL: Player entity was completely inert in all 6 underwater levels
+- `UnderwaterScene.Update()` manually moved the player via `_player.X +=` and `_player.Y +=`
+- But **never called `_player.Update(dt)`** — same pattern as Session 62/63/105 (implemented but never called)
+- This affected **6 levels**: coral, dive_gate, sunken_gate, kelp, boiling_vent, abyss
+- **Broken behaviors in underwater levels:**
+  1. **Status effects never expired** — burning/frozen effects lasted forever
+  2. **Invincibility blink didn't work** — `_blinkTimer` never decremented after taking damage
+  3. **Auto-health never triggered** — Session 58's < 30 HP auto-heal was dead
+  4. **Ability cooldowns didn't tick** — IceWall/FlashFreeze cooldown timers frozen
+  5. **Combo multiplier never decayed** — `StompChainTimer` never decremented
+  6. **Animation never updated** — sprite frames stuck
+  7. **Energy/stamina never regenerated** — Phase 2 Team 4 systems inert
+- **Fix:** Added `_player.Update(dt)` after position resolution
+- Verified `Player.Update()` does NOT apply gravity or modify position — only ticks internal timers
+- Safe to call alongside the scene's manual buoyancy movement
+
+### Files Changed
+| File | Changes |
+|------|---------|
+| `Scenes/UnderwaterScene.cs` | Added `_player.Update(dt)` call after position clamping (+3 lines) |
+
+---
+
 ## SESSION 106: Dev Menu Button Missing from 3 Gameplay Scenes
 
 **Date/Time:** Current Session  
