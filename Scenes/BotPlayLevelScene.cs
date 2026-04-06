@@ -102,6 +102,15 @@ namespace Fridays_Adventure.Scenes
         // We detect it first so we can bail before the Replace corrupts the stack.
         private System.Reflection.FieldInfo _innerFailedField;
 
+        /// <summary>
+        /// True when the inner scene completes via Push (IslandScene pushes
+        /// CardRoulette/CourseClear).  For Push-based scenes, Path B (reflection)
+        /// must be DISABLED because <c>_levelComplete</c> is set 0.35 s before
+        /// the Push fires.  If Path B activated in that window it would stop
+        /// updating the inner scene, preventing the Push from ever happening.
+        /// </summary>
+        private bool _innerUsesPathA;
+
         // ── Callback fired when this level is done ────────────────────────
         private readonly Action<bool, float> _onFinished;  // (wasBeaten, timeElapsed)
 
@@ -179,6 +188,12 @@ namespace Fridays_Adventure.Scenes
             _innerLevelCompleteField = innerType.GetField("_levelComplete", bindFlags);
             _innerVictoryField       = innerType.GetField("_victory",       bindFlags);
             _innerFailedField        = innerType.GetField("_failed",        bindFlags);
+
+            // IslandScene completes via Push (CardRoulette/CourseClear) — Path A.
+            // All other gameplay scenes complete via Pop/Replace — Path B.
+            // Path B must be disabled for Push-based scenes because
+            // _levelComplete is set 0.35 s before the Push fires.
+            _innerUsesPathA = _inner is IslandScene;
 
             // Quick test to verify AI can see entities
             Player player = GetPlayerFromScene(_inner);
@@ -277,8 +292,12 @@ namespace Fridays_Adventure.Scenes
                     _diagnostics.LogStateChange("PLAYING", "COMPLETED_PUSH",
                         "Inner scene pushed result scenes onto the stack");
                 }
-                // Path B — reflection-based (Pop/Replace scenes)
-                else if (CheckInnerSceneCompletionFlag())
+                // Path B — reflection-based (Pop/Replace scenes only)
+                // Disabled for Push-based scenes (IslandScene) because
+                // _levelComplete is set 0.35 s before the Push fires —
+                // triggering Path B in that window would stop inner updates
+                // and prevent the Push from ever happening.
+                else if (!_innerUsesPathA && CheckInnerSceneCompletionFlag())
                 {
                     _innerCompleted = true;
                     _completedViaReflection = true;
