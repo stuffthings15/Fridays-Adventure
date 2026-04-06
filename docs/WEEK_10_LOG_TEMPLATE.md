@@ -6,6 +6,36 @@
 
 ---
 
+## SESSION 103: Projectile Enemy Damage + HUD Key Label Fixes
+
+**Date/Time:** Current Session  
+**Status:** ✅ COMPLETE  
+**Build Status:** ✅ 0 errors, 0 warnings  
+
+### CRITICAL: Frost Balls and Fireballs passed through enemies without dealing damage
+- Both `FrostBallProjectile` and `Fireball` had `CheckEnemyHit()` methods fully implemented
+- But **neither was ever called** from `IslandScene.CheckCombat()`
+- Same class of bug as Session 63 (projectile Update never called)
+- **Fix:** Added projectile-vs-enemy collision loops in `CheckCombat()`:
+  - Frost balls check `fb.CheckEnemyHit(_enemies)` — deals ice damage, spawns cyan particles, deactivates on hit
+  - Fireballs check `fireball.CheckEnemyHit(_enemies, 10)` — deals 10 fire damage on contact
+
+### HUD ability key labels were wrong
+- `X:FIRE` label showed for frost ball, but frost ball actually uses **B key** (`FrostBallPressed = Keys.B`)
+- `B:FIRE` label showed for fire flower, but fire flower fires on **Z key** (attack button with Fire Flower equipped)
+- No `Keys.X` handler exists anywhere in IslandScene — X key does nothing
+- **Fix:** Changed labels to match actual key bindings:
+  - `X:FIRE` → `B:ICE` (frost ball on B key)
+  - `B:FIRE` → `Z:FIRE` (fire flower fireball on Z/attack key)
+
+### Files Changed
+| File | Changes |
+|------|---------|
+| `Scenes/IslandScene.cs` | Added frost ball + fireball vs enemy collision in CheckCombat() (+14 lines) |
+| `Systems/GameHUD.cs` | Fixed ability key labels: X:FIRE→B:ICE, B:FIRE→Z:FIRE |
+
+---
+
 ## SESSION 102: Stale "18 Levels" References Cleanup + Log Deduplication
 
 **Date/Time:** Current Session  

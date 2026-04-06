@@ -1832,6 +1832,20 @@ namespace Fridays_Adventure.Scenes
                     }
                 }
             }
+
+            // ── PROJECTILE vs ENEMY COLLISION ──────────────────────────────────
+            // Frost Ball projectiles damage enemies on contact
+            foreach (var fb in _frostBalls)
+            {
+                if (fb.IsActive) fb.CheckEnemyHit(_enemies);
+            }
+
+            // Fireball (Fire Flower) projectiles damage enemies on contact
+            foreach (var fireball in _fireballs)
+            {
+                if (fireball.IsActive) fireball.CheckEnemyHit(_enemies, 10);
+            }
+
             if (!_player.IsAlive) GameOver();
         }
 
