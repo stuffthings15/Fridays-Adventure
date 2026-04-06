@@ -171,6 +171,16 @@ namespace Fridays_Adventure.Scenes
             // Enter the inner scene so it initialises (loads level, spawns player, etc.)
             _inner.OnEnter();
 
+            // ── Fortress gate workaround ─────────────────────────────────────
+            // FortressScene requires a BossKey in inventory to open the gate.
+            // Grant one automatically so the bot can test the full level.
+            if (_inner is FortressScene && Systems.PowerUpInventory.ReserveItem != Systems.SuitType.BossKey)
+            {
+                Systems.PowerUpInventory.SetReserve(Systems.SuitType.BossKey);
+                System.Diagnostics.Debug.WriteLine(
+                    "[BOT] Granted BossKey for FortressScene gate");
+            }
+
             // Cache reflection fields for completion detection on scenes that
             // use Pop() or Replace() instead of Push() (StormScene, BossScene,
             // WarlordBossScene, SkyIslandScene, UnderwaterScene).

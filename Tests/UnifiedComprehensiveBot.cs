@@ -218,9 +218,11 @@ namespace Fridays_Adventure.Tests
             _platformsField = t.GetField("_platforms",    flags);
             _groundYField   = t.GetField("_groundY",      flags);
 
-            // Try _exitFlag first (IslandScene), then _exitZone (SkyIsland, Underwater)
+            // Try _exitFlag first (IslandScene, AirshipLevel), then _exitZone
+            // (SkyIsland, Underwater), then _exitDoor (FortressScene)
             _exitFlagField = t.GetField("_exitFlag", flags)
-                          ?? t.GetField("_exitZone", flags);
+                          ?? t.GetField("_exitZone", flags)
+                          ?? t.GetField("_exitDoor", flags);
 
             // Open file-based event log
             OpenEventLog();

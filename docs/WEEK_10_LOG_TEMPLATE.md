@@ -6,11 +6,48 @@
 
 ---
 
-## SESSION 91-100: Bot AI — Architecture Audit + Reliability Hardening
+## SESSION 101: FortressScene Exit Detection + BossKey Grant
 
 **Date/Time:** Current Session  
 **Status:** ✅ COMPLETE  
 **Build Status:** ✅ 0 errors, 0 warnings  
+
+### FortressScene exit detection fix
+- Bot's `_exitFlagField` reflection now also checks for `_exitDoor` (FortressScene's exit field name)
+- Previously only checked `_exitFlag` and `_exitZone` — FortressScene exit was invisible to the bot
+- Bot can now detect the exit door position and navigate toward it
+
+### FortressScene BossKey gate workaround
+- FortressScene requires `SuitType.BossKey` in `PowerUpInventory.ReserveItem` to open the gate
+- Without it, `_gateOpen` stays false and the exit door doesn't trigger completion
+- `BotPlayLevelScene.OnEnter()` now grants BossKey automatically when inner scene is FortressScene
+- Gate check at line 245 runs every frame, so BossKey granted after OnEnter still opens the gate on first Update
+
+### Verification of scene exit mechanisms
+| Scene | Exit Field | Mechanism |
+|-------|-----------|-----------|
+| `IslandScene` | `_exitFlag` | Hitbox intersection → Push CardRoulette (Path A) |
+| `SkyIslandScene` | `_exitZone` | Hitbox intersection → `_complete = true` (Path B) |
+| `UnderwaterScene` | `_exitZone` | Hitbox intersection → `_levelComplete = true` (Path B) |
+| `FortressScene` | `_exitDoor` | Gate must be open + hitbox intersection (Path B) |
+| `AirshipLevelScene` | `_exitFlag` | Hitbox intersection → `_levelComplete = true` (Path B) |
+| `StormScene` | N/A | Survive 25 seconds → `_complete = true` (Path B) |
+| `BossScene` | N/A | Defeat boss → `_complete = true` (Path B) |
+| `WarlordBossScene` | N/A | Defeat boss → `_complete = true` (Path B) |
+
+### Files Changed
+| File | Changes |
+|------|---------|
+| `Tests/UnifiedComprehensiveBot.cs` | Added `_exitDoor` to reflection chain (+1 line) |
+| `Scenes/BotPlayLevelScene.cs` | Added BossKey grant for FortressScene (+7 lines) |
+
+---
+
+## SESSION 91-100: Bot AI — Architecture Audit + Reliability Hardening
+
+**Date/Time:** Previous Sessions  
+**Status:** ✅ COMPLETE  
+**Build Status:** ✅ 0 errors, 0 warnings
 
 ### Session 100: Dead Code in BotPlayLevelScene + Enhanced HUD Overlay
 
