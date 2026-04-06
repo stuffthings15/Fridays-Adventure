@@ -397,6 +397,12 @@ namespace Fridays_Adventure.Scenes
             // ── Unified HUD (single call) ─────────────────────────────────────
             g.ResetTransform();
             GameHUD.Draw(g, _player, W, H);
+            DrawDevMenuButton(g);
+        }
+
+        public override void HandleClick(Point p)
+        {
+            if (HandleDevMenuClick(p)) return;
         }
 
         private static void DrawBrickBackground(Graphics g, int W, int H)

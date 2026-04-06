@@ -406,6 +406,12 @@ namespace Fridays_Adventure.Scenes
                 g.FillRectangle(br, oxyBarX, oxyBarY, (int)(oxyBarW * oxyPct), 12);
             using (var f = new Font("Courier New", 8))
                 g.DrawString($"O2  {_oxygenTimer:F0}s", f, Brushes.Cyan, oxyBarX - 36, oxyBarY - 1);
+            DrawDevMenuButton(g);
+        }
+
+        public override void HandleClick(Point p)
+        {
+            if (HandleDevMenuClick(p)) return;
         }
 
         private void BreakNearbyObjects()

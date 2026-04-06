@@ -6,6 +6,34 @@
 
 ---
 
+## SESSION 106: Dev Menu Button Missing from 3 Gameplay Scenes
+
+**Date/Time:** Current Session  
+**Status:** ✅ COMPLETE  
+**Build Status:** ✅ 0 errors, 0 warnings  
+
+### Dev Menu inaccessible from Underwater, Fortress, and Airship levels
+- `DrawDevMenuButton(g)` was called in IslandScene, BossScene, WarlordBossScene, StormScene, SkyIslandScene
+- But **not** in UnderwaterScene, FortressScene, or AirshipLevelScene
+- These scenes also lacked `HandleClick` overrides entirely, so no click interaction was possible
+- Players in GodMode could not access the Dev Menu from these 3 level types
+- **Fix:** Added `DrawDevMenuButton(g)` at the end of each scene's `Draw()` method
+- **Fix:** Added `HandleClick` override with `HandleDevMenuClick(p)` to each scene
+
+### Stale comment fix in LevelSceneFactory
+- Default case comment listed "abyss" as hitting IslandScene, but abyss routes to UnderwaterScene
+- Fixed comment to list only the 4 actual default-case levels: dino, wano, harbor, tundra
+
+### Files Changed
+| File | Changes |
+|------|---------|
+| `Scenes/UnderwaterScene.cs` | Added `DrawDevMenuButton()` + `HandleClick()` override |
+| `Scenes/FortressScene.cs` | Added `DrawDevMenuButton()` + `HandleClick()` override |
+| `Scenes/AirshipLevelScene.cs` | Added `DrawDevMenuButton()` + `HandleClick()` override |
+| `Scenes/LevelSceneFactory.cs` | Fixed stale comment (removed "abyss" from default-case list) |
+
+---
+
 ## SESSION 105: Storm Survival Timer Now Visible During Gameplay
 
 **Date/Time:** Current Session  

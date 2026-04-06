@@ -63,8 +63,7 @@ namespace Fridays_Adventure.Scenes
                 case "centipede_final":
                     return new WarlordBossScene(WarlordConfig.CentipedeOfTheDeep());
 
-                // All remaining island levels (dino, wano, harbor,
-                // tundra, abyss, etc.)
+                // All remaining island levels (dino, wano, harbor, tundra)
                 default:
                     return new IslandScene(levelId, levelName);
             }

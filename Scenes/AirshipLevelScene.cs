@@ -437,6 +437,12 @@ namespace Fridays_Adventure.Scenes
             using (var f  = new Font("Courier New", 9, FontStyle.Bold))
             using (var br = new SolidBrush(Color.OrangeRed))
                 g.DrawString("AIRSHIP  < AUTO-SCROLL >", f, br, W / 2 - 80, GameHUD.BandHeight + 4);
+            DrawDevMenuButton(g);
+        }
+
+        public override void HandleClick(Point p)
+        {
+            if (HandleDevMenuClick(p)) return;
         }
 
         private void BreakNearbyWallsAndProjectiles()
