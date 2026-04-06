@@ -59,9 +59,9 @@ namespace Fridays_Adventure.Scenes
                 case "warlord2":
                     return new WarlordBossScene(WarlordConfig.StormLordVanta());
 
-                // Final centipede boss
+                // Final centipede boss — uses WarlordBossScene with centipede body segments
                 case "centipede_final":
-                    return new BossScene();
+                    return new WarlordBossScene(WarlordConfig.CentipedeOfTheDeep());
 
                 // All remaining island levels (dino, wano, harbor,
                 // tundra, abyss, etc.)

@@ -317,7 +317,7 @@ namespace Fridays_Adventure.Tests
                 "kelp" => "UnderwaterScene",
                 "boiling_vent" => "UnderwaterScene",
                 "abyss" => "UnderwaterScene",
-                "centipede_final" => "BossScene",
+                "centipede_final" => "WarlordBossScene",
                 _ => null
             };
         }

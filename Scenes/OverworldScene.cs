@@ -637,9 +637,9 @@ namespace Fridays_Adventure.Scenes
         /// <summary>
         /// Draws a complete level progression checklist showing all 17 levels:
         /// - 11 Story Island levels (required for victory)
-        /// - 7 Boss/Storm encounter levels (blocking progression gates)
+        /// - 6 Boss/Storm encounter levels (blocking progression gates)
         /// Shows checkmark (✓) for visited, bullet (•) for unvisited.
-        /// Counter increments 0-18 based on completion.
+        /// Counter increments 0-17 based on completion.
         /// </summary>
         private void DrawIslandChecklist(Graphics g, int W, int H)
         {

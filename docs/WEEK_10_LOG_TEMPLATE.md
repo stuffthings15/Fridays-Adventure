@@ -6,6 +6,32 @@
 
 ---
 
+## SESSION 104: Centipede Boss Route Fix + Stale Comment Cleanup
+
+**Date/Time:** Current Session  
+**Status:** ✅ COMPLETE  
+**Build Status:** ✅ 0 errors, 0 warnings  
+
+### CRITICAL: Final boss `centipede_final` used wrong scene type
+- `LevelSceneFactory` routed `centipede_final` to a generic `BossScene()` (simple arena fight)
+- But the full centipede boss fight with **body segments, chain visuals, segment collisions, unique taunts** was implemented in `WarlordBossScene` with `WarlordConfig.CentipedeOfTheDeep()`
+- The entire centipede body segment system (Session 40) was never reachable in normal gameplay
+- **Fix:** Changed `centipede_final` route from `new BossScene()` to `new WarlordBossScene(WarlordConfig.CentipedeOfTheDeep())`
+- Also updated `LevelBeatabilityTest` scene mapping to match
+
+### Stale XML doc comment fixes in OverworldScene
+- `DrawIslandChecklist` XML comment said "7 Boss/Storm encounters" → corrected to "6"
+- Same comment said "Counter increments 0-18" → corrected to "0-17"
+
+### Files Changed
+| File | Changes |
+|------|---------|
+| `Scenes/LevelSceneFactory.cs` | `centipede_final` → `WarlordBossScene(CentipedeOfTheDeep())` |
+| `Tests/LevelBeatabilityTest.cs` | Scene mapping: "BossScene" → "WarlordBossScene" |
+| `Scenes/OverworldScene.cs` | Fixed 2 stale XML doc comments (7→6, 0-18→0-17) |
+
+---
+
 ## SESSION 103: Projectile Enemy Damage + HUD Key Label Fixes
 
 **Date/Time:** Current Session  
