@@ -56,6 +56,8 @@ namespace Fridays_Adventure.Tests
         private readonly System.Reflection.FieldInfo _strikesField;    // StormScene lightning
         private readonly System.Reflection.FieldInfo _hazardsField;    // List<Hazard> for pit detection
         private readonly System.Reflection.FieldInfo _bossField;       // Enemy _boss for boss scenes
+        private readonly System.Reflection.FieldInfo _platformsField;  // List<Rectangle> ground/platforms
+        private readonly System.Reflection.FieldInfo _groundYField;    // int _groundY baseline
 
         // ── Working lists (reused each frame, no allocation) ──────────────
         private readonly List<Enemy>        _detectedEnemies  = new List<Enemy>();
@@ -66,6 +68,15 @@ namespace Fridays_Adventure.Tests
         // How far ahead to look for water pits (px). At sprint speed ~270px/s a
         // 300 px window gives ~1.1 s to begin the jump and clear any pit.
         private const float PIT_LOOKAHEAD = 300f;
+
+        // ── Ground-gap scanner constants ──────────────────────────────────
+        // EDGE_PROBE_AHEAD: how many pixels ahead of the player's leading
+        // edge we sample for solid ground.  If no platform is found at this
+        // distance at or below the player's feet, the bot considers it a
+        // ledge / death pit and stops + pre-jumps.
+        private const float EDGE_PROBE_AHEAD     = 48f;  // close-range ledge probe
+        private const float EDGE_PROBE_FAR       = 120f; // mid-range gap scan
+        private const float GROUND_SEARCH_DEPTH  = 200f; // how far below feet to search
 
         // ── Combat ────────────────────────────────────────────────────────
         private Enemy _lastEnemy;
@@ -174,6 +185,8 @@ namespace Fridays_Adventure.Tests
             _strikesField  = t.GetField("_strikes",       flags);
             _hazardsField  = t.GetField("_hazards",       flags);
             _bossField     = t.GetField("_boss",          flags);
+            _platformsField = t.GetField("_platforms",    flags);
+            _groundYField   = t.GetField("_groundY",      flags);
 
             // Try _exitFlag first (IslandScene), then _exitZone (SkyIsland, Underwater)
             _exitFlagField = t.GetField("_exitFlag", flags)
@@ -230,23 +243,79 @@ namespace Fridays_Adventure.Tests
                 else
                     RunNormalLogic();
 
-                // ── Universal pit avoidance (runs after ALL state logic) ──────
-                // This fires even during COMBAT so the bot never charges after
-                // an enemy that is patrolling near a water pit edge.
-                if (!_isStormScene)
+                // ── Universal pit / ledge avoidance (runs after ALL state logic) ──
+                // Two-layer detection:
+                //   Layer 1 (close): probe EDGE_PROBE_AHEAD px ahead for ground.
+                //            If no ground → stop walking, pre-jump.
+                //   Layer 2 (mid):   probe EDGE_PROBE_FAR px ahead.  If a gap
+                //            exists AND a landing exists beyond it, start the jump
+                //            early so the bot clears the gap in flight.
+                // Also falls back to WaterPit hazard list for extra safety.
+                if (!_isStormScene && _player.IsGrounded)
                 {
-                    float pitX = FindNearestPitAheadX();
-                    if (pitX != float.MaxValue)
+                    bool closeGround = HasGroundAhead(EDGE_PROBE_AHEAD);
+                    bool farGround   = HasGroundAhead(EDGE_PROBE_FAR);
+
+                    if (!closeGround)
                     {
-                        ShouldJump = true;  // jump regardless of current state
-                        // If the pit is very close, also stop horizontal movement
-                        // until we're airborne so we don't run straight into it.
-                        float gap = pitX - (_player.X + _player.Width);
-                        if (gap < 60f && _player.IsGrounded)
+                        // Ledge right at our feet — STOP and jump vertically first.
+                        // Only move forward once airborne so we don't walk off.
+                        if (CanJumpOverGap(0f))
                         {
+                            ShouldJump      = true;
                             ShouldMoveRight = false;
                             ShouldMoveLeft  = false;
+                            LogEvent("EDGE_STOP",
+                                $"No ground {EDGE_PROBE_AHEAD}px ahead — stopping + jumping");
                         }
+                        else
+                        {
+                            // No landing exists — reverse away from the edge
+                            ShouldMoveRight = false;
+                            ShouldMoveLeft  = true;
+                            ShouldJump      = false;
+                            LogEvent("EDGE_RETREAT",
+                                $"No ground ahead and no landing — retreating");
+                        }
+                    }
+                    else if (!farGround)
+                    {
+                        // Ground is present close but missing farther ahead — gap
+                        // is approaching.  Start jumping early to clear it in flight.
+                        float gapDist = FindNearestGapDistance(EDGE_PROBE_FAR);
+                        if (gapDist != float.MaxValue && CanJumpOverGap(gapDist))
+                        {
+                            ShouldJump = true;
+                            LogEvent("GAP_PREJUMP",
+                                $"Gap at {gapDist:F0}px — pre-jumping to clear");
+                        }
+                    }
+                    else
+                    {
+                        // Both probes have ground — also check WaterPit hazards
+                        // as a fallback (covers hazards the platform list misses).
+                        float pitX = FindNearestPitAheadX();
+                        if (pitX != float.MaxValue)
+                        {
+                            ShouldJump = true;
+                            float gap = pitX - (_player.X + _player.Width);
+                            if (gap < 60f)
+                            {
+                                ShouldMoveRight = false;
+                                ShouldMoveLeft  = false;
+                            }
+                        }
+                    }
+                }
+                // Airborne over a gap: allow forward movement toward the landing
+                else if (!_isStormScene && !_player.IsGrounded)
+                {
+                    // If the bot is airborne and there IS ground ahead, move forward
+                    // to reach the landing.  If there is NO ground, hold position.
+                    if (!HasGroundAhead(EDGE_PROBE_FAR) && !HasGroundAhead(EDGE_PROBE_AHEAD))
+                    {
+                        // Still over the gap — keep moving to reach the far side
+                        // (the jump was validated before takeoff).
                     }
                 }
             }
@@ -550,8 +619,9 @@ namespace Fridays_Adventure.Tests
                 ShouldMoveLeft  = dist < -20f;
 
                 // Periodic jump to clear raised platforms and small gaps.
-                // (Water pit detection is handled by the universal check in Update.)
-                if (_jumpTimer >= JUMP_INTERVAL)
+                // Only jump when ground exists ahead so we don't launch into pits.
+                // (Pit/ledge detection is also handled by the universal check in Update.)
+                if (_jumpTimer >= JUMP_INTERVAL && HasGroundAhead(EDGE_PROBE_FAR))
                 {
                     ShouldJump  = true;
                     _jumpTimer  = 0f;
@@ -571,7 +641,9 @@ namespace Fridays_Adventure.Tests
             // ── P4: Default platforming — move right, jump periodically ───
             CurrentState    = "PLATFORMING";
             ShouldMoveRight = true;
-            if (_jumpTimer >= JUMP_INTERVAL)
+            // Only jump when the ground ahead is confirmed safe — prevents
+            // blind periodic jumps from launching the bot into death pits.
+            if (_jumpTimer >= JUMP_INTERVAL && HasGroundAhead(EDGE_PROBE_FAR))
             {
                 ShouldJump  = true;
                 _jumpTimer  = 0f;
@@ -604,6 +676,20 @@ namespace Fridays_Adventure.Tests
 
             float combatDuration = _elapsedTime - _combatStartTime;
             float dirX           = target.X - _player.X;
+
+            // ── Pit-safe movement: never charge toward an enemy across a gap ──
+            // Check if ground exists between us and the enemy.  If a pit is
+            // between us, disengage and let the universal pit handler take over.
+            if (_player.IsGrounded && !HasGroundAhead(Math.Min(Math.Abs(dirX), EDGE_PROBE_FAR)))
+            {
+                // There's a gap between us and the enemy — don't pursue
+                ShouldMoveRight = false;
+                ShouldMoveLeft  = false;
+                ShouldAttack    = true;   // ranged attack if possible
+                LogEvent("COMBAT_PIT_BLOCK",
+                    $"Gap between player and enemy at dist={dirX:F0} — holding position");
+                return;
+            }
 
             // Move toward enemy
             ShouldMoveRight = dirX > 20f;
@@ -678,13 +764,14 @@ namespace Fridays_Adventure.Tests
             CurrentState      = "STUCK_ESCAPE";
             _stuckEscapeTimer -= dt;
 
-            // If a water pit is very close ahead, hold position and jump
-            // rather than running forward into it.
+            // If a ledge / water pit is very close ahead, hold position and
+            // jump rather than running forward into it.
+            bool noGroundClose = _player.IsGrounded && !HasGroundAhead(EDGE_PROBE_AHEAD);
             float pitX    = FindNearestPitAheadX();
             bool  pitClose = pitX != float.MaxValue
                              && (pitX - (_player.X + _player.Width)) < 60f;
 
-            if (pitClose)
+            if (noGroundClose || pitClose)
             {
                 // Stand and jump until airborne over the pit, then move right
                 ShouldMoveRight = !_player.IsGrounded;  // move right only while in air
@@ -967,6 +1054,135 @@ namespace Fridays_Adventure.Tests
                     if (pitLeft < nearest) nearest = pitLeft;
             }
             return nearest;
+        }
+
+        // ══════════════════════════════════════════════════════════════════
+        // GROUND-GAP DETECTION (tile / platform probing)
+        // ══════════════════════════════════════════════════════════════════
+
+        /// <summary>
+        /// Probes whether solid ground exists at <paramref name="probeX"/> within
+        /// <see cref="GROUND_SEARCH_DEPTH"/> pixels below the player's feet.
+        /// Checks both the flat ground baseline (<c>_groundY</c>) and every
+        /// platform rectangle.  Returns true when a landing surface exists.
+        /// </summary>
+        private bool HasGroundAt(float probeX)
+        {
+            float feetY = _player.Y + _player.Height;
+
+            // ── Check the flat ground baseline ────────────────────────────
+            int groundY = GetGroundY();
+            if (groundY > 0 && feetY <= groundY + 4f && feetY + GROUND_SEARCH_DEPTH >= groundY)
+            {
+                // Ground exists at this X unless a WaterPit occupies the spot
+                if (!IsInsideWaterPit(probeX, groundY))
+                    return true;
+            }
+
+            // ── Check platform rectangles ─────────────────────────────────
+            var platforms = GetPlatforms();
+            if (platforms != null)
+            {
+                foreach (var plat in platforms)
+                {
+                    // Platform must span this X horizontally
+                    if (probeX < plat.Left || probeX > plat.Right) continue;
+                    // Platform top must be reachable (below feet, within depth)
+                    if (plat.Top >= feetY - 4f && plat.Top <= feetY + GROUND_SEARCH_DEPTH)
+                        return true;
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Returns true if the given world X at ground level falls inside any
+        /// WaterPit hazard (the gaps cut into the ground surface).
+        /// </summary>
+        private bool IsInsideWaterPit(float worldX, float groundY)
+        {
+            foreach (var h in _detectedHazards)
+            {
+                if (h.Type != HazardType.WaterPit) continue;
+                if (worldX >= h.X && worldX <= h.X + h.Width)
+                    return true;
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// Returns true when the player's leading edge has solid ground
+        /// <paramref name="distance"/> pixels ahead.  This is the primary
+        /// edge-detection check that prevents the bot from walking off ledges.
+        /// </summary>
+        private bool HasGroundAhead(float distance)
+        {
+            float probeX = ShouldMoveLeft
+                ? _player.X - distance
+                : _player.X + _player.Width + distance;
+            return HasGroundAt(probeX);
+        }
+
+        /// <summary>
+        /// Scans ahead for the nearest gap (no ground) within the given range.
+        /// Returns the distance to the gap edge, or float.MaxValue if none found.
+        /// Probes every 16 px for efficiency.
+        /// </summary>
+        private float FindNearestGapDistance(float maxRange)
+        {
+            float startX = _player.X + _player.Width;
+            for (float dx = 16f; dx <= maxRange; dx += 16f)
+            {
+                if (!HasGroundAt(startX + dx))
+                    return dx;
+            }
+            return float.MaxValue;
+        }
+
+        /// <summary>
+        /// Returns true if a safe landing exists on the far side of a gap
+        /// at the given distance.  Scans up to 200 px beyond the gap edge
+        /// for a platform or ground surface the player could reach mid-jump.
+        /// </summary>
+        private bool CanJumpOverGap(float gapStartDist)
+        {
+            float startX = _player.X + _player.Width + gapStartDist;
+            // Max horizontal jump distance at sprint speed (~270px/s) with
+            // ~0.7 s air time ≈ ~190 px.  Scan in steps.
+            for (float dx = 16f; dx <= 200f; dx += 16f)
+            {
+                if (HasGroundAt(startX + dx))
+                    return true;
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// Reads the <c>_groundY</c> value from the inner scene via reflection.
+        /// Returns -1 if unavailable.
+        /// </summary>
+        private int GetGroundY()
+        {
+            if (_groundYField == null) return -1;
+            try
+            {
+                object val = _groundYField.GetValue(_scene);
+                if (val is int i) return i;
+            }
+            catch { }
+            return -1;
+        }
+
+        /// <summary>
+        /// Reads the <c>_platforms</c> list from the inner scene via reflection.
+        /// Returns null if unavailable.
+        /// </summary>
+        private List<Rectangle> GetPlatforms()
+        {
+            if (_platformsField == null) return null;
+            try { return _platformsField.GetValue(_scene) as List<Rectangle>; }
+            catch { return null; }
         }
 
         private Enemy FindNearestAliveEnemy()
