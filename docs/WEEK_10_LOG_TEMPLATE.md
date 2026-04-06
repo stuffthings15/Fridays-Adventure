@@ -6,39 +6,41 @@
 
 ---
 
-## SESSION 91: Bot AI — Ground-Gap Probing (Pit Avoidance)
+## SESSION 91-92: Bot AI — Pit Avoidance + Gap Crossing + Wall-Jump Recovery
 
 **Date/Time:** Current Session  
 **Status:** ✅ COMPLETE  
 **Build Status:** ✅ 0 errors, 0 warnings  
 
 ### Root Cause Analysis
-The bot had **zero awareness of actual ground/platform layout**. It only detected `WaterPit` hazard objects via reflection, missing structural gaps between platform rectangles. Blind periodic jumps launched it into death pits. Combat logic charged across gaps toward enemies.
+Three compounding failures caused the bot to fall into pits:
 
-### Fix: Two-Layer Ground Probing
-| Component | Purpose |
-|-----------|---------|
-| `_platformsField` / `_groundYField` | Reflection cache for IslandScene's `List<Rectangle>` platforms and `int _groundY` |
-| `HasGroundAt(x)` | Probes platforms + ground baseline at any world X coordinate |
-| `HasGroundAhead(dist)` | Edge detection at the player's leading edge |
-| `FindNearestGapDistance(range)` | Scans ahead in 16px steps for the first gap |
-| `CanJumpOverGap(dist)` | Validates a landing surface exists beyond the gap |
-| `IsInsideWaterPit(x, y)` | Checks if a probe point falls inside a WaterPit hazard |
+| # | Bug | Impact |
+|---|-----|--------|
+| 1 | **Jumped straight up at edges** | `!closeGround` → `ShouldJump=true, MoveRight=false`. Bot jumped vertically, landed same spot, repeated. Never crossed the gap. |
+| 2 | **No airborne forward movement** | Airborne block was empty — bot drifted down with no horizontal momentum after jumping. |
+| 3 | **No fall recovery** | If the bot fell into a pit, no wall-jump or sinking-mash logic existed. Bot sank to reset point. |
 
-### Behavioral Changes
-- Universal pit avoidance uses **two probes** (48px close, 120px far)
-- Close probe empty → **STOP + jump vertically**, only move once airborne
-- Far probe empty → **pre-jump early** to clear gap in flight
-- No landing exists → **RETREAT** away from edge
-- Periodic jumps gated by `HasGroundAhead` (no more blind jumps into pits)
-- Combat checks ground between player and enemy before pursuing
-- Stuck escape checks ledge before running forward
-- WaterPit hazard list kept as fallback layer
+### Fix: 3-Phase Gap Crossing State Machine
+
+**Phase 1 — GROUNDED (edge detection):**
+- Close probe (48px) detects ledge → jump WITH forward momentum (`ShouldMoveRight = true`)
+- Far probe (120px) detects approaching gap → pre-jump early to clear in arc
+- Sets `_crossingGap = true` so airborne phase maintains direction
+
+**Phase 2 — AIRBORNE (gap crossing):**
+- While `_crossingGap`: force `ShouldMoveRight/Left` toward the far side
+- Tracks `_fallingTimer` — if falling >0.3s past `_lastGroundedY + 60px`, triggers recovery
+
+**Phase 3 — FALL RECOVERY:**
+- **Wall-jump**: If `IsOnLeftWall || IsOnRightWall` → `ShouldJump + move AWAY from wall` → `DoWallJump()` fires
+- **Wall-seek**: If not touching wall → find nearest platform edge via reflection, press toward it + mash jump
+- **Sinking mash**: If `StatusEffect.Sinking` → spam jump + move right + attack to escape water
 
 ### Files Changed
 | File | Changes |
 |------|---------|
-| `Tests/UnifiedComprehensiveBot.cs` | +233/-17: ground probing methods, platform/groundY reflection, safe jump validation, combat pit check |
+| `Tests/UnifiedComprehensiveBot.cs` | +165/-61: crossing state machine, wall-jump recovery, sinking mash, forward momentum on edge jumps |
 
 ### 🔄 Build Status
 - Build: ✅ PASSING
