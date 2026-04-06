@@ -152,6 +152,11 @@ namespace Fridays_Adventure.Scenes
                 _autoTimer      = AutoDelay;
             }
 
+            // Bot/Demo mode: skip the bonus countdown immediately so the
+            // scene auto-advances without waiting for input.
+            if (DialogueScene.AutoAdvance && _bonusRemaining > 0)
+                _bonusRemaining = 0;
+
             if (_autoTimer >= AutoDelay && !_advancing)
             {
                 _advancing = true;

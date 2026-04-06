@@ -12,6 +12,12 @@ namespace Fridays_Adventure.Scenes
     /// </summary>
     public sealed class DialogueScene : Scene
     {
+        /// <summary>
+        /// When true, the dialogue auto-advances every 1.5 seconds without
+        /// waiting for user input.  Set by DemoModeScene / BotPlayLevelScene.
+        /// </summary>
+        public static bool AutoAdvance { get; set; }
+
         private readonly DialogueSequence _seq;
         private int   _lineIndex;
         private int   _charIndex;
@@ -21,6 +27,9 @@ namespace Fridays_Adventure.Scenes
         private bool  _showingChoices;
         private int   _selectedChoice;
         private bool  _waitForRelease;
+
+        // Auto-advance timer for bot/demo mode
+        private float _autoTimer;
 
         /// <summary>Cached portrait bitmap for the current line (disposed on change).</summary>
         private Bitmap _portrait;
@@ -41,6 +50,27 @@ namespace Fridays_Adventure.Scenes
         public override void Update(float dt)
         {
             var input = Game.Instance.Input;
+
+            // ── Auto-advance in bot/demo mode ────────────────────────────
+            if (AutoAdvance)
+            {
+                _autoTimer += dt;
+                if (_autoTimer >= 1.5f)
+                {
+                    _autoTimer = 0f;
+                    if (_showingChoices)
+                    {
+                        CommitChoice(0);  // always pick the first choice
+                        return;
+                    }
+                    if (_lineIndex < _seq.Lines.Count)
+                    {
+                        _charIndex = _seq.Lines[_lineIndex].Text.Length;
+                        NextLine();
+                    }
+                    return;
+                }
+            }
 
             if (_showingChoices)
             {

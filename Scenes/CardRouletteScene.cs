@@ -110,6 +110,10 @@ namespace Fridays_Adventure.Scenes
 
         // ── Update ─────────────────────────────────────────────────────────────
 
+        /// <summary>Auto-stop timer for bot/demo mode — stops one card every 0.8s.</summary>
+        private float _autoStopTimer;
+        private const float AUTO_STOP_INTERVAL = 0.8f;
+
         public override void Update(float dt)
         {
             if (_advancing) return;
@@ -125,6 +129,22 @@ namespace Fridays_Adventure.Scenes
                 {
                     _faceTimer[i] -= period;
                     _cardFace[i]   = (_cardFace[i] + 1) % 4;
+                }
+            }
+
+            // ── Bot/Demo auto-stop: stop one card every 0.8 s ─────────────
+            // BotPlayLevelScene can't inject input here because it's buried
+            // under this scene on the stack.  Use DialogueScene.AutoAdvance
+            // as the "demo mode active" flag.
+            if (!_resultShown && DialogueScene.AutoAdvance)
+            {
+                _autoStopTimer += dt;
+                if (_autoStopTimer >= AUTO_STOP_INTERVAL)
+                {
+                    _autoStopTimer = 0f;
+                    System.Diagnostics.Debug.WriteLine(
+                        $"[CARD_ROULETTE] Auto-stop card {_activeCard + 1}. Face: {_cardFace[_activeCard]}");
+                    StopNextCard();
                 }
             }
 

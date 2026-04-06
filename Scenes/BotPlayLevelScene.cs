@@ -49,6 +49,10 @@ namespace Fridays_Adventure.Scenes
         private const float MAX_LEVEL_TIME = 90f;   // seconds before auto-advance
         private float _elapsed = 0f;
 
+        // ── Path A result scene hold — lets the user SEE CardRoulette/CourseClear
+        private float _pathAHoldTimer = 0f;
+        private const float PATH_A_HOLD_SECONDS = 4f;  // show result scenes for 4 s
+
         // ── Event tracking for comprehensive bot logging ─────────────────
         private int _pickupsCollected = 0;
         private int _enemiesDefeated = 0;
@@ -144,6 +148,7 @@ namespace Fridays_Adventure.Scenes
 
             _bot.Reset();
             _elapsed    = 0f;
+            _pathAHoldTimer = 0f;
             _innerCompleted = false;
             _completedViaReflection = false;
             _completionHoldTimer = 0f;
@@ -392,6 +397,16 @@ namespace Fridays_Adventure.Scenes
             if (Game.Instance.Scenes.Depth > _innerSceneDepthAtEnter)
             {
                 // ── Path A: result scenes pushed onto the stack ───────────
+                // IslandScene pushed CardRoulette (and later CourseClear).
+                // BotPlayLevelScene is buried in the stack — the game loop
+                // won't call our Update again.  We MUST dismiss all result
+                // scenes right now in a tight loop before returning.
+                //
+                // CardRoulette and CourseClear also have auto-advance logic
+                // (via DialogueScene.AutoAdvance) as insurance, but the tight
+                // loop is the primary mechanism because BotPlayLevelScene
+                // must call Finish() to notify the caller (DemoModeScene).
+                // Without Finish(), the demo doesn't know the level ended.
                 _innerCompleted = true;
                 _completedViaReflection = false;
                 System.Diagnostics.Debug.WriteLine(

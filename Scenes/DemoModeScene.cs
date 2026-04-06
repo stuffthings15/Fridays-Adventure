@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
+using Fridays_Adventure.Data;
 using Fridays_Adventure.Engine;
 using Fridays_Adventure.Tests;
 
@@ -140,6 +141,8 @@ namespace Fridays_Adventure.Scenes
             _levelIndex  = 0;
             _demoResults.Clear();
             _resultIndex = 0;
+            // Enable auto-advance for any dialogue scenes the bot encounters
+            DialogueScene.AutoAdvance = true;
             // Go straight into the first real level
             _state = DemoState.Running;
             LaunchNextDemoLevel();
@@ -163,6 +166,43 @@ namespace Fridays_Adventure.Scenes
 
             // Build the real game scene
             Scene inner = LevelSceneFactory.Create(id, name);
+
+            // ── First level: show the "Meet Finn" dialogue before playing ──
+            // This mirrors what OverworldScene does on the first visit to
+            // Dinosaur Island — the player meets Finn before the level starts.
+            if (id == "dino" && !Game.Instance.Save.GetFlag("dino_visited"))
+            {
+                Game.Instance.Save.SetFlag("dino_visited");
+                var dialogue = Dialogues.MeetFinn();
+                dialogue.OnDone = _ =>
+                {
+                    // Dialogue dismissed — now push the bot-controlled level
+                    var w = new BotPlayLevelScene(inner, name, (beaten, elapsed) =>
+                    {
+                        if (elapsed < 0f)
+                        {
+                            Game.Instance.Scenes.Pop();
+                            return;
+                        }
+                        var result = new EnhancedLevelTestResult
+                        {
+                            LevelId        = id,
+                            LevelName      = name,
+                            IsBeatable     = beaten,
+                            TimeToComplete = elapsed,
+                            FailureReason  = beaten ? "" : "Timeout or insufficient progress",
+                            BotData        = new Tests.AutoTestBot()
+                        };
+                        _demoResults.Add(result);
+                        _resultTimer = 0f;
+                        _resultIndex = _demoResults.Count - 1;
+                        _state       = DemoState.LevelResult;
+                    });
+                    Game.Instance.Scenes.Push(w);
+                };
+                Game.Instance.Scenes.Push(new DialogueScene(dialogue));
+                return;
+            }
 
             // Wrap it so the bot controls the player
             var wrapper = new BotPlayLevelScene(inner, name, (beaten, elapsed) =>

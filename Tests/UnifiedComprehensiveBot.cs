@@ -686,31 +686,57 @@ namespace Fridays_Adventure.Tests
             {
                 float platCenterX = targetPlat.X + targetPlat.Width / 2f;
 
-                // Check if the player is directly UNDERNEATH the target platform.
-                // If so, jumping would head-bonk the bottom (solid from below).
-                // Margin of 8 px on each side accounts for the player's width.
-                bool directlyBelow = (_player.X + _player.Width) > (targetPlat.Left + 8)
-                                  && _player.X < (targetPlat.Right - 8);
+                // Check if the player's hitbox overlaps the platform's
+                // horizontal span AT ALL.  If any part of the player is under
+                // the platform, jumping will head-bonk the solid bottom.
+                // Use a generous buffer (player width + 10px) to ensure the
+                // bot is FULLY clear before jumping.
+                float clearance = _player.Width + 10f;
+                bool underPlatform = (_player.X + _player.Width) > targetPlat.Left
+                                  && _player.X < targetPlat.Right;
+
+                // Also check: is the bot fully outside with clearance?
+                bool fullyClear = (_player.X + _player.Width) <= (targetPlat.Left - 5f)
+                               || _player.X >= (targetPlat.Right + 5f);
 
                 if (_player.IsGrounded)
                 {
-                    if (directlyBelow)
+                    if (!fullyClear)
                     {
-                        // ── STEP OUT: walk to the nearest edge of the platform ──
-                        // so we can jump past it without head-bonking the bottom.
+                        // ── STEP OUT: walk until fully clear of the platform ──
+                        // Must get the ENTIRE player hitbox past the platform edge
+                        // plus a small buffer so the jump arc doesn't clip.
                         CurrentState = "SKY_STEP_OUT";
+
+                        // Choose the closer edge to step toward
                         float distToLeftEdge  = _player.X - targetPlat.Left;
                         float distToRightEdge = targetPlat.Right - (_player.X + _player.Width);
 
-                        if (Math.Abs(distToLeftEdge) <= Math.Abs(distToRightEdge))
+                        // Also consider level boundaries (LevelWidth = 900)
+                        bool nearLeftWall  = _player.X < 60f;
+                        bool nearRightWall = _player.X + _player.Width > 840f;
+
+                        if (nearLeftWall)
                         {
-                            // Closer to the left edge — walk left past it
+                            // Too close to left wall — must go right
+                            ShouldMoveRight = true;
+                            ShouldMoveLeft  = false;
+                        }
+                        else if (nearRightWall)
+                        {
+                            // Too close to right wall — must go left
+                            ShouldMoveLeft  = true;
+                            ShouldMoveRight = false;
+                        }
+                        else if (distToLeftEdge < distToRightEdge)
+                        {
+                            // Closer to left edge — walk left past it
                             ShouldMoveLeft  = true;
                             ShouldMoveRight = false;
                         }
                         else
                         {
-                            // Closer to the right edge — walk right past it
+                            // Closer to right edge — walk right past it
                             ShouldMoveRight = true;
                             ShouldMoveLeft  = false;
                         }
@@ -718,22 +744,24 @@ namespace Fridays_Adventure.Tests
 
                         LogEvent("SKY_STEP_OUT",
                             $"Under platform Y={targetPlat.Top} X=[{targetPlat.Left}-{targetPlat.Right}] " +
+                            $"PlayerX=[{_player.X:F0}-{(_player.X + _player.Width):F0}] " +
                             $"— stepping out (distL={distToLeftEdge:F0} distR={distToRightEdge:F0})");
                     }
                     else
                     {
-                        // ── JUMP FROM BESIDE: we're outside the platform's
-                        //    horizontal range — jump now and drift toward it.
+                        // ── JUMP FROM BESIDE: fully clear of the platform ──
+                        // Jump and drift horizontally toward the platform center
+                        // so the arc carries the bot over the edge and onto the top.
                         CurrentState = "SKY_JUMP_BESIDE";
                         ShouldJump = true;
 
-                        // Start drifting toward the platform center while launching
+                        // Drift toward the platform center while launching
                         float distX = platCenterX - playerCenterX;
                         ShouldMoveRight = distX > 0f;
                         ShouldMoveLeft  = distX < 0f;
 
                         LogEvent("SKY_JUMP_BESIDE",
-                            $"Beside platform Y={targetPlat.Top} — jumping + drifting (distX={distX:F0})");
+                            $"Clear of platform Y={targetPlat.Top} — jumping + drifting (distX={distX:F0})");
                     }
                 }
                 else
