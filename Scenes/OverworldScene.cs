@@ -70,14 +70,11 @@ namespace Fridays_Adventure.Scenes
                 }
             }
 
-            // Set current position from save, or default to start
-            string savedNodeId = Game.Instance.Save.CurrentNodeId;
-            if (!string.IsNullOrEmpty(savedNodeId))
-            {
-                var savedNode = Find(savedNodeId);
-                if (savedNode != null)
-                    _current = savedNode;
-            }
+            // Set current position from save, defaulting to the start node.
+            // CurrentNodeId records where the player last entered a level;
+            // on fresh load we want the ship at start so the player can choose.
+            _current = Find("start");
+            _current.Visited = true;
 
             string path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory,
                                        "Assets", "Sprites", "bg_overworld.png");
@@ -86,7 +83,9 @@ namespace Fridays_Adventure.Scenes
             // Phase 3 — Hammer Bros patrol spawns (two per chapter style).
             HammerBrosSystem.Spawn("sky", "harbor");
 
-            Game.Instance.Audio.ContinueOrPlay("overworld");
+            // Force the overworld track — ContinueOrPlay would skip if the
+            // title theme is still flagged as playing after a scene Replace.
+            Game.Instance.Audio.PlayMood("overworld");
         }
 
         public override void OnExit()   { _bg?.Dispose(); _bg = null; }
@@ -109,7 +108,9 @@ namespace Fridays_Adventure.Scenes
 
         public override void OnResume()
         {
-            Game.Instance.Audio.ContinueOrPlay("overworld");
+            // Force the overworld track — the level or CourseClearScene may
+            // have been playing a different mood (e.g. "clear", "combat").
+            Game.Instance.Audio.PlayMood("overworld");
 
             // Only process a level completion if a gameplay scene was pending AND it
             // returned successfully (LevelJustCompleted flag set by the scene itself).
