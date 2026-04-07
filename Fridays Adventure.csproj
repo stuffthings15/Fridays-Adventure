@@ -229,6 +229,7 @@
     <Compile Include="Systems\GameConfig.cs" />
     <Compile Include="Systems\GameDirectorExtensions.cs" />
     <Compile Include="Systems\GameHUD.cs" />
+    <Compile Include="Systems\GameLogger.cs" />
     <Compile Include="Systems\HammerBrosSystem.cs" />
     <Compile Include="Systems\HudHelper.cs" />
     <Compile Include="Systems\LevelEventSystem.cs" />

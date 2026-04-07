@@ -3,6 +3,7 @@ using System.Drawing;
 using System.Windows.Forms;
 using Fridays_Adventure.Engine;
 using Fridays_Adventure.Entities;
+using Fridays_Adventure.Systems;
 using Fridays_Adventure.Tests;
 
 namespace Fridays_Adventure.Scenes
@@ -212,6 +213,11 @@ namespace Fridays_Adventure.Scenes
             {
                 BotAIVerificationTool.QuickTest(_inner, player);
             }
+
+            // Structured log: bot level start + stuck detector reset
+            GameLogger.LogSystem("BotLevelStart", _levelName);
+            if (player != null)
+                GameLogger.ResetBotStuckDetector(player.X, player.Y);
         }
 
         public override void OnExit()
@@ -367,6 +373,15 @@ namespace Fridays_Adventure.Scenes
             if (_aiInitialized && !introActive)
             {
                 _bot.InjectInput(Game.Instance.Input, dt);
+
+                // GameLogger stuck detection — runs every frame the bot is active
+                Player sp = GetPlayerFromScene(_inner);
+                if (sp != null)
+                {
+                    string botState = _bot._comprehensiveBot?.CurrentState ?? "unknown";
+                    GameLogger.UpdateBotStuckDetector(
+                        dt, sp.X, sp.Y, _levelName, botState, sp);
+                }
             }
             else if (introActive)
             {
@@ -628,6 +643,12 @@ namespace Fridays_Adventure.Scenes
             // leave BotPlayLevelScene stuck on the scene stack forever).
             if (_finished) return;
             _finished = true;
+
+            // Structured log: level result
+            GameLogger.LogLevelResult(
+                _levelName, _levelName, beaten, _elapsed,
+                0, 0);
+            GameLogger.LogSystem(beaten ? "BotLevelBeaten" : "BotLevelFailed", _levelName);
 
             // Pop any result scenes that the inner scene may have pushed (Path A)
             while (Game.Instance.Scenes.Depth > _innerSceneDepthAtEnter)

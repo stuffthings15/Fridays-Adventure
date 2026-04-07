@@ -20,9 +20,11 @@ namespace Fridays_Adventure.Engine
         {
             try
             {
+                string from = Current?.GetType().Name;
                 Current?.OnPause();
                 _stack.Push(scene);
                 scene.OnEnter();
+                GameLogger.LogSceneTransition("Push", from, scene.GetType().Name);
             }
             catch (Exception ex)
             {
@@ -36,8 +38,10 @@ namespace Fridays_Adventure.Engine
             if (_stack.Count == 0) return;
             try
             {
+                string from = _stack.Peek().GetType().Name;
                 _stack.Pop().OnExit();
                 Current?.OnResume();
+                GameLogger.LogSceneTransition("Pop", from, Current?.GetType().Name);
             }
             catch (Exception ex)
             {
@@ -50,10 +54,12 @@ namespace Fridays_Adventure.Engine
         {
             try
             {
+                string from = _stack.Count > 0 ? _stack.Peek().GetType().Name : null;
                 if (_stack.Count > 0)
                     _stack.Pop().OnExit();
                 _stack.Push(scene);
                 scene.OnEnter();
+                GameLogger.LogSceneTransition("Replace", from, scene.GetType().Name);
             }
             catch (Exception ex)
             {

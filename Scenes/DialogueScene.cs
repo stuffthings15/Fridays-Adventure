@@ -3,6 +3,7 @@ using System.Drawing;
 using System.Drawing.Drawing2D;
 using Fridays_Adventure.Data;
 using Fridays_Adventure.Engine;
+using Fridays_Adventure.Systems;
 
 namespace Fridays_Adventure.Scenes
 {
@@ -107,6 +108,13 @@ namespace Fridays_Adventure.Scenes
 
         private void NextLine()
         {
+            // Log the line that just finished displaying
+            if (_lineIndex < _seq.Lines.Count)
+            {
+                var dl = _seq.Lines[_lineIndex];
+                GameLogger.LogDialogue(dl.Speaker, dl.Text);
+            }
+
             _lineIndex++;
             _charIndex = 0;
             _typeTimer = 0;
@@ -122,6 +130,7 @@ namespace Fridays_Adventure.Scenes
         private void CommitChoice(int idx)
         {
             var choice = _seq.Choices[idx];
+            GameLogger.LogDialogue("PLAYER_CHOICE", choice.Text, idx);
             Game.Instance.CrewBonds += choice.BondChange;
             if (!string.IsNullOrEmpty(choice.FlagToSet))
                 Game.Instance.Save.SetFlag(choice.FlagToSet);

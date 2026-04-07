@@ -118,6 +118,11 @@ namespace Fridays_Adventure.Scenes
                 $"WORLD {Game.Instance.WorldNumber}-{Game.Instance.LevelNumber}  {_islandName.ToUpper()}");
 
             Game.Instance.Audio.PlayIsland();
+
+            // Structured log: level entered
+            GameLogger.LogSystem("LevelEnter", $"{_islandId} ({_islandName})");
+            GameLogger.LogEntity("Player", "Player1", "Spawn",
+                _player.X, _player.Y, "Alive", $"HP={_player.Health}/{_player.MaxHealth}");
         }
 
         public override void OnExit()
@@ -1965,6 +1970,10 @@ namespace Fridays_Adventure.Scenes
                 Game.Instance.Save.SetFlag(_islandId + "_complete");
                 Game.Instance.Save.Save();
                 Game.Instance.Audio.BeepLevelClear();
+
+                // Structured log: level completed
+                GameLogger.LogSystem("LevelComplete", $"{_islandId} ({_islandName})");
+                GameLogger.LogPlayer("ReachedExit", _player, $"berries={_berriesCollected}");
 
                 // Achievement: no-death run
                 if (_deathCount == 0)

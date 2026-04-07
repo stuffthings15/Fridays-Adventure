@@ -73,7 +73,11 @@ namespace Fridays_Adventure
             };
             _canvas.MouseWheel += (s, e) => _game.Scenes.Current?.HandleMouseWheel(e.Delta);
 
-            FormClosed += (s, e) => _game.Stop();
+            FormClosed += (s, e) =>
+            {
+                Systems.GameLogger.Shutdown();
+                _game.Stop();
+            };
 
             Game.OpenLogbookRequested += () =>
             {
