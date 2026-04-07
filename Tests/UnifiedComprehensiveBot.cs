@@ -1223,14 +1223,25 @@ namespace Fridays_Adventure.Tests
                 _jumpTimer       = 0f;
             }
 
-            // ── P4: Lava panic — if near bottom, mash jump ───────────────
-            if (_player.Y > H * 0.75f)
+            // ── P4: Lava panic — if player is near the lava, mash jump ──
+            // Use reflected _lavaY field to detect actual lava proximity
+            // instead of a fixed screen fraction.
+            float lavaY = float.MaxValue;
+            var lavaField = _scene.GetType().GetField("_lavaY",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            if (lavaField != null)
+            {
+                object val = lavaField.GetValue(_scene);
+                if (val is float f) lavaY = f;
+            }
+            float distToLava = lavaY - (_player.Y + _player.Height);
+            if (distToLava < 200f)
             {
                 ShouldJump       = true;
                 ShouldDoubleJump = true;
                 ShouldMoveRight  = true;
                 LogEvent("FORTRESS_LAVA_PANIC",
-                    $"Y={_player.Y:F0} — too close to rising lava, mashing jump");
+                    $"Y={_player.Y:F0} lavaY={lavaY:F0} gap={distToLava:F0} — mashing jump");
             }
         }
 

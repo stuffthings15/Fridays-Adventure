@@ -118,6 +118,9 @@ namespace Fridays_Adventure.Scenes
             {
                 Game.Instance.LevelJustCompleted = false;
 
+                // Check if this is a first-time completion BEFORE setting the flag
+                bool firstTime = !Game.Instance.Save.GetFlag($"node_visited_{_pendingNode.Id}");
+
                 // Mark the completed node as visited and persist to save
                 _pendingNode.Visited = true;
                 Game.Instance.Save.SetFlag($"node_visited_{_pendingNode.Id}");
@@ -129,8 +132,10 @@ namespace Fridays_Adventure.Scenes
                     if (linked != null) linked.Unlocked = true;
                 }
 
-                // Increment the campaign level counter for main-content nodes.
-                if (_pendingNode.Type != NodeType.Start)
+                // Increment the campaign level counter only on first-time
+                // completions so replaying levels doesn't inflate the
+                // displayed World number in the HUD.
+                if (_pendingNode.Type != NodeType.Start && firstTime)
                     Game.Instance.CurrentLevel++;
 
                 // Auto-save after completion processing

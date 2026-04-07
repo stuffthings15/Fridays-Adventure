@@ -26,7 +26,11 @@ namespace Fridays_Adventure.Scenes
     /// </summary>
     public sealed class FortressScene : Scene
     {
-        private const float LevelScale = 1.5f;
+        // ── Level dimensions ──────────────────────────────────────────────────
+        // The fortress is a tall vertical shaft (wider than screen is high).
+        // Camera follows the player upward as they climb.
+        private const int LevelHeight = 1600;
+
         // ── Player + entities ─────────────────────────────────────────────────
         private Player            _player;
         private List<Rectangle>   _platforms  = new List<Rectangle>();
@@ -89,61 +93,56 @@ namespace Fridays_Adventure.Scenes
         private void BuildLevel()
         {
             int W = Game.Instance.CanvasWidth;
-            int H = Game.Instance.CanvasHeight;
 
-            // Player archetype is resolved automatically from Game.Instance.SelectedCharacter
-            // inside the Player(x, y) constructor — no need to pass extra arguments.
-            _player = new Player(W / 2f - 16, H - 200);
+            // Player starts near the bottom of the tall shaft
+            _player = new Player(W / 2f - 16, LevelHeight - 100);
             _iceWalls.Clear();
             _thwompFreezeTimer = 0f;
 
-            // ── Platforms (brick layout) ──────────────────────────────────────
+            // ── Platforms — ascending staircase toward the exit ────────────
+            // The level is a 1600px-tall shaft.  Platforms zig-zag left/right
+            // creating a clear climbing path the player (and bot) can follow.
             _platforms.Clear();
-            _platforms.Add(new Rectangle(0,       H - 40,  W, 40));      // floor
-            _platforms.Add(new Rectangle(60,      H - 140, 200, 20));
-            _platforms.Add(new Rectangle(300,     H - 200, 180, 20));
-            _platforms.Add(new Rectangle(550,     H - 160, 200, 20));
-            _platforms.Add(new Rectangle(200,     H - 280, 160, 20));
-            _platforms.Add(new Rectangle(420,     H - 320, 200, 20));
-            _platforms.Add(new Rectangle(100,     H - 400, 140, 20));
-            _platforms.Add(new Rectangle(350,     H - 440, 220, 20));
-            _platforms.Add(new Rectangle(580,     H - 400, 180, 20));
+            _platforms.Add(new Rectangle(0, LevelHeight - 40, W, 40));        // 0: floor
+
+            // 8 ascending platforms — each ~180 px higher than the last,
+            // alternating left/right so the player can jump between them.
+            int[] px = { 60,  400, 100, 450, 80,  380, 140, 420 };
+            int[] pw = { 220, 200, 200, 180, 200, 200, 180, 160 };
+            for (int i = 0; i < 8; i++)
+            {
+                int py = LevelHeight - 220 - i * 170;
+                _platforms.Add(new Rectangle(px[i], py, pw[i], 20));
+            }
 
             // ── Thwomps (Idea 3) ──────────────────────────────────────────────
             _thwomps.Clear(); _thwompY.Clear(); _thwompFalling.Clear();
-            AddThwomp(180, H - 200, H - 120);
-            AddThwomp(460, H - 360, H - 280);
-            AddThwomp(650, H - 320, H - 240);
+            AddThwomp(300, LevelHeight - 400, LevelHeight - 300);
+            AddThwomp(200, LevelHeight - 740, LevelHeight - 640);
 
-            // ── Boss key gate (Idea 2) ────────────────────────────────────────
-            _gateRect = new Rectangle(W - 100, H - 440 - 80, 40, 80);
+            // ── Boss key gate (Idea 2) — near the top of the shaft ────────────
+            _gateRect = new Rectangle(W - 120, 180, 40, 80);
             _gateOpen = PowerUpInventory.ReserveItem == SuitType.BossKey;
 
-            // ── Exit door ─────────────────────────────────────────────────────
-            _exitDoor = new Rectangle(W - 80, H - 440 - 60, 36, 60);
+            // ── Exit door — clearly visible at the top ────────────────────────
+            _exitDoor = new Rectangle(W / 2 - 30, 120, 60, 60);
 
             // ── Health pickups on mid/high platforms ──────────────────────────
             _healthPickups.Clear();
-            // Platform index 3 (H-200), 5 (H-320), 7 (H-400) — spread across climb
             _healthPickups.Add(new HealthPickup(_platforms[3].X + 60, _platforms[3].Y - 24));
-            _healthPickups.Add(new HealthPickup(_platforms[5].X + 80, _platforms[5].Y - 24));
-            _healthPickups.Add(new HealthPickup(_platforms[7].X + 100, _platforms[7].Y - 24));
+            _healthPickups.Add(new HealthPickup(_platforms[5].X + 60, _platforms[5].Y - 24));
+            _healthPickups.Add(new HealthPickup(_platforms[7].X + 60, _platforms[7].Y - 24));
 
             // ── Enemies — fortress guardians patrol on platforms ──────────────
             _enemies.Clear();
-            // Platform 1 (H-140): low-level patrol guard
             _enemies.Add(new Enemy(_platforms[1].X + 20, _platforms[1].Y - 52, 28, 48,
                 maxHp: 30, patrolLeft: _platforms[1].X + 4, patrolRight: _platforms[1].Right - 36));
-            // Platform 3 (H-160): mid guard
             _enemies.Add(new Enemy(_platforms[3].X + 30, _platforms[3].Y - 52, 28, 48,
                 maxHp: 40, patrolLeft: _platforms[3].X + 4, patrolRight: _platforms[3].Right - 36));
-            // Platform 5 (H-320): high guard — tougher
             _enemies.Add(new Enemy(_platforms[5].X + 40, _platforms[5].Y - 52, 28, 48,
                 maxHp: 55, patrolLeft: _platforms[5].X + 4, patrolRight: _platforms[5].Right - 36));
-            // Platform 8 (H-400): elite guard near the top
-            _enemies.Add(new Enemy(_platforms[8].X + 20, _platforms[8].Y - 52, 28, 48,
-                maxHp: 65, patrolLeft: _platforms[8].X + 4, patrolRight: _platforms[8].Right - 36));
-            // Assign fortress-themed sprites
+            _enemies.Add(new Enemy(_platforms[7].X + 20, _platforms[7].Y - 52, 28, 48,
+                maxHp: 65, patrolLeft: _platforms[7].X + 4, patrolRight: _platforms[7].Right - 36));
             foreach (var e in _enemies)
             {
                 e.EnemyType = "Fortress Guard";
@@ -153,7 +152,6 @@ namespace Fridays_Adventure.Scenes
 
             // ── Berries — gold collectibles on platforms ─────────────────────
             _berries.Clear();
-            // Scatter berries across platforms to reward exploration
             for (int i = 1; i < _platforms.Count; i++)
             {
                 var p = _platforms[i];
@@ -165,74 +163,20 @@ namespace Fridays_Adventure.Scenes
 
             // ── Hazards — fire sources and sea stone zones ───────────────────
             _hazards.Clear();
-            // Fire on floor near the entrance (visual + melts ice walls)
             _hazards.Add(new FireSource(_platforms[0].X + 350, _platforms[0].Y - 40, 36, 40));
-            // Fire on platform 2 (H-200)
             _hazards.Add(new FireSource(_platforms[2].X + _platforms[2].Width - 44, _platforms[2].Y - 40, 36, 40));
-            // Fire on platform 4 (H-280)
             _hazards.Add(new FireSource(_platforms[4].X + 10, _platforms[4].Y - 38, 32, 38));
-            // Sea Stone zone on platform 6 (H-400) — suppresses ice abilities
             _hazards.Add(new SeaStoneZone(_platforms[6].X, _platforms[6].Y - 34, _platforms[6].Width, 34));
 
-            // ── Lava tide ─────────────────────────────────────────────────────
-            _lavaY = H + 40;  // starts below screen
+            // ── Lava tide — starts below the level, rises upward ──────────────
+            _lavaY = LevelHeight + 40;
 
-            ApplyLevelScale();
-        }
-
-                private void ApplyLevelScale()
-        {
-            Rectangle ScaleRect(Rectangle r) => new Rectangle(
-                (int)(r.X * LevelScale),
-                (int)(r.Y * LevelScale),
-                (int)(r.Width * LevelScale),
-                (int)(r.Height * LevelScale));
-
-            for (int i = 0; i < _platforms.Count; i++) _platforms[i] = ScaleRect(_platforms[i]);
-            for (int i = 0; i < _thwomps.Count; i++) _thwomps[i] = ScaleRect(_thwomps[i]);
-            for (int i = 0; i < _thwompY.Count; i++) _thwompY[i] *= LevelScale;
-
-            _gateRect = ScaleRect(_gateRect);
-            _exitDoor = ScaleRect(_exitDoor);
-            _lavaY *= LevelScale;
-
-            _player.X *= LevelScale;
-            _player.Y *= LevelScale;
-            _player.Width = (int)(_player.Width * LevelScale);
-            _player.Height = (int)(_player.Height * LevelScale);
             _player.ApplySelectedSprite();
-
-            // Scale enemies to match level
-            foreach (var e in _enemies)
-            {
-                e.X *= LevelScale;
-                e.Y *= LevelScale;
-                e.Width  = (int)(e.Width  * LevelScale);
-                e.Height = (int)(e.Height * LevelScale);
-                // Re-set patrol bounds after scaling
-                e.AI.SetPatrolBounds(e.AI.PatrolLeft * LevelScale, e.AI.PatrolRight * LevelScale);
-                var spr = SpriteManager.GetScaled("enemy_Garp.png", e.Width, e.Height);
-                if (spr != null) e.Sprite = spr;
-            }
-
-            // Scale berries
-            foreach (var b in _berries)
-            {
-                b.X *= LevelScale;
-                b.Y *= LevelScale;
-                b.SyncBaseY();
-            }
-
-            // Scale hazards
-            foreach (var h in _hazards)
-            {
-                h.X *= LevelScale;
-                h.Y *= LevelScale;
-                h.Width  = (int)(h.Width  * LevelScale);
-                h.Height = (int)(h.Height * LevelScale);
-            }
+            _player.Health = _player.MaxHealth;
+            _player.GrantInvincibility(0.5f);
         }
-        private void AddThwomp(int x, int restY, int dropY)
+
+                private void AddThwomp(int x, int restY, int dropY)
         {
             _thwomps.Add(new Rectangle(x, (int)restY, 40, 40));
             _thwompY.Add(restY);
@@ -438,8 +382,8 @@ namespace Fridays_Adventure.Scenes
                     if (_thwompFalling[i])
                     {
                         _thwompY[i] += 300f * dt;
-                        if (_thwompY[i] >= Game.Instance.CanvasHeight - 80)
-                        { _thwompY[i] = Game.Instance.CanvasHeight - 80; _thwompFalling[i] = false; }
+                        if (_thwompY[i] >= LevelHeight - 80)
+                        { _thwompY[i] = LevelHeight - 80; _thwompFalling[i] = false; }
                     }
                 }
 
@@ -463,7 +407,7 @@ namespace Fridays_Adventure.Scenes
             if (!_gateOpen && PowerUpInventory.ReserveItem == SuitType.BossKey)
             {
                 _gateOpen = true;
-                Game.Instance.FloatingText.Spawn("GATE OPEN!", W / 2, H / 2, Color.Gold, large: true);
+                Game.Instance.FloatingText.Spawn("GATE OPEN!", W / 2, (int)_player.Y - 40, Color.Gold, large: true);
             }
 
             // ── Exit ──────────────────────────────────────────────────────────
@@ -480,18 +424,18 @@ namespace Fridays_Adventure.Scenes
                 HandleDeath();
 
             // No fall damage: recover from below-screen falls.
-            if (_player.Y > H + 100)
+            if (_player.Y > LevelHeight + 100)
             {
                 _player.X = 60f;
-                _player.Y = H - 80 - _player.Height;
+                _player.Y = LevelHeight - 80 - _player.Height;
                 _player.VelocityX = 0f;
                 _player.VelocityY = 0f;
                 _player.IsGrounded = true;
             }
 
-            // ── Camera ────────────────────────────────────────────────────────
-            _cameraY = _player.Y - H / 2f;
-            _cameraY = Math.Max(0, Math.Min(_cameraY, 0));
+            // ── Camera — follow the player vertically through the shaft ────
+            _cameraY = _player.Y - H * 0.55f;
+            _cameraY = Math.Max(0, Math.Min(_cameraY, LevelHeight - H));
 
             SMB3Hud.Update(dt);
         }
@@ -567,10 +511,13 @@ namespace Fridays_Adventure.Scenes
                 DrawBrickBackground(g, W, H);
             }
 
+            // Apply camera offset so the world scrolls vertically
+            g.TranslateTransform(0, -_cameraY);
+
             // ── Torches ───────────────────────────────────────────────────────
-            DrawTorch(g, 80,  H - 200);
-            DrawTorch(g, 360, H - 340);
-            DrawTorch(g, 640, H - 300);
+            DrawTorch(g, 80,  LevelHeight - 300);
+            DrawTorch(g, 360, LevelHeight - 700);
+            DrawTorch(g, 640, LevelHeight - 1100);
 
             // ── Platforms ─────────────────────────────────────────────────────
             foreach (var p in _platforms)
@@ -607,13 +554,14 @@ namespace Fridays_Adventure.Scenes
 
             // ── Lava tide (Idea 4) ────────────────────────────────────────────
             int lavaTop = Math.Max(0, (int)_lavaY);
+            int lavaH   = Math.Max(1, LevelHeight - lavaTop + 1);
             using (var lavaBr = new LinearGradientBrush(
-                new Rectangle(0, lavaTop, W, H - lavaTop + 1),
+                new Rectangle(0, lavaTop, W, lavaH),
                 Color.FromArgb(255, 80, 0), Color.FromArgb(200, 30, 0), 90f))
-                g.FillRectangle(lavaBr, 0, lavaTop, W, H - lavaTop);
+                g.FillRectangle(lavaBr, 0, lavaTop, W, lavaH);
 
             // Lava warning pulsing text.
-            if (_lavaY < H * 0.7f)
+            if (_lavaY < LevelHeight * 0.8f)
             {
                 using (var f  = new Font("Courier New", 10, FontStyle.Bold))
                 using (var br = new SolidBrush(Color.OrangeRed))
