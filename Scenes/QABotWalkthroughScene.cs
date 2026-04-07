@@ -138,6 +138,7 @@ namespace Fridays_Adventure.Scenes
         public override void OnExit()
         {
             DialogueScene.AutoAdvance = false;
+            ToadHouseScene.AutoAdvance = false;
             Game.Instance.CurrentLevelName = "";
             DisposeFonts();
         }
@@ -332,6 +333,7 @@ namespace Fridays_Adventure.Scenes
 
                     case Phase.EventToadHouse:
                         _testedToadHouse = true;
+                        ToadHouseScene.AutoAdvance = true;
                         Game.Instance.Scenes.Push(new ToadHouseScene());
                         break;
                 }

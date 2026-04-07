@@ -37,6 +37,16 @@ namespace Fridays_Adventure.Scenes
     /// </summary>
     public sealed class ToadHouseScene : Scene
     {
+        /// <summary>
+        /// When true, the toad house auto-opens a chest after 1 second
+        /// and auto-continues after the reveal animation completes.
+        /// Set by QABotWalkthroughScene / DemoModeScene / BotPlayLevelScene.
+        /// </summary>
+        public static bool AutoAdvance { get; set; }
+
+        // ── Auto-advance timer ────────────────────────────────────────────────
+        private float _autoTimer;
+
         // ── Chest data ────────────────────────────────────────────────────────
         private const int ChestCount = 3;
         private bool[] _opened       = new bool[ChestCount];
@@ -96,6 +106,22 @@ namespace Fridays_Adventure.Scenes
         public override void Update(float dt)
         {
             _anim += dt;
+
+            // ── Auto-advance in bot/demo mode ─────────────────────────────
+            if (AutoAdvance)
+            {
+                _autoTimer += dt;
+                if (_chosenChest < 0 && _autoTimer >= 1.0f)
+                {
+                    // Auto-open a random chest after 1 second
+                    OpenChest(_rng.Next(ChestCount));
+                }
+                if (_canContinue)
+                {
+                    Continue();
+                    return;
+                }
+            }
 
             if (_chosenChest >= 0)
             {
