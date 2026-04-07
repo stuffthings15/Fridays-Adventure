@@ -95,7 +95,8 @@ namespace Fridays_Adventure.Scenes
         {
             int W = LevelWidth;
             int groundY = LevelHeight - 60;
-            _exitZone = new Rectangle(W / 2 - 40, 60, 80, 50);
+            // Exit zone lowered so it sits below the HUD band and is always visible
+            _exitZone = new Rectangle(W / 2 - 40, 140, 80, 50);
 
             // Ground at the bottom
             _platforms.Add(new Rectangle(0, groundY, W, 60));
@@ -144,7 +145,8 @@ namespace Fridays_Adventure.Scenes
             // Player at the bottom (selected from Crew screen)
             _player = new Player(W / 2 - 18, groundY - 56);
             _player.MoveSpeed = 290f;
-            _player.JumpForce = -520f;
+            // 20% stronger jumps for the vertical climbing challenge
+            _player.JumpForce = -624f;
             _player.ApplySelectedSprite();
 
             // Ensure full health on entry — guards against stale state from a previous session
