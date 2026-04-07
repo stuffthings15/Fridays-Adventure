@@ -34,6 +34,11 @@ namespace Fridays_Adventure.Scenes
         private const float SliderRate = 0.1f;
         private const int   VolStep   = 5;
 
+        /// <summary>Large clickable return button at the top of the options screen.</summary>
+        private Rectangle _returnBtnTop;
+        /// <summary>Large clickable return button at the bottom of the options screen.</summary>
+        private Rectangle _returnBtnBottom;
+
         private static readonly Font TitleFont = new Font("Courier New", 26, FontStyle.Bold);
         private static readonly Font SecFont   = new Font("Courier New", 11,  FontStyle.Bold);
         private static readonly Font ItemFont  = new Font("Courier New", 12);
@@ -117,14 +122,15 @@ namespace Fridays_Adventure.Scenes
             _rows.Add(new Row { Type = RowType.Header, Label = "APPLICATION" });
             _rows.Add(new Row { Type = RowType.ToolAction, Label = "Exit to Desktop", ToolAction = () => Game.RequestClose() });
 
-            _rows.Add(new Row { Type = RowType.BackBtn, Label = "Back" });
+            _rows.Add(new Row { Type = RowType.BackBtn, Label = "RETURN TO GAME" });
             _sel = Math.Max(0, Math.Min(_sel, _rows.Count - 1));
         }
 
-        private static void ToggleCrtFilter()
+        private void ToggleCrtFilter()
         {
             Game.Instance.CrtFilterEnabled = !Game.Instance.CrtFilterEnabled;
             SMB3Hud.ShowToast(Game.Instance.CrtFilterEnabled ? "CRT Filter: ON" : "CRT Filter: OFF");
+            Rebuild();  // refresh label text to show new state
         }
 
         /// <summary>
@@ -153,10 +159,11 @@ namespace Fridays_Adventure.Scenes
         /// Phase 2 — Team 9 (UI Programmer): Accessibility outline toggle.
         /// Draws coloured borders around all entities so they stand out on any background.
         /// </summary>
-        private static void ToggleOutlineMode()
+        private void ToggleOutlineMode()
         {
             Game.Instance.OutlineModeEnabled = !Game.Instance.OutlineModeEnabled;
             SMB3Hud.ShowToast(Game.Instance.OutlineModeEnabled ? "Outline Mode: ON" : "Outline Mode: OFF");
+            Rebuild();  // refresh label text to show new state
         }
 
         private List<string> ScanTracks(string mood)
@@ -216,7 +223,14 @@ namespace Fridays_Adventure.Scenes
             if (input.InteractPressed)
                 ActivateRow(row);
 
-            if (input.PausePressed) Game.Instance.Scenes.Pop();
+            if (input.PausePressed)
+            {
+                // Pop this scene; also pop PauseScene if it's underneath
+                // so the player returns directly to gameplay
+                Game.Instance.Scenes.Pop();
+                if (Game.Instance.Scenes.Current is PauseScene)
+                    Game.Instance.Scenes.Pop();
+            }
         }
 
         private void ActivateRow(Row row)
@@ -243,7 +257,10 @@ namespace Fridays_Adventure.Scenes
                     row.ToolAction?.Invoke();
                     break;
                 case RowType.BackBtn:
+                    // Pop this scene; also pop PauseScene if underneath
                     Game.Instance.Scenes.Pop();
+                    if (Game.Instance.Scenes.Current is PauseScene)
+                        Game.Instance.Scenes.Pop();
                     break;
             }
         }
@@ -266,6 +283,16 @@ namespace Fridays_Adventure.Scenes
         public override void HandleClick(Point p)
         {
             if (HandleDevMenuClick(p)) return;
+
+            // Large return buttons at top and bottom — pop all the way to gameplay
+            if (_returnBtnTop.Contains(p) || _returnBtnBottom.Contains(p))
+            {
+                Game.Instance.Scenes.Pop();
+                if (Game.Instance.Scenes.Current is PauseScene)
+                    Game.Instance.Scenes.Pop();
+                return;
+            }
+
             float y = 80f;
             for (int i = 0; i < _rows.Count; i++)
             {
@@ -290,6 +317,9 @@ namespace Fridays_Adventure.Scenes
             SizeF tsz = g.MeasureString("OPTIONS", TitleFont);
             g.DrawString("OPTIONS", TitleFont, Brushes.Cyan, (W - tsz.Width) / 2f, 14f);
 
+            // ── Top return button (always visible) ───────────────────────────
+            DrawReturnBtn(g, W, 46, out _returnBtnTop);
+
             // Now Playing indicator
             string cur = Game.Instance.Audio.CurrentTrack;
             if (!string.IsNullOrEmpty(cur))
@@ -301,11 +331,35 @@ namespace Fridays_Adventure.Scenes
             float y = 80f;
             for (int i = 0; i < _rows.Count; i++)
                 DrawRow(g, _rows[i], i == _sel, W, ref y);
-            g.DrawString("Up/Down Navigate   Left/Right Volume   Enter Select   Esc Back",
-                         SmFont, Brushes.DimGray, 12, H - 36);
-            g.DrawString("SMB3-style tips: tap jump for short hops, stomp enemies from above, and use momentum.",
-                         SmFont, Brushes.DimGray, 12, H - 18);
+
+            // ── Bottom return button ─────────────────────────────────────────
+            DrawReturnBtn(g, W, H - 72, out _returnBtnBottom);
+
+            g.DrawString("Up/Down Navigate   Left/Right Volume   Enter Select   Esc Return to Game",
+                         SmFont, Brushes.DimGray, 12, H - 20);
             DrawDevMenuButton(g);
+        }
+
+        /// <summary>
+        /// Draws a large bright "RETURN TO GAME" button at the specified Y position.
+        /// </summary>
+        private static void DrawReturnBtn(Graphics g, int W, int btnY, out Rectangle rect)
+        {
+            int rbW = 280, rbH = 38;
+            rect = new Rectangle((W - rbW) / 2, btnY, rbW, rbH);
+
+            using (var br = new SolidBrush(Color.FromArgb(230, 200, 60, 20)))
+                g.FillRectangle(br, rect);
+            using (var pen = new Pen(Color.Gold, 3))
+                g.DrawRectangle(pen, rect);
+            using (var bf = new Font("Courier New", 14, FontStyle.Bold))
+            {
+                const string label = "\u25C0  RETURN TO GAME  \u25C0";
+                SizeF sz = g.MeasureString(label, bf);
+                g.DrawString(label, bf, Brushes.White,
+                    rect.X + (rect.Width  - sz.Width)  / 2f,
+                    rect.Y + (rect.Height - sz.Height) / 2f);
+            }
         }
 
         private void DrawRow(Graphics g, Row row, bool sel, int W, ref float y)
@@ -395,11 +449,12 @@ namespace Fridays_Adventure.Scenes
                     {
                         string label = "[ " + row.Label + " ]";
                         SizeF sz = g.MeasureString(label, f);
-                        // Use a green tint for "RESUME GAME" to make it stand out.
+                        // Use a green tint for resume/return buttons to make them stand out.
+                        bool isReturn = row.Label.IndexOf("RESUME", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                                        row.Label.IndexOf("RETURN", StringComparison.OrdinalIgnoreCase) >= 0;
                         Brush br = sel ? Brushes.Yellow
-                                  : row.Label.IndexOf("RESUME", StringComparison.OrdinalIgnoreCase) >= 0
-                                      ? Brushes.LimeGreen
-                                      : Brushes.White;
+                                  : isReturn ? Brushes.LimeGreen
+                                  : Brushes.White;
                         g.DrawString(label, f, br, (W - sz.Width) / 2f, y + 4);
                     }
                     y += 34;
@@ -436,7 +491,13 @@ namespace Fridays_Adventure.Scenes
         /// </summary>
         private static void OpenLogsFolder()
         {
-            string logDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Logs");
+            // Logs may be in the project root or the executable directory
+            string logDir = FindProjectPath("Logs");
+            if (logDir == null)
+            {
+                // Fall back to creating a Logs folder next to the executable
+                logDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Logs");
+            }
             Directory.CreateDirectory(logDir);
             try
             {
@@ -450,7 +511,12 @@ namespace Fridays_Adventure.Scenes
 
         private static void OpenDocumentationFolder()
         {
-            string docsDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "docs");
+            string docsDir = FindProjectPath("docs");
+            if (docsDir == null)
+            {
+                SMB3Hud.ShowToast("Docs folder not found.");
+                return;
+            }
             try
             {
                 Process.Start("explorer.exe", docsDir);
@@ -466,9 +532,20 @@ namespace Fridays_Adventure.Scenes
         private static void OpenWeek10Log() => OpenDocument("docs", "WEEK_10_LOG_TEMPLATE.md");
         private static void OpenReadme() => OpenDocument("README.md");
 
+        /// <summary>
+        /// Opens a document relative to the project root directory.
+        /// Searches upward from the executable directory to find the project
+        /// root (where docs/ or README.md lives).
+        /// </summary>
         private static void OpenDocument(params string[] relativeParts)
         {
-            string fullPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, Path.Combine(relativeParts));
+            string relPath = Path.Combine(relativeParts);
+            string fullPath = FindProjectPath(relPath);
+            if (fullPath == null)
+            {
+                SMB3Hud.ShowToast("File not found: " + relPath);
+                return;
+            }
             try
             {
                 Process.Start(fullPath);
@@ -476,7 +553,27 @@ namespace Fridays_Adventure.Scenes
             catch (Exception ex)
             {
                 DebugLogger.LogError("Options.OpenDocument", ex);
+                SMB3Hud.ShowToast("Cannot open: " + relPath);
             }
+        }
+
+        /// <summary>
+        /// Finds a file or directory relative to the project root by searching
+        /// upward from the executable's base directory.  Returns null if not found.
+        /// </summary>
+        private static string FindProjectPath(string relativePath)
+        {
+            // Start from the executable directory and walk up to find project root
+            string dir = AppDomain.CurrentDomain.BaseDirectory;
+            // Check up to 6 parent directories (covers bin\Debug\netX.Y etc.)
+            for (int i = 0; i < 6 && dir != null; i++)
+            {
+                string candidate = Path.Combine(dir, relativePath);
+                if (File.Exists(candidate) || Directory.Exists(candidate))
+                    return candidate;
+                dir = Path.GetDirectoryName(dir);
+            }
+            return null;
         }
 
         /// <summary>

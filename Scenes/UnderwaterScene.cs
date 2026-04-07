@@ -372,6 +372,9 @@ namespace Fridays_Adventure.Scenes
 
             // Pause and inventory consistent with all other gameplay scenes
             if (Game.Instance.Input.PausePressed) Game.Instance.Scenes.Push(new PauseScene());
+            // C key — Quick Dash (works underwater for a burst of speed)
+            if (Game.Instance.Input.AirDashPressed && _player.TryDash())
+                Game.Instance.Audio.BeepJump();
             if (Game.Instance.Input.InventoryPressed) Game.Instance.Scenes.Push(new InventoryScene(_player));
 
             SMB3Hud.Update(dt);
@@ -387,6 +390,7 @@ namespace Fridays_Adventure.Scenes
             {
                 _player.Y = p.Top - _player.Height;
                 _player.VelocityY = 0; _player.IsGrounded = true;
+                _player.JumpsRemaining = _player.MaxJumps;  // reset for double jump
             }
             else if (ot < ob && _player.VelocityY < 0)
             {

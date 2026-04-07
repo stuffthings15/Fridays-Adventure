@@ -6,6 +6,169 @@
 
 ---
 
+## SESSION 124: Fix Level Transition Screen Numbering (WORLD X-Y)
+
+**Date/Time:** Current Session  
+**Status:** ✅ COMPLETE  
+**Build Status:** ✅ 0 errors, 0 warnings  
+
+### BUG: Level intro cards showed wrong numbers (e.g. "WORLD 4-13")
+- **Root cause:** `LaunchLevel` set `LevelNumber = CurrentLevel` (the raw global counter)
+  instead of computing the level-within-world number
+- `CurrentLevel` increments after every level completion (1, 2, 3, ... 13, 14, ...)
+  so after 12 levels the intro card showed "WORLD 4-13" instead of "WORLD 5-1"
+- The HUD's `WorldLevelLabel` property also used the wrong values
+
+### FIX: Derive WorldNumber and LevelNumber from CurrentLevel
+- Formula: `World = ((cur-1) / 3) + 1`, `Level = ((cur-1) % 3) + 1`
+- Gives proper SMB3-style numbering: 1-1, 1-2, 1-3, 2-1, 2-2, 2-3, 3-1, ...
+- Applied consistently in:
+  - `OverworldScene.LaunchLevel` — level intro card gets correct numbers
+  - `OverworldScene.OnResume` — world-title card triggers at correct boundaries
+  - `Game.ApplySaveData` — load derives world/level from CurrentLevel
+  - `Game.SyncRuntimeToSaveData` — save writes derived values
+  - `Game.UseWarpWhistle` — jumps CurrentLevel to correct position for target world
+
+### Files Changed
+| File | Changes |
+|------|---------|
+| `Scenes/OverworldScene.cs` | `LaunchLevel` computes world/level from CurrentLevel; OnResume world-boundary detection |
+| `Engine/Game.cs` | Load/Save/WarpWhistle all derive world/level from CurrentLevel |
+
+---
+
+## SESSION 123: Return to Game — Large Buttons + Escape Pops to Gameplay
+
+**Date/Time:** Current Session  
+**Status:** ✅ COMPLETE  
+**Build Status:** ✅ 0 errors, 0 warnings  
+
+### FEATURE: Large, bright "RETURN TO GAME" buttons in Options and Inventory
+- **InventoryScene:**
+  - Two large orange-red buttons with gold borders — one at TOP, one at BOTTOM
+  - 320×46 px, Font size 16, white text with ◀ arrows, impossible to miss
+  - Both buttons pop all the way through PauseScene to gameplay
+- **OptionsScene:**
+  - Two large orange-red buttons — TOP (below title) and BOTTOM (above hints)
+  - 280×38 px with gold borders, same bright styling
+  - Both list-row buttons ("RESUME GAME" and "RETURN TO GAME") now green-tinted
+  - Clicking any return button pops through PauseScene to gameplay
+
+### FIX: Escape now returns to gameplay from any menu depth
+- **OptionsScene:** Esc pops Options AND PauseScene beneath it → gameplay
+- **InventoryScene:** Esc/I/Enter pops Inventory AND PauseScene → gameplay
+- Previously, Esc only went back one layer (Options → Pause, not gameplay)
+- Hint text updated: "Esc Return to Game" instead of "Esc Back"
+
+### FIX: PauseScene Inventory now passes active player reference
+- `new InventoryScene(player)` so HP/ICE bars display correctly
+- Uses `GetActiveScenePlayer()` to find the player in the level scene below
+
+### Files Changed
+| File | Changes |
+|------|---------|
+| `Scenes/InventoryScene.cs` | Two large return buttons, PopToGameplay helper, Esc pops through Pause |
+| `Scenes/OptionsScene.cs` | Two large return buttons, DrawReturnBtn helper, Esc/BackBtn pop through Pause |
+| `Scenes/PauseScene.cs` | Inventory launch passes active player reference |
+
+---
+
+## SESSION 122: Fortress Level Content + LevelSceneFactory Fix
+
+**Date/Time:** Current Session  
+**Status:** ✅ COMPLETE  
+**Build Status:** ✅ 0 errors, 0 warnings  
+
+### BUG FIX: Fortress/Overlord level was completely empty
+- FortressScene had platforms, Thwomps, and lava but ZERO enemies, berries, or hazards
+- Added 4 patrol enemies on platforms (scaled difficulty: 30/40/55/65 HP)
+- Added berries (gold coin collectibles) on every platform
+- Added 3 fire sources (visual hazard, melts ice walls near them)
+- Added 1 sea stone zone (suppresses ice abilities on platform 6)
+- Full enemy collision: stomp for 2x damage + bounce, melee attack, dodge/dash immunity
+- FlashFreeze (E) now freezes nearby fortress enemies
+- BreakWall (R) shockwave now damages nearby enemies (was only breaking ice walls)
+- Berry collection properly awards bounty and records to SessionStats
+- All entities scaled with LevelScale (1.5x)
+- EnemyAI got `SetPatrolBounds()` and `PatrolLeft`/`PatrolRight` properties for post-scale updates
+
+### BUG FIX: LevelSceneFactory routed "blockade" to BossScene instead of FortressScene
+- OverworldScene correctly maps blockade → FortressScene, but factory was wrong
+- Fixed factory: "blockade" → FortressScene
+- Added "airship" → AirshipLevelScene routing
+- Added "boss" → BossScene as new explicit ID
+
+### Files Changed
+| File | Changes |
+|------|---------|
+| `Scenes/FortressScene.cs` | Added enemies, berries, fire hazards, sea stone zone, collision, drawing |
+| `AI/EnemyAI.cs` | Added `SetPatrolBounds()`, `PatrolLeft`, `PatrolRight` public members |
+| `Scenes/LevelSceneFactory.cs` | Fixed blockade→FortressScene, added airship routing |
+
+---
+
+## SESSION 121: Bot Air Dash + Double Jump + Options Menu Fixes
+
+**Date/Time:** Current Session  
+**Status:** ✅ COMPLETE  
+**Build Status:** ✅ 0 errors, 0 warnings  
+
+### BUG FIX: Bot could not dash or double jump
+- `Player.TryDash()` existed but was never wired to any input key in any scene
+- `AirDashPressed` (C key) was defined in `InputManager` but never handled
+- Added `AirDashPressed` → `TryDash()` to all 8 gameplay scenes: IslandScene, StormScene, SkyIslandScene, BossScene, WarlordBossScene, FortressScene, AirshipLevelScene, UnderwaterScene
+- Added `ShouldDash` property to `UnifiedComprehensiveBot` — separate from `ShouldDodge` (E key)
+- `BotPlayerController` now injects `Keys.C` when `ShouldDash` is true
+- Bot uses air dash during platforming (while airborne) and combat (after stomp timeout)
+- Bot now sets `ShouldDoubleJump = true` in `RunNormalLogic()` for goal pursuit and default platforming
+
+### BUG FIX: FortressScene and AirshipLevelScene had no double jump
+- Both scenes only allowed jumping while `IsGrounded` — no `JumpsRemaining` check
+- Used raw `Keys.Space`/`Keys.Left` instead of `input.JumpPressed`/`input.LeftHeld` (missed gamepad + bot input)
+- Had no variable jump height cap (release-for-short-hop)
+- Fixed to use `JumpsRemaining`, `input.JumpPressed`/`input.LeftHeld`, and variable height cap
+- Added `JumpsRemaining` reset on landing in both scenes (plus UnderwaterScene)
+
+### BUG FIX: Options menu — CRT/Outline toggles didn't update labels
+- Pressing Enter toggled the setting but the row label still showed old state
+- Changed `ToggleCrtFilter()` and `ToggleOutlineMode()` from static to instance methods
+- Both now call `Rebuild()` after toggling to regenerate row labels
+
+### BUG FIX: SettingsScene master volume caused cumulative degradation
+- `_masterVolume` always reset to 1.0 on enter; if set to 0.5, volumes halved permanently each visit
+- Removed broken master volume concept entirely
+- Music/SFX sliders now use 0–100 integer values matching AudioManager directly
+- Added hold-repeat for smooth slider dragging
+- Values load from and save to AudioManager and SaveData correctly
+
+### BUG FIX: HowToPlayScene was outdated — missing controls
+- Added: Sprint (Shift), Double Jump, Wall Slide, Wall Jump, Quick Dash (C), Frost Ball (B), Ground Pound (Down+Attack), Inventory (I), character-specific abilities (E)
+- Updated game tips to mention double jump and air dash
+
+### BUG FIX: Documentation links silently failed
+- Links used `AppDomain.CurrentDomain.BaseDirectory` (bin\Debug\) — docs aren't there
+- Added `FindProjectPath()` helper that walks up from executable dir to find project root
+- Shows toast notification if file can't be found instead of silent failure
+
+### Files Changed
+| File | Changes |
+|------|---------|
+| `Scenes/IslandScene.cs` | Added `AirDashPressed` → `TryDash()` |
+| `Scenes/StormScene.cs` | Added `AirDashPressed` → `TryDash()` |
+| `Scenes/SkyIslandScene.cs` | Added `AirDashPressed` → `TryDash()` |
+| `Scenes/BossScene.cs` | Added `AirDashPressed` → `TryDash()` |
+| `Scenes/WarlordBossScene.cs` | Added `AirDashPressed` → `TryDash()` |
+| `Scenes/FortressScene.cs` | Fixed jump (JumpsRemaining + JumpPressed), added air dash, reset on landing |
+| `Scenes/AirshipLevelScene.cs` | Fixed jump (JumpsRemaining + JumpPressed), added air dash, reset on landing |
+| `Scenes/UnderwaterScene.cs` | Added air dash, JumpsRemaining reset on landing |
+| `Tests/UnifiedComprehensiveBot.cs` | Added `ShouldDash`, enabled double jump in normal logic, air dash in combat |
+| `Tests/BotPlayerController.cs` | Added `Keys.C` injection for `ShouldDash` |
+| `Scenes/OptionsScene.cs` | Fixed CRT/Outline toggles calling Rebuild(), fixed doc links with FindProjectPath() |
+| `Scenes/SettingsScene.cs` | Removed broken master volume, direct 0–100 integer sliders, hold-repeat |
+| `Scenes/HowToPlayScene.cs` | Added all new controls and updated tips |
+
+---
+
 ## SESSION 120: Demo Enhancement + Miss Friday Mode — Both Systems
 
 **Date/Time:** Current Session  

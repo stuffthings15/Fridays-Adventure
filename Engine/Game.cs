@@ -45,7 +45,7 @@ namespace Fridays_Adventure.Engine
         public string PlayerName           { get; set; } = "";
 
         /// <summary>
-        /// Tracks which numbered level the player is currently on (1–4).
+        /// Tracks which numbered level the player is currently on (1–17).
         /// Increments only when a level is successfully cleared.
         /// </summary>
         public int  CurrentLevel      { get; set; } = 1;
@@ -221,8 +221,11 @@ namespace Fridays_Adventure.Engine
         {
             if (WarpWhistleCount <= 0) return false;
             WarpWhistleCount--;
-            WorldNumber = Math.Max(1, targetWorld);
-            LevelNumber = 1;
+            // Jump CurrentLevel to the start of the target world
+            // so WorldNumber/LevelNumber derive correctly.
+            CurrentLevel = Math.Max(1, (targetWorld - 1) * 3 + 1);
+            WorldNumber  = targetWorld;
+            LevelNumber  = 1;
             LevelJustCompleted = false;
             DebugLogger.LogInfo("Game.UseWarpWhistle", $"Warped to World {WorldNumber}.");
             return true;
@@ -693,8 +696,9 @@ namespace Fridays_Adventure.Engine
 
             // Persisted progression values.
             CurrentLevel = Math.Max(1, loaded.GetInt("runtime.currentLevel", CurrentLevel));
-            WorldNumber  = Math.Max(1, loaded.GetInt("runtime.world", WorldNumber));
-            LevelNumber  = Math.Max(1, loaded.GetInt("runtime.level", LevelNumber));
+            // Derive world/level-within-world from CurrentLevel so they are always consistent.
+            WorldNumber  = ((CurrentLevel - 1) / 3) + 1;
+            LevelNumber  = ((CurrentLevel - 1) % 3) + 1;
             CurrentLives = Math.Max(1, loaded.GetInt("runtime.lives", CurrentLives));
             PWingCount   = Math.Max(0, loaded.GetInt("runtime.pwing", PWingCount));
 
@@ -730,8 +734,9 @@ namespace Fridays_Adventure.Engine
             Save.SfxVolume   = Audio.SfxVolume;
 
             Save.SetInt("runtime.currentLevel", CurrentLevel);
-            Save.SetInt("runtime.world", WorldNumber);
-            Save.SetInt("runtime.level", LevelNumber);
+            // World and level-within-world are always derived from CurrentLevel
+            Save.SetInt("runtime.world", ((CurrentLevel - 1) / 3) + 1);
+            Save.SetInt("runtime.level", ((CurrentLevel - 1) % 3) + 1);
             Save.SetInt("runtime.lives", CurrentLives);
             Save.SetInt("runtime.pwing", PWingCount);
             Save.SetInt("runtime.character", (int)SelectedCharacter);

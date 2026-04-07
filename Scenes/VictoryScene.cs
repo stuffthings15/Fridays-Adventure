@@ -89,7 +89,7 @@ namespace Fridays_Adventure.Scenes
         /// <summary>Returns to the main menu (title screen).</summary>
         private void GoToMenu()
         {
-            Game.Instance.Scenes.Replace(new TitleScene());
+            Game.Instance.Scenes.ReplaceAll(new TitleScene());
         }
 
         /// <summary>

@@ -63,7 +63,7 @@ namespace Fridays_Adventure.Scenes
             if (_elapsed >= MinDisplay && (audioReady || _elapsed >= Timeout))
             {
                 _transitioned = true;
-                Game.Instance.Scenes.Replace(new TitleScene());
+                Game.Instance.Scenes.ReplaceAll(new TitleScene());
             }
         }
 

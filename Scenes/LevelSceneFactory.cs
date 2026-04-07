@@ -49,8 +49,12 @@ namespace Fridays_Adventure.Scenes
                 case "abyss":
                     return new UnderwaterScene();
 
-                // Marine Blockade boss (Garp)
+                // Marine Blockade — Fortress stage (matches OverworldScene routing)
                 case "blockade":
+                    return new FortressScene();
+
+                // Marine boss fight (Garp)
+                case "boss":
                     return new BossScene();
 
                 // Warlord boss fights
@@ -62,6 +66,10 @@ namespace Fridays_Adventure.Scenes
                 // Final centipede boss — uses WarlordBossScene with centipede body segments
                 case "centipede_final":
                     return new WarlordBossScene(WarlordConfig.CentipedeOfTheDeep());
+
+                // Airship / Tempest Strait — auto-scrolling SMB3 airship level
+                case "airship":
+                    return new AirshipLevelScene();
 
                 // All remaining island levels (dino, wano, harbor, tundra)
                 default:

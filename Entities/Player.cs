@@ -243,8 +243,10 @@ namespace Fridays_Adventure.Entities
 
         // ── Constructor ────────────────────────────────────────────────────────
         /// <summary>
-        /// Constructs a Player at world position (x, y) with standard 32×54 dimensions
-        /// and 100 base HP. The active archetype is resolved from Game.Instance so all
+        /// Constructs a Player at world position (x, y) with 48×54 base dimensions
+        /// and 100 base HP. Level scenes scale these by LevelScale (1.5×) to 72×81,
+        /// which fits under platforms spaced 90–140 px above ground.
+        /// The active archetype is resolved from Game.Instance so all
         /// gameplay scenes automatically use the crew screen selection.
         ///
         /// Team 1  (Game Director)       — character identity resolved once for every scene.
@@ -253,7 +255,7 @@ namespace Fridays_Adventure.Entities
         /// Team 13 (Character Artist)    — archetype drives unique DrawPlaceholder visuals.
         /// </summary>
         public Player(float x, float y)
-            : base(x, y, 48, 81, 100)
+            : base(x, y, 48, 54, 100)
         {
             // Resolve archetype from game singleton; fall back to Miss Friday if unavailable.
             Archetype = Game.Instance?.SelectedCharacter ?? PlayableCharacter.MissFriday;

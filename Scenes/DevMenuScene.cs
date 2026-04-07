@@ -33,7 +33,10 @@ namespace Fridays_Adventure.Scenes
         private List<LevelEntry> _levels;
         private int _sel;
         private int _scroll;
-        private const int VisibleRows = 10;
+        private const int VisibleRows = 9;
+        private const int RowHeight  = 46;
+        private const int ListLeft   = 40;
+        private const int ListTop    = 100;
         private Rectangle _scrollUpBtn;
         private Rectangle _scrollDownBtn;
 
@@ -190,12 +193,11 @@ namespace Fridays_Adventure.Scenes
                 return;
             }
 
-            int H = Game.Instance.CanvasHeight;
             int visible = Math.Min(VisibleRows, _levels.Count - _scroll);
             for (int i = 0; i < visible; i++)
             {
-                float top = H * 0.28f + i * 40 - 4;
-                if (p.Y >= top && p.Y < top + 38)
+                float top = ListTop + i * RowHeight;
+                if (p.Y >= top && p.Y < top + RowHeight - 2)
                 {
                     _sel = _scroll + i;
                     ActivateEntry(_levels[_sel]);

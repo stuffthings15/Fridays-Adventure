@@ -308,6 +308,9 @@ namespace Fridays_Adventure.Scenes
                 _player.VelocityY = -120f;
 
             if (input.DodgePressed) _player.TryDodge();
+            // C key — Quick Dash (works grounded or airborne, Team 7 Idea 7)
+            if (input.AirDashPressed && _player.TryDash())
+                Game.Instance.Audio.BeepJump();
             if (input.PausePressed) Game.Instance.Scenes.Push(new PauseScene());
             // I key — quick-open inventory during storm
             if (input.InventoryPressed) Game.Instance.Scenes.Push(new InventoryScene(_player));

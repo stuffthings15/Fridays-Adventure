@@ -5,6 +5,7 @@ using System.Drawing.Drawing2D;
 using Fridays_Adventure.Data;
 using Fridays_Adventure.Engine;
 using Fridays_Adventure.Entities;
+using Fridays_Adventure.Hazards;
 using Fridays_Adventure.Systems;
 
 namespace Fridays_Adventure.Scenes
@@ -50,6 +51,15 @@ namespace Fridays_Adventure.Scenes
 
         // ── Health pickups — placed on mid/high platforms ─────────────────────
         private readonly List<HealthPickup> _healthPickups = new List<HealthPickup>();
+
+        // ── Enemies — fortress guardians patrolling platforms ─────────────────
+        private readonly List<Enemy> _enemies = new List<Enemy>();
+
+        // ── Berries — gold collectibles on platforms ─────────────────────────
+        private readonly List<Berries> _berries = new List<Berries>();
+
+        // ── Hazards — fire sources and sea stone zones ───────────────────────
+        private readonly List<Hazard> _hazards = new List<Hazard>();
 
         // ── Camera ────────────────────────────────────────────────────────────
         private float _cameraY;
@@ -119,6 +129,51 @@ namespace Fridays_Adventure.Scenes
             _healthPickups.Add(new HealthPickup(_platforms[5].X + 80, _platforms[5].Y - 24));
             _healthPickups.Add(new HealthPickup(_platforms[7].X + 100, _platforms[7].Y - 24));
 
+            // ── Enemies — fortress guardians patrol on platforms ──────────────
+            _enemies.Clear();
+            // Platform 1 (H-140): low-level patrol guard
+            _enemies.Add(new Enemy(_platforms[1].X + 20, _platforms[1].Y - 52, 28, 48,
+                maxHp: 30, patrolLeft: _platforms[1].X + 4, patrolRight: _platforms[1].Right - 36));
+            // Platform 3 (H-160): mid guard
+            _enemies.Add(new Enemy(_platforms[3].X + 30, _platforms[3].Y - 52, 28, 48,
+                maxHp: 40, patrolLeft: _platforms[3].X + 4, patrolRight: _platforms[3].Right - 36));
+            // Platform 5 (H-320): high guard — tougher
+            _enemies.Add(new Enemy(_platforms[5].X + 40, _platforms[5].Y - 52, 28, 48,
+                maxHp: 55, patrolLeft: _platforms[5].X + 4, patrolRight: _platforms[5].Right - 36));
+            // Platform 8 (H-400): elite guard near the top
+            _enemies.Add(new Enemy(_platforms[8].X + 20, _platforms[8].Y - 52, 28, 48,
+                maxHp: 65, patrolLeft: _platforms[8].X + 4, patrolRight: _platforms[8].Right - 36));
+            // Assign fortress-themed sprites
+            foreach (var e in _enemies)
+            {
+                e.EnemyType = "Fortress Guard";
+                var spr = SpriteManager.GetScaled("enemy_Garp.png", e.Width, e.Height);
+                if (spr != null) e.Sprite = spr;
+            }
+
+            // ── Berries — gold collectibles on platforms ─────────────────────
+            _berries.Clear();
+            // Scatter berries across platforms to reward exploration
+            for (int i = 1; i < _platforms.Count; i++)
+            {
+                var p = _platforms[i];
+                int count = (i % 2 == 0) ? 3 : 2;
+                float spacing = p.Width / (count + 1f);
+                for (int b = 0; b < count; b++)
+                    _berries.Add(new Berries(p.X + spacing * (b + 1) - 8, p.Y - 20));
+            }
+
+            // ── Hazards — fire sources and sea stone zones ───────────────────
+            _hazards.Clear();
+            // Fire on floor near the entrance (visual + melts ice walls)
+            _hazards.Add(new FireSource(_platforms[0].X + 350, _platforms[0].Y - 40, 36, 40));
+            // Fire on platform 2 (H-200)
+            _hazards.Add(new FireSource(_platforms[2].X + _platforms[2].Width - 44, _platforms[2].Y - 40, 36, 40));
+            // Fire on platform 4 (H-280)
+            _hazards.Add(new FireSource(_platforms[4].X + 10, _platforms[4].Y - 38, 32, 38));
+            // Sea Stone zone on platform 6 (H-400) — suppresses ice abilities
+            _hazards.Add(new SeaStoneZone(_platforms[6].X, _platforms[6].Y - 34, _platforms[6].Width, 34));
+
             // ── Lava tide ─────────────────────────────────────────────────────
             _lavaY = H + 40;  // starts below screen
 
@@ -146,6 +201,36 @@ namespace Fridays_Adventure.Scenes
             _player.Width = (int)(_player.Width * LevelScale);
             _player.Height = (int)(_player.Height * LevelScale);
             _player.ApplySelectedSprite();
+
+            // Scale enemies to match level
+            foreach (var e in _enemies)
+            {
+                e.X *= LevelScale;
+                e.Y *= LevelScale;
+                e.Width  = (int)(e.Width  * LevelScale);
+                e.Height = (int)(e.Height * LevelScale);
+                // Re-set patrol bounds after scaling
+                e.AI.SetPatrolBounds(e.AI.PatrolLeft * LevelScale, e.AI.PatrolRight * LevelScale);
+                var spr = SpriteManager.GetScaled("enemy_Garp.png", e.Width, e.Height);
+                if (spr != null) e.Sprite = spr;
+            }
+
+            // Scale berries
+            foreach (var b in _berries)
+            {
+                b.X *= LevelScale;
+                b.Y *= LevelScale;
+                b.SyncBaseY();
+            }
+
+            // Scale hazards
+            foreach (var h in _hazards)
+            {
+                h.X *= LevelScale;
+                h.Y *= LevelScale;
+                h.Width  = (int)(h.Width  * LevelScale);
+                h.Height = (int)(h.Height * LevelScale);
+            }
         }
         private void AddThwomp(int x, int restY, int dropY)
         {
@@ -163,15 +248,24 @@ namespace Fridays_Adventure.Scenes
             int   H   = Game.Instance.CanvasHeight;
 
             // ── Player movement ───────────────────────────────────────────────
-            bool left  = input.IsHeld(System.Windows.Forms.Keys.Left)  || input.IsHeld(System.Windows.Forms.Keys.A);
-            bool right = input.IsHeld(System.Windows.Forms.Keys.Right) || input.IsHeld(System.Windows.Forms.Keys.D);
-            bool jump  = input.IsPressed(System.Windows.Forms.Keys.Space) || input.IsPressed(System.Windows.Forms.Keys.W);
+            bool left  = input.LeftHeld;
+            bool right = input.RightHeld;
 
             if (left)  _player.VelocityX = -_player.MoveSpeed;
             else if (right) _player.VelocityX = _player.MoveSpeed;
             else _player.VelocityX = 0;
 
-            if (jump && _player.IsGrounded) { _player.VelocityY = _player.JumpForce; _player.IsGrounded = false; }
+            // Double jump support — uses JumpsRemaining (MaxJumps=2)
+            if (input.JumpPressed && _player.JumpsRemaining > 0)
+            {
+                _player.VelocityY = _player.JumpForce;
+                _player.IsGrounded = false;
+                _player.JumpsRemaining--;
+                Game.Instance.Audio.BeepJump();
+            }
+            // Variable jump height — release early for short hop (SMB3-style)
+            if (!input.JumpHeld && _player.VelocityY < -120f)
+                _player.VelocityY = -120f;
 
             // Character abilities (Q/E/R) in fortress map.
             if (input.Ability1Pressed && _player.UseIceWall(out Abilities.IceWallInstance wall))
@@ -182,6 +276,11 @@ namespace Fridays_Adventure.Scenes
             if (input.Ability2Pressed && _player.UseFlashFreeze())
             {
                 _thwompFreezeTimer = _player.GetFlashFreezeDuration(2.0f);
+                // Freeze nearby enemies
+                float freezeSeconds = _player.GetFlashFreezeDuration(2.0f);
+                foreach (var e in _enemies)
+                    if (_player.DistanceTo(e) <= 130f)
+                        e.ApplyEffect(StatusEffect.Frozen, freezeSeconds);
                 Game.Instance.Audio.BeepFreeze();
             }
             if (input.Ability3Pressed && _player.UseBreakWall())
@@ -191,6 +290,9 @@ namespace Fridays_Adventure.Scenes
             }
             // Pause and inventory consistent with all other gameplay scenes
             if (input.PausePressed) Game.Instance.Scenes.Push(new PauseScene());
+            // C key — Quick Dash (works grounded or airborne, Team 7 Idea 7)
+            if (input.AirDashPressed && _player.TryDash())
+                Game.Instance.Audio.BeepJump();
             if (input.InventoryPressed) Game.Instance.Scenes.Push(new InventoryScene(_player));
 
             _player.Update(dt);
@@ -222,6 +324,100 @@ namespace Fridays_Adventure.Scenes
                     PowerUpInventory.AddHealthItem(1);
                     Game.Instance.FloatingText.Spawn("+1 MEDKIT", p.X, p.Y - 16, Color.LimeGreen, large: false);
                     Game.Instance.Audio.BeepHeal();
+                }
+            }
+
+            // ── Enemy AI + collision ─────────────────────────────────────────
+            for (int i = _enemies.Count - 1; i >= 0; i--)
+            {
+                var e = _enemies[i];
+                if (!e.IsAlive) { _enemies.RemoveAt(i); continue; }
+
+                e.UpdateWithTarget(dt, _player);
+                e.X += e.VelocityX * dt;
+                // Keep enemies on their platforms
+                e.Y += e.VelocityY * dt;
+
+                // Resolve enemy on platforms
+                foreach (var plat in _platforms)
+                {
+                    var er = new Rectangle((int)e.X, (int)e.Y, e.Width, e.Height);
+                    if (!er.IntersectsWith(plat)) continue;
+                    if ((er.Bottom - plat.Top) < (plat.Bottom - er.Top) && e.VelocityY > 0)
+                    {
+                        e.Y = plat.Top - e.Height;
+                        e.VelocityY = 0f;
+                        e.IsGrounded = true;
+                    }
+                }
+
+                // Player-enemy collision
+                var playerR = new Rectangle((int)_player.X, (int)_player.Y, _player.Width, _player.Height);
+                var enemyR  = new Rectangle((int)e.X, (int)e.Y, e.Width, e.Height);
+                if (playerR.IntersectsWith(enemyR))
+                {
+                    // Stomp check: player falling onto enemy's head
+                    bool isStomping = _player.VelocityY > 0 && _player.Y + _player.Height < e.Y + e.Height * 0.5f;
+                    if (isStomping)
+                    {
+                        e.TakeDamage(_player.AttackDamage * 2);  // 2x stomp damage
+                        _player.VelocityY = _player.JumpForce * 0.6f;  // bounce
+                        Game.Instance.Audio.BeepAttack();
+                        Game.Instance.FloatingText.Spawn("STOMP!", e.X, e.Y - 12, Color.Gold, large: false);
+                        SessionStats.Instance.RecordEnemyDefeated();
+                    }
+                    else if (!_player.HasEffect(StatusEffect.Dodging) &&
+                             !_player.IsDashing)
+                    {
+                        _player.TakeDamage(e.AttackDamage);
+                    }
+                }
+
+                // Melee attack hit check
+                if (_player.IsAttacking)
+                {
+                    var atkBox = _player.AttackHitbox;
+                    if (atkBox.IntersectsWith(enemyR))
+                    {
+                        e.TakeDamage(_player.AttackDamage);
+                        Game.Instance.Audio.BeepAttack();
+                        SessionStats.Instance.RecordEnemyDefeated();
+                    }
+                }
+
+                // Lava kills enemies too
+                if (e.Y + e.Height > _lavaY)
+                    e.TakeDamage(999);
+            }
+
+            // ── Berry collection ─────────────────────────────────────────────
+            for (int i = _berries.Count - 1; i >= 0; i--)
+            {
+                _berries[i].Update(dt);
+                if (!_berries[i].Collected && _player.Hitbox.IntersectsWith(_berries[i].Hitbox))
+                {
+                    _berries[i].Collected = true;
+                    Game.Instance.TotalBerriesCollected++;
+                    BountySystem.Award(_berries[i].Value);
+                    Game.Instance.Audio.BeepBerry();
+                    SessionStats.Instance.RecordBerry(_berries[i].Value);
+                    Game.Instance.FloatingText.Spawn("+10", _berries[i].X, _berries[i].Y - 8, Color.Gold, large: false);
+                }
+            }
+
+            // ── Hazard update ────────────────────────────────────────────────
+            foreach (var hz in _hazards)
+            {
+                hz.Update(dt);
+                // Check if fire melts any nearby ice walls
+                if (hz is FireSource fire)
+                {
+                    for (int i = _iceWalls.Count - 1; i >= 0; i--)
+                    {
+                        var w = _iceWalls[i];
+                        if (w.IsAlive && fire.IsNear(w.X + w.Width / 2f, w.Y + w.Height / 2f))
+                            _iceWalls[i].Update(dt, nearFire: true);
+                    }
                 }
             }
 
@@ -313,6 +509,7 @@ namespace Fridays_Adventure.Scenes
                 _player.Y       = p.Top - _player.Height;
                 _player.VelocityY  = 0f;
                 _player.IsGrounded = true;
+                _player.JumpsRemaining = _player.MaxJumps;  // reset for double jump
             }
             else if (overlapTop < overlapBottom && _player.VelocityY < 0)
             {
@@ -416,6 +613,16 @@ namespace Fridays_Adventure.Scenes
             foreach (var wall in _iceWalls)
                 if (wall.IsAlive) wall.Draw(g);
 
+            // ── Enemies ──────────────────────────────────────────────────────
+            foreach (var e in _enemies)
+                if (e.IsAlive) e.Draw(g);
+
+            // ── Berries ──────────────────────────────────────────────────────
+            foreach (var b in _berries) b.Draw(g);
+
+            // ── Hazards (fire sources, sea stone zones) ──────────────────────
+            foreach (var hz in _hazards) hz.Draw(g);
+
             // ── Health pickups ────────────────────────────────────────────────
             foreach (var p in _healthPickups) p.Draw(g);
 
@@ -493,15 +700,27 @@ namespace Fridays_Adventure.Scenes
 
         private void BreakNearbyWalls()
         {
+            const float range = 200f;
             for (int i = _iceWalls.Count - 1; i >= 0; i--)
             {
                 var wall = _iceWalls[i];
                 if (!wall.IsAlive) continue;
                 float dx = _player.CenterX - (wall.X + wall.Width / 2f);
                 float dy = _player.CenterY - (wall.Y + wall.Height / 2f);
-                if (Math.Sqrt(dx * dx + dy * dy) <= 70f)
+                if (Math.Sqrt(dx * dx + dy * dy) <= range)
+                {
                     wall.Health = 0;
+                    Game.Instance.FloatingText.Spawn(
+                        "SMASH!",
+                        (int)(wall.X + wall.Width / 2f),
+                        (int)wall.Y,
+                        Color.OrangeRed, large: true);
+                }
             }
+            // Shockwave damages nearby enemies
+            foreach (var e in _enemies)
+                if (e.IsAlive && _player.DistanceTo(e) <= 120f)
+                    e.TakeDamage(_player.BreakWallShockwaveDamage);
         }
     }
 }

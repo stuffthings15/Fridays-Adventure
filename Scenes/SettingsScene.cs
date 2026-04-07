@@ -21,63 +21,61 @@ namespace Fridays_Adventure.Scenes
     /// </summary>
     public sealed class SettingsScene : Scene
     {
-        private float _masterVolume = 1.0f;
-        private float _musicVolume = 0.7f;
-        private float _sfxVolume = 0.9f;
+        // Volume values stored as 0–100 integers matching AudioManager
+        private int _musicVolume = 70;
+        private int _sfxVolume   = 90;
 
         private Rectangle _backButton;
-        private Rectangle _volumeMasterSlider;
         private Rectangle _volumeMusicSlider;
         private Rectangle _volumeSfxSlider;
 
-        private int _selectedOption = 0;  // 0=Master, 1=Music, 2=SFX, 3=Back
+        private int _selectedOption = 0;  // 0=Music, 1=SFX, 2=Back
         private float _animTime = 0f;
-        private string _status = "Use arrow keys to navigate, [Enter] to adjust, [Esc] to back";
+        private string _status = "Use arrow keys to navigate, Left/Right to adjust, Esc to back";
+
+        // Hold-repeat for smooth slider dragging
+        private float _sliderRepeat;
+        private const float SliderRate = 0.08f;
 
         public override void OnEnter()
         {
-            // Load current settings from config
+            // Load current settings from AudioManager
             LoadSettings();
             CalculateLayout();
-            Game.Instance.Audio.ContinueOrPlay("overworld");  // Continue ambient music
         }
 
         public override void OnExit()
         {
-            // Automatically saves on exit
+            // Persist on exit
             SaveSettings();
         }
 
         /// <summary>
-        /// Loads current settings from Game configuration
+        /// Loads current volume settings from the AudioManager.
         /// </summary>
         private void LoadSettings()
         {
-            // Load from game's audio manager (already has volume settings)
-            _masterVolume = 1.0f;
-            _musicVolume = Game.Instance.Audio.MusicVolume / 100f;  // Convert from 0-100 to 0-1
-            _sfxVolume = Game.Instance.Audio.SfxVolume / 100f;      // Convert from 0-100 to 0-1
+            _musicVolume = Game.Instance.Audio.MusicVolume;
+            _sfxVolume   = Game.Instance.Audio.SfxVolume;
         }
 
         /// <summary>
-        /// Saves current settings to the AudioManager and persists them to SaveData
-        /// so they survive a game restart.
-        /// Master volume is applied as a multiplier over both music and SFX.
+        /// Applies current slider values to the AudioManager and persists
+        /// them to SaveData so they survive a game restart.
         /// </summary>
         private void SaveSettings()
         {
             if (Game.Instance.Audio == null) return;
 
-            // Master volume scales both channels proportionally (0–1 × 0–1 × 100 = final %)
-            Game.Instance.Audio.SetMusicVolume((int)(_musicVolume * _masterVolume * 100));
-            Game.Instance.Audio.SetSfxVolume((int)(_sfxVolume   * _masterVolume * 100));
+            Game.Instance.Audio.SetMusicVolume(_musicVolume);
+            Game.Instance.Audio.SetSfxVolume(_sfxVolume);
 
             // Persist to SaveData so volumes survive a restart
             var save = Game.Instance.Save;
             if (save != null)
             {
-                save.MusicVolume = Game.Instance.Audio.MusicVolume;
-                save.SfxVolume   = Game.Instance.Audio.SfxVolume;
+                save.MusicVolume = _musicVolume;
+                save.SfxVolume   = _sfxVolume;
                 save.Save();
             }
         }
@@ -99,9 +97,8 @@ namespace Fridays_Adventure.Scenes
             int startY = H / 3;
             int spacing = 60;
 
-            _volumeMasterSlider = new Rectangle(sliderX, startY, sliderW, sliderH);
-            _volumeMusicSlider = new Rectangle(sliderX, startY + spacing, sliderW, sliderH);
-            _volumeSfxSlider = new Rectangle(sliderX, startY + spacing * 2, sliderW, sliderH);
+            _volumeMusicSlider = new Rectangle(sliderX, startY, sliderW, sliderH);
+            _volumeSfxSlider   = new Rectangle(sliderX, startY + spacing, sliderW, sliderH);
 
             // Back button
             _backButton = new Rectangle(W / 2 - 75, H - 80, 150, 40);
@@ -111,24 +108,34 @@ namespace Fridays_Adventure.Scenes
         {
             _animTime += dt;
 
-            // Navigation: Arrow keys to select option
+            // Navigation: Arrow keys to select option (3 options: 0=Music, 1=SFX, 2=Back)
             if (Game.Instance.Input.IsPressed(System.Windows.Forms.Keys.Up))
             {
-                _selectedOption = (_selectedOption - 1 + 4) % 4;
+                _selectedOption = (_selectedOption - 1 + 3) % 3;
             }
             if (Game.Instance.Input.IsPressed(System.Windows.Forms.Keys.Down))
             {
-                _selectedOption = (_selectedOption + 1) % 4;
+                _selectedOption = (_selectedOption + 1) % 3;
             }
 
-            // Adjust volume with Left/Right arrows
-            if (Game.Instance.Input.IsPressed(System.Windows.Forms.Keys.Left))
+            // Adjust volume with Left/Right arrows (with hold-repeat)
+            if (_selectedOption < 2)  // Only for slider rows
             {
-                AdjustSelectedVolume(-0.1f);
+                bool left  = Game.Instance.Input.IsPressed(System.Windows.Forms.Keys.Left)
+                          || (_sliderRepeat <= 0 && Game.Instance.Input.LeftHeld);
+                bool right = Game.Instance.Input.IsPressed(System.Windows.Forms.Keys.Right)
+                          || (_sliderRepeat <= 0 && Game.Instance.Input.RightHeld);
+                _sliderRepeat -= dt;
+                if (left || right)
+                {
+                    _sliderRepeat = SliderRate;
+                    int delta = left ? -5 : 5;
+                    AdjustSelectedVolume(delta);
+                }
             }
-            if (Game.Instance.Input.IsPressed(System.Windows.Forms.Keys.Right))
+            else
             {
-                AdjustSelectedVolume(0.1f);
+                _sliderRepeat = 0;
             }
 
             // Back button or Escape
@@ -140,7 +147,7 @@ namespace Fridays_Adventure.Scenes
             }
 
             // Enter key selects back button
-            if (Game.Instance.Input.InteractPressed && _selectedOption == 3)
+            if (Game.Instance.Input.InteractPressed && _selectedOption == 2)
             {
                 SaveSettings();
                 Game.Instance.Scenes.Pop();
@@ -148,25 +155,22 @@ namespace Fridays_Adventure.Scenes
         }
 
         /// <summary>
-        /// Adjust the volume of the currently selected option
+        /// Adjust the volume of the currently selected slider by delta (±5).
+        /// Applies immediately so the user hears the change in real time.
         /// </summary>
-        private void AdjustSelectedVolume(float delta)
+        private void AdjustSelectedVolume(int delta)
         {
             switch (_selectedOption)
             {
-                case 0:  // Master Volume
-                    _masterVolume = Math.Max(0f, Math.Min(1f, _masterVolume + delta));
+                case 0:  // Music Volume
+                    _musicVolume = Math.Max(0, Math.Min(100, _musicVolume + delta));
+                    Game.Instance.Audio.SetMusicVolume(_musicVolume);
                     break;
-                case 1:  // Music Volume
-                    _musicVolume = Math.Max(0f, Math.Min(1f, _musicVolume + delta));
-                    break;
-                case 2:  // SFX Volume
-                    _sfxVolume = Math.Max(0f, Math.Min(1f, _sfxVolume + delta));
+                case 1:  // SFX Volume
+                    _sfxVolume = Math.Max(0, Math.Min(100, _sfxVolume + delta));
+                    Game.Instance.Audio.SetSfxVolume(_sfxVolume);
                     break;
             }
-
-            // Apply immediately for audio preview
-            SaveSettings();
         }
 
         public override void Draw(Graphics g)
@@ -190,13 +194,12 @@ namespace Fridays_Adventure.Scenes
                 g.DrawString(title, f, Brushes.LimeGreen, W / 2 - titleSize.Width / 2, H / 4 + 20);
             }
 
-            // Draw volume sliders
-            DrawVolumeOption(g, "Master Volume", _volumeMasterSlider, _masterVolume, 0);
-            DrawVolumeOption(g, "Music Volume", _volumeMusicSlider, _musicVolume, 1);
-            DrawVolumeOption(g, "SFX Volume", _volumeSfxSlider, _sfxVolume, 2);
+            // Draw volume sliders (0–100 integer scale)
+            DrawVolumeOption(g, "Music Volume", _volumeMusicSlider, _musicVolume / 100f, 0);
+            DrawVolumeOption(g, "SFX Volume",   _volumeSfxSlider,   _sfxVolume   / 100f, 1);
 
             // Draw back button
-            DrawButton(g, _backButton, "BACK", _selectedOption == 3);
+            DrawButton(g, _backButton, "BACK", _selectedOption == 2);
 
             // Draw status message
             using (var f = new Font("Courier New", 9, FontStyle.Regular))
@@ -207,7 +210,7 @@ namespace Fridays_Adventure.Scenes
             // Draw help text
             using (var f = new Font("Courier New", 10, FontStyle.Bold))
             {
-                g.DrawString("← → to adjust  |  ↑ ↓ to select  |  [Esc] to back", f, Brushes.Yellow, W / 2 - 200, H / 2 + 80);
+                g.DrawString("\u2190 \u2192 to adjust  |  \u2191 \u2193 to select  |  [Esc] to back", f, Brushes.Yellow, W / 2 - 200, H / 2 + 80);
             }
         }
 

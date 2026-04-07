@@ -220,6 +220,9 @@ namespace Fridays_Adventure.Scenes
             }
             // Pause and inventory consistent with all other gameplay scenes
             if (input.PausePressed) Game.Instance.Scenes.Push(new PauseScene());
+            // C key — Quick Dash (works grounded or airborne, Team 7 Idea 7)
+            if (input.AirDashPressed && _player.TryDash())
+                Game.Instance.Audio.BeepJump();
             if (input.InventoryPressed) Game.Instance.Scenes.Push(new InventoryScene(_player));
         }
 

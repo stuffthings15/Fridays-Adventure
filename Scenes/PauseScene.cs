@@ -55,7 +55,11 @@ namespace Fridays_Adventure.Scenes
                 case 0: Game.Instance.Scenes.Pop(); break;
                 case 1: Game.Instance.Scenes.Push(new OptionsScene()); break;
                 case 2: Game.Instance.Scenes.Push(new HowToPlayScene()); break;
-                case 3: Game.Instance.Scenes.Push(new InventoryScene()); break; // Inventory
+                case 3:
+                    // Pass the active player reference so health/ICE display works
+                    var player = Game.Instance.GetActiveScenePlayer();
+                    Game.Instance.Scenes.Push(new InventoryScene(player));
+                    break;
                 case 4:
                     Game.Instance.SyncRuntimeToSaveData();
                     Game.Instance.Save.SaveJson();
@@ -64,18 +68,15 @@ namespace Fridays_Adventure.Scenes
                 case 5:
                     Game.Instance.ApplySaveData(SaveData.LoadJson());
                     SMB3Hud.ShowToast($"Loaded JSON: {SaveData.JsonSavePath}");
-                    Game.Instance.Scenes.Replace(new OverworldScene());
+                    Game.Instance.Scenes.ReplaceAll(new OverworldScene());
                     break;
                 case 6:
                     Game.Instance.SyncRuntimeToSaveData();
                     Game.Instance.Save.Save();
-                    while (Game.Instance.Scenes.Current != null &&
-                           !(Game.Instance.Scenes.Current is OverworldScene))
-                        Game.Instance.Scenes.Pop();
-                    if (Game.Instance.Scenes.Current == null)
-                        Game.Instance.Scenes.Replace(new TitleScene());
+                    // Clear the entire stack and go to the overworld map cleanly
+                    Game.Instance.Scenes.ReplaceAll(new OverworldScene());
                     break;
-                case 7: Game.Instance.Scenes.Replace(new TitleScene()); break;
+                case 7: Game.Instance.Scenes.ReplaceAll(new TitleScene()); break;
             }
         }
 

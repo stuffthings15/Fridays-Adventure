@@ -253,6 +253,13 @@ namespace Fridays_Adventure.Tests
                     input.InjectPressed(Keys.E);  // E = WingDash / TidalSlam / FlashFreeze
                 }
 
+                // Quick Dash (C key) — horizontal burst dash, works in the air.
+                // Separate from the E-key character ability; has its own cooldown.
+                if (_comprehensiveBot.ShouldDash)
+                {
+                    input.InjectPressed(Keys.C);  // C = TryDash (air-usable, 0.6s cooldown)
+                }
+
                 // Ice Wall climb (Q key) — bot places a wall to step up to elevated items.
                 // Q goes through the normal UseIceWall() path with cooldown + energy checks,
                 // exactly as a human would press it.

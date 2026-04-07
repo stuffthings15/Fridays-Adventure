@@ -29,6 +29,20 @@ namespace Fridays_Adventure.AI
             _patrolRight = right;
         }
 
+        /// <summary>
+        /// Updates the patrol boundary positions (used after level scaling).
+        /// </summary>
+        public void SetPatrolBounds(float left, float right)
+        {
+            _patrolLeft  = left;
+            _patrolRight = right;
+        }
+
+        /// <summary>Current left patrol boundary.</summary>
+        public float PatrolLeft  => _patrolLeft;
+        /// <summary>Current right patrol boundary.</summary>
+        public float PatrolRight => _patrolRight;
+
         public void Update(float dt, Character target)
         {
             if (!_owner.IsAlive) { _state = AIState.Dead; return; }

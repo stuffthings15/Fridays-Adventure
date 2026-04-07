@@ -48,14 +48,14 @@ namespace Fridays_Adventure.Scenes
             var input = Game.Instance.Input;
             if (_timer > 2f &&
                 (input.InteractPressed || input.AttackPressed || input.JumpPressed))
-                Game.Instance.Scenes.Replace(new TitleScene());
+                Game.Instance.Scenes.ReplaceAll(new TitleScene());
         }
 
         public override void HandleClick(Point p)
         {
             if (HandleDevMenuClick(p)) return;
             if (_timer > 2f)
-                Game.Instance.Scenes.Replace(new TitleScene());
+                Game.Instance.Scenes.ReplaceAll(new TitleScene());
         }
 
         public override void Draw(Graphics g)

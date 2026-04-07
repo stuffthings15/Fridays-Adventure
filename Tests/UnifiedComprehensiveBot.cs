@@ -161,6 +161,15 @@ namespace Fridays_Adventure.Tests
         public bool   ShouldDodge       { get; private set; }
 
         /// <summary>
+        /// True when the bot wants to perform a quick dash (C key) this frame.
+        /// The dash works both grounded and airborne, grants i-frames, and
+        /// has a short cooldown (0.6 s).  Used for closing distance in combat,
+        /// escaping hazards, and extending air movement over gaps.
+        /// </summary>
+        /// <remarks>PHASE 2 - Air dash + reusable dash support</remarks>
+        public bool   ShouldDash        { get; private set; }
+
+        /// <summary>
         /// True when the bot wants to fire a Frost Ball (B key) this frame.
         /// Used as a ranged attack against enemies and bosses beyond melee range.
         /// </summary>
@@ -275,6 +284,7 @@ namespace Fridays_Adventure.Tests
             ShouldMoveRight   = true;
             ShouldMoveLeft    = false;
             ShouldDodge       = false;
+            ShouldDash        = false;
             ShouldFrostBall   = false;
             ShouldSwimDown    = false;
             ShouldUseIceWall  = false;
@@ -1053,13 +1063,19 @@ namespace Fridays_Adventure.Tests
                 ShouldMoveLeft  = dist < -20f;
 
                 // Periodic jump to clear raised platforms and small gaps.
+                // Double-jump for extra height to reach elevated platforms.
                 // Only jump when ground exists ahead so we don't launch into pits.
                 // (Pit/ledge detection is also handled by the universal check in Update.)
                 if (_jumpTimer >= JUMP_INTERVAL && HasGroundAhead(EDGE_PROBE_FAR))
                 {
-                    ShouldJump  = true;
-                    _jumpTimer  = 0f;
+                    ShouldJump       = true;
+                    ShouldDoubleJump = true;
+                    _jumpTimer       = 0f;
                 }
+
+                // Air dash to cover ground faster while airborne
+                if (!_player.IsGrounded && !_player.IsDashing)
+                    ShouldDash = true;
 
                 // Collect nearby items on the way (within 80 px)
                 TryCollectNearbyItems(80f, suppressMovement: false);
@@ -1077,11 +1093,18 @@ namespace Fridays_Adventure.Tests
             ShouldMoveRight = true;
             // Only jump when the ground ahead is confirmed safe — prevents
             // blind periodic jumps from launching the bot into death pits.
+            // Double-jump for extra clearance over obstacles and to reach
+            // elevated platforms.
             if (_jumpTimer >= JUMP_INTERVAL && HasGroundAhead(EDGE_PROBE_FAR))
             {
-                ShouldJump  = true;
-                _jumpTimer  = 0f;
+                ShouldJump       = true;
+                ShouldDoubleJump = true;
+                _jumpTimer       = 0f;
             }
+
+            // Air dash while airborne to cover horizontal distance faster
+            if (!_player.IsGrounded && !_player.IsDashing)
+                ShouldDash = true;
 
             // Emergency fall recovery — if near the bottom of the screen,
             // mash jump and press into the nearest wall for a wall-kick.
@@ -1354,17 +1377,20 @@ namespace Fridays_Adventure.Tests
                 ShouldFrostBall = true;
             }
 
-            // After 1 s of failed stomping, trigger the character dash ability via
-            // the normal E-key input path — same as a human pressing E.
-            // Never call _player.TryDash() directly; that bypasses ability checks and awards
-            // i-frames the human player would not get outside the normal system.
+            // After 1 s of failed stomping, use quick dash (C key) to burst
+            // through the enemy with i-frames, and fire the character ability
+            // (E key) as well for maximum damage/effect.  Both work in the air.
             if (combatDuration >= COMBAT_DASH_TIMEOUT && target.IsAlive)
             {
-                ShouldDodge = true;   // BotPlayerController will inject Keys.E this frame
+                ShouldDash  = true;   // C key — quick dash with i-frames (air-usable)
+                ShouldDodge = true;   // E key — character ability (WingDash/TidalSlam/Freeze)
                 LogEvent("COMBAT_DASH",
-                    $"Enemy alive after {combatDuration:F1}s — pressing E to dash through");
+                    $"Enemy alive after {combatDuration:F1}s — dashing (C) + ability (E)");
                 _combatStartTime = _elapsedTime;
             }
+
+            // Also use double jump during combat to reach enemy heads for stomps
+            ShouldDoubleJump = true;
         }
 
         // ══════════════════════════════════════════════════════════════════

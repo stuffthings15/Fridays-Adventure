@@ -41,6 +41,10 @@ namespace Fridays_Adventure.Scenes
         private float _completeTimer;
         private Rectangle _exitZone;
 
+        // Guard: skip combat on the first frame so the player never dies before
+        // the level is visible (prevents instant Game Over on entry).
+        private bool _firstFrameDone;
+
         private Bitmap _bg;
         private static readonly Font       _hud       = new Font("Courier New", 9, FontStyle.Bold);
         private static readonly Font       _hud8      = new Font("Courier New", 8);
@@ -142,6 +146,11 @@ namespace Fridays_Adventure.Scenes
             _player.MoveSpeed = 290f;
             _player.JumpForce = -520f;
             _player.ApplySelectedSprite();
+
+            // Ensure full health on entry — guards against stale state from a previous session
+            _player.Health = _player.MaxHealth;
+            _player.GrantInvincibility(0.5f);
+            _firstFrameDone = false;
         }
 
         // ── Update ────────────────────────────────────────────────────────────
@@ -164,6 +173,7 @@ namespace Fridays_Adventure.Scenes
             CollectBerries();
             CheckExit();
             UpdateCamera();
+            _firstFrameDone = true;
         }
 
         private void UpdateWind(float dt)
@@ -221,6 +231,9 @@ namespace Fridays_Adventure.Scenes
             }
             if (input.Ability3Pressed && _player.UseBreakWall())
             { BreakNearbyWalls(); Game.Instance.Audio.BeepBreak(); }
+            // C key — Quick Dash (works grounded or airborne, Team 7 Idea 7)
+            if (input.AirDashPressed && _player.TryDash())
+                Game.Instance.Audio.BeepJump();
             if (input.PausePressed) Game.Instance.Scenes.Push(new PauseScene());
             // ── I key — quick-open inventory during gameplay ──────────────────
             if (input.InventoryPressed) Game.Instance.Scenes.Push(new InventoryScene(_player));
@@ -395,7 +408,11 @@ namespace Fridays_Adventure.Scenes
                     Game.Instance.Audio.BeepHurt();
                 }
             }
-            if (!_player.IsAlive) { SessionStats.Instance.RecordDeath(); Game.Instance.Scenes.Replace(new GameOverScene()); }
+            if (!_player.IsAlive && _firstFrameDone)
+            {
+                SessionStats.Instance.RecordDeath();
+                Game.Instance.Scenes.Replace(new GameOverScene(() => new SkyIslandScene()));
+            }
         }
 
         /// <summary>

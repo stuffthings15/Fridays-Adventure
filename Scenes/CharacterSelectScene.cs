@@ -187,7 +187,7 @@ namespace Fridays_Adventure.Scenes
                 if (_onConfirmOverride != null)
                     Game.Instance.Scenes.Pop();   // return to Dev Menu
                 else
-                    Game.Instance.Scenes.Replace(new TitleScene());
+                    Game.Instance.Scenes.ReplaceAll(new TitleScene());
             }
         }
 

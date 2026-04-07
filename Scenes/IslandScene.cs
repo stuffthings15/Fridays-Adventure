@@ -1484,6 +1484,15 @@ namespace Fridays_Adventure.Scenes
                     Game.Instance.Audio.BeepFireball(); // reuse fireball sound
                 }
             }
+
+            // ── C — Quick Dash (works grounded or airborne) ───────────────────
+            // Team 7 (Gameplay Programmer) — Idea 7: horizontal burst dash.
+            // Grants i-frames and moves the player rapidly in the facing direction.
+            if (input.AirDashPressed)
+            {
+                if (_player.TryDash())
+                    Game.Instance.Audio.BeepJump();
+            }
         }
 
         /// <summary>

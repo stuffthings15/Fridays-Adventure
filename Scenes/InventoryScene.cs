@@ -33,6 +33,11 @@ namespace Fridays_Adventure.Scenes
         private Rectangle _useHealthBtn;
         private Rectangle _useReserveBtn;
 
+        /// <summary>Clickable "Return to Game" button drawn at the top of the screen.</summary>
+        private Rectangle _returnBtnTop;
+        /// <summary>Clickable "Return to Game" button drawn at the bottom of the screen.</summary>
+        private Rectangle _returnBtnBottom;
+
         public override void OnEnter() { }
         public override void OnExit()  { }
 
@@ -69,10 +74,17 @@ namespace Fridays_Adventure.Scenes
                 }
             }
 
-            // Close inventory on Esc, I, or Enter
+            // Close inventory on Esc, I, or Enter — pop all the way to gameplay
             if (input.PausePressed || input.InteractPressed ||
                 input.IsPressed(System.Windows.Forms.Keys.I))
+            {
+                // Pop this scene first
                 Game.Instance.Scenes.Pop();
+                // If PauseScene is now on top, pop it too so the player returns to gameplay
+                if (Game.Instance.Scenes.Current is PauseScene)
+                    Game.Instance.Scenes.Pop();
+                return;
+            }
         }
 
         public override void HandleClick(Point p)
@@ -108,8 +120,15 @@ namespace Fridays_Adventure.Scenes
                 return;
             }
 
+            // Return to Game buttons (top or bottom)
+            if (_returnBtnTop.Contains(p) || _returnBtnBottom.Contains(p))
+            {
+                PopToGameplay();
+                return;
+            }
+
             // Click elsewhere to close
-            Game.Instance.Scenes.Pop();
+            PopToGameplay();
         }
 
         // ── Draw ─────────────────────────────────────────────────────────────
@@ -126,7 +145,10 @@ namespace Fridays_Adventure.Scenes
             // ── Title ────────────────────────────────────────────────────────
             const string title = "INVENTORY";
             SizeF tsz = g.MeasureString(title, _titleFont);
-            g.DrawString(title, _titleFont, Brushes.Gold, (W - tsz.Width) / 2f, 16);
+            g.DrawString(title, _titleFont, Brushes.Gold, (W - tsz.Width) / 2f, 8);
+
+            // ── Return to Game button — TOP (always visible) ─────────────────
+            DrawReturnButton(g, W, H, isTop: true);
 
             // ── Layout: two columns ──────────────────────────────────────────
             int colW   = (W - 60) / 2;
@@ -243,14 +265,59 @@ namespace Fridays_Adventure.Scenes
             DrawLabelValue(g, rightX, ref ry, "Active", charName, Brushes.White);
             DrawLabelValue(g, rightX, ref ry, "Player", Game.Instance.PlayerName, Brushes.LightGray);
 
+            // ── Return to Game button — BOTTOM (large, bright) ─────────────
+            DrawReturnButton(g, W, H, isTop: false);
+
             // ── Control hints ────────────────────────────────────────────────
-            g.DrawString("[Esc / I / Enter] Close   [H] Medkit   [R] Reserve Item",
-                _hintFont, Brushes.DimGray, W / 2 - 220, H - 24);
+            g.DrawString("[Esc] Return to Game   [H] Medkit   [R] Reserve Item",
+                _hintFont, Brushes.DimGray, W / 2 - 220, H - 20);
 
             DrawDevMenuButton(g);
         }
 
         // ── Drawing helpers ──────────────────────────────────────────────────
+
+        /// <summary>
+        /// Pops this scene and any PauseScene beneath it so the player
+        /// returns directly to gameplay instead of just one menu layer.
+        /// </summary>
+        private void PopToGameplay()
+        {
+            Game.Instance.Scenes.Pop();
+            if (Game.Instance.Scenes.Current is PauseScene)
+                Game.Instance.Scenes.Pop();
+        }
+
+        /// <summary>
+        /// Draws a large, bright "RETURN TO GAME" button. Called twice —
+        /// once at the top of the inventory and once at the bottom —
+        /// so there is always a visible exit no matter where the user looks.
+        /// </summary>
+        private void DrawReturnButton(Graphics g, int W, int H, bool isTop)
+        {
+            int rbW = 320, rbH = 46;
+            int rbX = (W - rbW) / 2;
+            int rbY = isTop ? 38 : H - 76;
+            var rect = new Rectangle(rbX, rbY, rbW, rbH);
+
+            // Store reference so HandleClick can detect it
+            if (isTop) _returnBtnTop = rect;
+            else       _returnBtnBottom = rect;
+
+            // Bright orange-red fill so it's impossible to miss
+            using (var br = new SolidBrush(Color.FromArgb(230, 200, 60, 20)))
+                g.FillRectangle(br, rect);
+            using (var pen = new Pen(Color.Gold, 3))
+                g.DrawRectangle(pen, rect);
+            using (var bf = new Font("Courier New", 16, FontStyle.Bold))
+            {
+                const string label = "\u25C0  RETURN TO GAME  \u25C0";
+                SizeF sz = g.MeasureString(label, bf);
+                g.DrawString(label, bf, Brushes.White,
+                    rect.X + (rect.Width  - sz.Width)  / 2f,
+                    rect.Y + (rect.Height - sz.Height) / 2f);
+            }
+        }
 
         /// <summary>Draws a section header bar with a label.</summary>
         private void DrawSectionHeader(Graphics g, int x, int y, int w, string label)

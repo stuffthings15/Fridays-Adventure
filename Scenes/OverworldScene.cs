@@ -48,19 +48,35 @@ namespace Fridays_Adventure.Scenes
         {
             BuildNodes();
 
-            // Load saved progress: set current node and unlock appropriate nodes
+            // ── Restore saved progress ────────────────────────────────────
+            // Restore visited flags from save data, then unlock only nodes
+            // that are directly linked to a visited node. This enforces
+            // strict sequential progression — no skipping levels.
+            foreach (var node in _nodes)
+            {
+                if (Game.Instance.Save.GetFlag($"node_visited_{node.Id}"))
+                    node.Visited = true;
+            }
+
+            // Walk the chain: for each visited node, unlock its linked neighbors.
+            // This means the player can only reach the NEXT unvisited node.
+            foreach (var node in _nodes)
+            {
+                if (!node.Visited) continue;
+                foreach (var linkId in node.Links)
+                {
+                    var linked = Find(linkId);
+                    if (linked != null) linked.Unlocked = true;
+                }
+            }
+
+            // Set current position from save, or default to start
             string savedNodeId = Game.Instance.Save.CurrentNodeId;
             if (!string.IsNullOrEmpty(savedNodeId))
             {
                 var savedNode = Find(savedNodeId);
                 if (savedNode != null)
-                {
                     _current = savedNode;
-                    _current.Visited = true;
-                    // Unlock all nodes to allow navigation (game is linear)
-                    foreach (var node in _nodes)
-                        node.Unlocked = true;
-                }
             }
 
             string path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory,
@@ -101,6 +117,10 @@ namespace Fridays_Adventure.Scenes
             {
                 Game.Instance.LevelJustCompleted = false;
 
+                // Mark the completed node as visited and persist to save
+                _pendingNode.Visited = true;
+                Game.Instance.Save.SetFlag($"node_visited_{_pendingNode.Id}");
+
                 // Unlock the nodes connected to the completed node (progression gate)
                 foreach (var id in _pendingNode.Links)
                 {
@@ -127,9 +147,10 @@ namespace Fridays_Adventure.Scenes
 
                 // ── World-title card when entering a new world (every 3 islands) ─
                 int lvl = Game.Instance.CurrentLevel;
-                if (lvl > 1 && (lvl - 1) % 3 == 0)
+                int worldNum  = ((lvl - 1) / 3) + 1;
+                int prevWorld = ((lvl - 2) / 3) + 1;
+                if (lvl > 1 && worldNum != prevWorld)
                 {
-                    int worldNum  = (lvl - 1) / 3 + 1;
                     string wName  = worldNum < WorldNames.Length ? WorldNames[worldNum] : $"World {worldNum}";
                     Game.Instance.WorldNumber = worldNum;
                     Game.Instance.LevelNumber = 1;
@@ -253,7 +274,7 @@ namespace Fridays_Adventure.Scenes
             if (HandleDevMenuClick(p)) return;
             if (_mainMenuBtn.Contains(p))
             {
-                Game.Instance.Scenes.Replace(new TitleScene());
+                Game.Instance.Scenes.ReplaceAll(new TitleScene());
                 return;
             }
             if (_crewBtn.Contains(p))
@@ -316,7 +337,7 @@ namespace Fridays_Adventure.Scenes
             }
 
             if (Game.Instance.Input.PausePressed)
-                Game.Instance.Scenes.Replace(new TitleScene());
+                Game.Instance.Scenes.ReplaceAll(new TitleScene());
             if (Game.Instance.Input.InteractPressed && _selected != null && _selected.Unlocked)
                 Travel(_selected);
         }
@@ -325,6 +346,8 @@ namespace Fridays_Adventure.Scenes
         {
             _current        = node;
             node.Visited    = true;
+            // Persist visited flag so progression survives save/load
+            Game.Instance.Save.SetFlag($"node_visited_{node.Id}");
             _selected       = null;
             Game.Instance.Save.CurrentNodeId = node.Id;
             Systems.ThreatSystem.OnNodeTraversed();
@@ -484,13 +507,22 @@ namespace Fridays_Adventure.Scenes
         private void LaunchLevel(OverworldNode node, Func<Scene> factory,
                                  bool isAirship = false, bool isToadHouse = false)
         {
-            // Advance the in-level counter so the HUD reads e.g. "WORLD 1-3"
-            Game.Instance.LevelNumber = Game.Instance.CurrentLevel;
+            // Derive the correct world and level-within-world numbers from the
+            // global CurrentLevel counter.  Worlds change every 3 levels:
+            //   CurrentLevel 1,2,3 → World 1  Levels 1,2,3
+            //   CurrentLevel 4,5,6 → World 2  Levels 1,2,3
+            //   etc.
+            int cur = Math.Max(1, Game.Instance.CurrentLevel);
+            int worldNum  = ((cur - 1) / 3) + 1;
+            int levelInWorld = ((cur - 1) % 3) + 1;
+
+            Game.Instance.WorldNumber = worldNum;
+            Game.Instance.LevelNumber = levelInWorld;
             Game.Instance.LevelElapsedSeconds = 0f;
 
             var intro = new LevelIntroScene(
-                Game.Instance.WorldNumber,
-                Game.Instance.LevelNumber,
+                worldNum,
+                levelInWorld,
                 node.Name,
                 nextScene: () => Game.Instance.Scenes.Replace(factory()),
                 isAirship:  isAirship,
@@ -596,18 +628,44 @@ namespace Fridays_Adventure.Scenes
                     using (var pen = new Pen(Color.Yellow, 2))
                         g.DrawEllipse(pen, n.Pos.X-22, n.Pos.Y-22, 44, 44);
 
+                // Node fill color: visited (completed) nodes get bright gold,
+                // unlocked nodes keep their type color, locked nodes are dim.
                 Color fill;
-                switch (n.Type)
+                if (n.Visited)
                 {
-                    case NodeType.Island: fill = Color.FromArgb(n.Unlocked?200:70, Color.ForestGreen); break;
-                    case NodeType.Storm:  fill = Color.FromArgb(n.Unlocked?200:70, Color.SlateBlue);   break;
-                    case NodeType.Boss:   fill = Color.FromArgb(n.Unlocked?200:70, Color.Crimson);     break;
-                    default:              fill = Color.FromArgb(n.Unlocked?200:70, Color.Gold);        break;
+                    // Completed — bright gold so the player sees progress at a glance
+                    fill = Color.FromArgb(220, Color.Gold);
+                }
+                else
+                {
+                    switch (n.Type)
+                    {
+                        case NodeType.Island: fill = Color.FromArgb(n.Unlocked?200:70, Color.ForestGreen); break;
+                        case NodeType.Storm:  fill = Color.FromArgb(n.Unlocked?200:70, Color.SlateBlue);   break;
+                        case NodeType.Boss:   fill = Color.FromArgb(n.Unlocked?200:70, Color.Crimson);     break;
+                        default:              fill = Color.FromArgb(n.Unlocked?200:70, Color.Gold);        break;
+                    }
                 }
                 using (var br = new SolidBrush(fill))
                     g.FillEllipse(br, n.Pos.X-14, n.Pos.Y-14, 28, 28);
                 using (var pen = new Pen(n.Visited ? Color.White : Color.DimGray, 1))
                     g.DrawEllipse(pen, n.Pos.X-14, n.Pos.Y-14, 28, 28);
+
+                // Bold red X overlay on completed (visited) islands — provides
+                // an unmistakable "defeated" indicator visible at a glance.
+                // Skips the Start node since it's not a real level.
+                if (n.Visited && n.Type != NodeType.Start)
+                {
+                    int xArm = 10; // half-size of the X in pixels
+                    using (var xPen = new Pen(Color.FromArgb(230, 220, 30, 30), 3.5f))
+                    {
+                        g.DrawLine(xPen, n.Pos.X - xArm, n.Pos.Y - xArm,
+                                         n.Pos.X + xArm, n.Pos.Y + xArm);
+                        g.DrawLine(xPen, n.Pos.X + xArm, n.Pos.Y - xArm,
+                                         n.Pos.X - xArm, n.Pos.Y + xArm);
+                    }
+                }
+
                 using (var f = new Font("Courier New", 10, FontStyle.Bold))
                 {
                     SizeF sz = g.MeasureString(n.Name, f);
@@ -680,7 +738,7 @@ namespace Fridays_Adventure.Scenes
             int panelX = W - 250;
             int panelY = 50;
             int panelW = 240;
-            int itemsPerPanel = 12;
+            int itemsPerPanel = 17;  // Show all 17 levels in the checklist
             int panelH = 16 + (itemsPerPanel * 14) + 20;
 
             // ── MAIN PANEL: ALL 17 LEVELS (ALL REQUIRED FOR VICTORY) ──
@@ -709,7 +767,8 @@ namespace Fridays_Adventure.Scenes
             string titleText = $"VICTORY: {totalCompleted}/{totalLevels} Levels Complete";
 
             using (var f = new Font("Courier New", 9, FontStyle.Bold))
-                g.DrawString(titleText, f, new SolidBrush(titleColor), panelX + 6, panelY + 2);
+            using (var titleBrush = new SolidBrush(titleColor))
+                g.DrawString(titleText, f, titleBrush, panelX + 6, panelY + 2);
 
             // ── Level list (ALL levels) ──
             int drawCount = 0;
@@ -722,14 +781,13 @@ namespace Fridays_Adventure.Scenes
 
                 using (var f = new Font("Courier New", 8, FontStyle.Bold))
                 {
-                    Color numColor = visited ? Color.LimeGreen : Color.DimGray;
-
                     // Item number and status marker
                     string marker = visited ? "✓" : "•";
                     string itemText = $"{marker} {levelNames[i]}";
 
                     Color textColor = visited ? Color.White : Color.DarkGray;
-                    g.DrawString(itemText, f, new SolidBrush(textColor), panelX + 8, itemY);
+                    using (var textBrush = new SolidBrush(textColor))
+                        g.DrawString(itemText, f, textBrush, panelX + 8, itemY);
                 }
                 drawCount++;
             }
@@ -767,7 +825,8 @@ namespace Fridays_Adventure.Scenes
             Color counterColor = totalCompleted == totalLevels ? Color.Gold : Color.Cyan;
             string counterText = $"{totalCompleted} / {totalLevels}";
             using (var f = new Font("Courier New", 12, FontStyle.Bold))
-                g.DrawString(counterText, f, new SolidBrush(counterColor), counterX + 18, counterY + 4);
+            using (var counterBrush = new SolidBrush(counterColor))
+                g.DrawString(counterText, f, counterBrush, counterX + 18, counterY + 4);
 
             // ── Legend ──
             int legendY = panel2Y + 30;

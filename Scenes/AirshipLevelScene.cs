@@ -189,15 +189,24 @@ namespace Fridays_Adventure.Scenes
             if (_player.X < minPlayerX) _player.X = minPlayerX;
 
             // ── Player movement ───────────────────────────────────────────────
-            bool left  = input.IsHeld(System.Windows.Forms.Keys.Left)  || input.IsHeld(System.Windows.Forms.Keys.A);
-            bool right = input.IsHeld(System.Windows.Forms.Keys.Right) || input.IsHeld(System.Windows.Forms.Keys.D);
-            bool jump  = input.IsPressed(System.Windows.Forms.Keys.Space) || input.IsPressed(System.Windows.Forms.Keys.W);
+            bool left  = input.LeftHeld;
+            bool right = input.RightHeld;
 
             if (left)  _player.VelocityX = -_player.MoveSpeed;
             else if (right) _player.VelocityX = _player.MoveSpeed;
             else _player.VelocityX = 0;
 
-            if (jump && _player.IsGrounded) { _player.VelocityY = _player.JumpForce; _player.IsGrounded = false; }
+            // Double jump support — uses JumpsRemaining (MaxJumps=2)
+            if (input.JumpPressed && _player.JumpsRemaining > 0)
+            {
+                _player.VelocityY = _player.JumpForce;
+                _player.IsGrounded = false;
+                _player.JumpsRemaining--;
+                Game.Instance.Audio.BeepJump();
+            }
+            // Variable jump height — release early for short hop (SMB3-style)
+            if (!input.JumpHeld && _player.VelocityY < -120f)
+                _player.VelocityY = -120f;
 
             // Character abilities (Q/E/R) in airship map.
             if (input.Ability1Pressed && _player.UseIceWall(out Abilities.IceWallInstance wall))
@@ -217,6 +226,9 @@ namespace Fridays_Adventure.Scenes
             }
             // Pause and inventory consistent with all other gameplay scenes
             if (input.PausePressed) Game.Instance.Scenes.Push(new PauseScene());
+            // C key — Quick Dash (works grounded or airborne, Team 7 Idea 7)
+            if (input.AirDashPressed && _player.TryDash())
+                Game.Instance.Audio.BeepJump();
             if (input.InventoryPressed) Game.Instance.Scenes.Push(new InventoryScene(_player));
 
             _player.Update(dt);
@@ -348,6 +360,7 @@ namespace Fridays_Adventure.Scenes
             {
                 _player.Y = p.Top - _player.Height;
                 _player.VelocityY = 0; _player.IsGrounded = true;
+                _player.JumpsRemaining = _player.MaxJumps;  // reset for double jump
             }
             else if (overTop < overBottom && _player.VelocityY < 0)
             {

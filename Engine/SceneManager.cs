@@ -61,5 +61,26 @@ namespace Fridays_Adventure.Engine
                 throw;
             }
         }
+
+        /// <summary>
+        /// Pops every scene off the stack (calling OnExit on each), then
+        /// pushes the new scene. Use this when returning to the title screen
+        /// to prevent stale scenes from accumulating underneath.
+        /// </summary>
+        public void ReplaceAll(Scene scene)
+        {
+            try
+            {
+                while (_stack.Count > 0)
+                    _stack.Pop().OnExit();
+                _stack.Push(scene);
+                scene.OnEnter();
+            }
+            catch (Exception ex)
+            {
+                DebugLogger.LogError("SceneManager.ReplaceAll", ex);
+                throw;
+            }
+        }
     }
 }

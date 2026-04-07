@@ -61,6 +61,13 @@ namespace Fridays_Adventure.Scenes
         private float _completionHoldTimer = 0f;
 
         /// <summary>
+        /// Guard flag — true after Finish() or FinishAbort() has fired once.
+        /// Prevents double-finishing which would duplicate results and leave
+        /// BotPlayLevelScene stuck on the scene stack.
+        /// </summary>
+        private bool _finished = false;
+
+        /// <summary>
         /// True when completion was detected via the inner scene's own boolean
         /// flag (_complete, _levelComplete, _victory) rather than a stack Push.
         /// Path B scenes (StormScene, BossScene, SkyIslandScene, UnderwaterScene)
@@ -140,6 +147,7 @@ namespace Fridays_Adventure.Scenes
             _innerCompleted = false;
             _completedViaReflection = false;
             _completionHoldTimer = 0f;
+            _finished   = false;
             _aiInitialized = false;  // Reset AI init flag
 
             // Start AI verification logging
@@ -616,6 +624,11 @@ namespace Fridays_Adventure.Scenes
         // ── Finish helpers ─────────────────────────────────────────────────
         private void Finish(bool beaten)
         {
+            // Guard: prevent double-finishing (would duplicate results and
+            // leave BotPlayLevelScene stuck on the scene stack forever).
+            if (_finished) return;
+            _finished = true;
+
             // Pop any result scenes that the inner scene may have pushed (Path A)
             while (Game.Instance.Scenes.Depth > _innerSceneDepthAtEnter)
                 Game.Instance.Scenes.Pop();
@@ -630,6 +643,14 @@ namespace Fridays_Adventure.Scenes
             }
 
             _onFinished?.Invoke(beaten, _elapsed);
+
+            // Pop BotPlayLevelScene itself so the caller (DemoModeScene or
+            // AutoTestLevelScene) becomes the active scene and can advance.
+            // The guard above prevents the abort callback's own Pop() from
+            // causing a double-pop — if the callback already popped us,
+            // Current != this and we skip.
+            if (Game.Instance.Scenes.Current == this)
+                Game.Instance.Scenes.Pop();
         }
 
         /// <summary>
@@ -638,10 +659,17 @@ namespace Fridays_Adventure.Scenes
         /// </summary>
         private void FinishAbort()
         {
+            if (_finished) return;
+            _finished = true;
+
             while (Game.Instance.Scenes.Depth > _innerSceneDepthAtEnter)
                 Game.Instance.Scenes.Pop();
 
             _onFinished?.Invoke(false, -1f);   // -1 = user aborted
+
+            // Pop self if the abort callback didn't already remove us.
+            if (Game.Instance.Scenes.Current == this)
+                Game.Instance.Scenes.Pop();
         }
     }
 }
