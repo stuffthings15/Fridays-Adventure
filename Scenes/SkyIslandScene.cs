@@ -145,8 +145,7 @@ namespace Fridays_Adventure.Scenes
             // Player at the bottom (selected from Crew screen)
             _player = new Player(W / 2 - 18, groundY - 56);
             _player.MoveSpeed = 290f;
-            // 20% stronger jumps for the vertical climbing challenge
-            _player.JumpForce = -624f;
+            _player.JumpForce = -520f;
             _player.ApplySelectedSprite();
 
             // Ensure full health on entry — guards against stale state from a previous session
