@@ -183,6 +183,13 @@ namespace Fridays_Adventure.Tests
         public bool   ShouldSwimDown    { get; private set; }
 
         /// <summary>
+        /// True when the current level is an UnderwaterScene.
+        /// BotPlayerController uses this to bypass the jump-hold timer
+        /// and inject continuous Space input for smooth swimming.
+        /// </summary>
+        public bool   IsUnderwaterScene => _isUnderwaterScene;
+
+        /// <summary>
         /// Exposes the player's grounded state so BotPlayerController can
         /// reset the jump sequence when the player lands.
         /// </summary>

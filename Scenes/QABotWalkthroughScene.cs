@@ -14,6 +14,7 @@ using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Drawing.Text;
 using System.Linq;
+using System.Windows.Forms;
 using Fridays_Adventure.Data;
 using Fridays_Adventure.Engine;
 using Fridays_Adventure.Systems;
@@ -105,6 +106,9 @@ namespace Fridays_Adventure.Scenes
         private bool _testedRoulette;
         private bool _testedToadHouse;
         private bool _testedInventory;
+
+        // ── QA completion logging guard ───────────────────────────────
+        private bool _loggedComplete;
 
         // ══════════════════════════════════════════════════════════════
         // LIFECYCLE
@@ -204,23 +208,53 @@ namespace Fridays_Adventure.Scenes
                     break;
 
                 case Phase.GameComplete:
+                    // Log the QA completion event so the automation script detects it
+                    if (!_loggedComplete)
+                    {
+                        _loggedComplete = true;
+                        int passed = _results.Count(r => r.IsBeatable);
+                        int failed = _results.Count - passed;
+                        GameLogger.Log("QA_COMPLETE", GameLogLevel.INFO, new
+                        {
+                            totalLevels   = AllLevels.Length,
+                            passed        = passed,
+                            failed        = failed,
+                            verdict       = failed == 0 ? "ALL_PASSED" : "HAS_FAILURES",
+                            totalTimeSec  = _results.Sum(r => r.TimeToComplete)
+                        });
+                    }
                     if (_phaseTimer >= 5f)
                         TransitionTo(Phase.Summary);
                     break;
 
                 case Phase.Summary:
-                    if (input.InteractPressed || input.AttackPressed)
+                    // Auto-exit when running unattended QA bot mode
+                    if (Game.AutoQABot)
+                    {
+                        if (_phaseTimer >= 3f)
+                            Application.Exit();
+                    }
+                    else if (input.InteractPressed || input.AttackPressed)
+                    {
                         Game.Instance.Scenes.Pop();
+                    }
                     break;
             }
         }
 
-        /// <summary>Called when a pushed event scene pops back to us.</summary>
+        /// <summary>Called when a pushed scene pops back to us.</summary>
         public override void OnResume()
         {
-            // An event scene (dialogue, roulette, toad house) just finished.
-            // Check if more events are pending, otherwise move to the next level.
-            ProcessPendingEvents();
+            // OnResume fires when ANY pushed scene pops (bot level, dialogue,
+            // roulette, toad house).  Only advance when returning from an
+            // EVENT scene — the bot level callback already set LevelResult
+            // phase, so the result timer will handle advancement from there.
+            if (_phase == Phase.EventDialogue ||
+                _phase == Phase.EventRoulette ||
+                _phase == Phase.EventToadHouse)
+            {
+                ProcessPendingEvents();
+            }
         }
 
         // ══════════════════════════════════════════════════════════════
@@ -319,7 +353,10 @@ namespace Fridays_Adventure.Scenes
                         var seq = _levelIndex <= 1
                             ? Dialogues.MeetFinn()
                             : Dialogues.MeetAmelia();
-                        seq.OnDone = _ => Game.Instance.Scenes.Pop();
+                        // DialogueScene pops itself when done, so OnDone must NOT
+                        // call Pop() again — that would remove QABotWalkthroughScene.
+                        // OnResume() handles advancing to the next level/event.
+                        seq.OnDone = _ => { };
                         Game.Instance.Scenes.Push(new DialogueScene(seq));
                         break;
 

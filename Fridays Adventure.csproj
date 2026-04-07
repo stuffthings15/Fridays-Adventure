@@ -400,6 +400,7 @@
     <None Include="docs\PROJECT_STATUS_SESSION_2.md" />
     <None Include="docs\QA_TEST_LOGGING_QUICK_START.md" />
     <None Include="docs\QA_TEST_LOGGING_SYSTEM_GUIDE.md" />
+    <None Include="docs\QA_TEST_RUNNER_GUIDE.md" />
     <None Include="docs\QA_VERIFICATION_PROTOCOL.md" />
     <None Include="docs\REAL_DIAGNOSTIC_BOT_SYSTEM.md" />
     <None Include="docs\REAL_DIALOGUE_DETECTION_HANDLING.md" />
@@ -451,6 +452,7 @@
     <None Include="third_party\asset_manifest.json" />
     <None Include="Tools\fetch_ambientcg_textures.py" />
     <None Include="Tools\fetch_assets.py" />
+    <None Include="Tools\QATestRunner.ps1" />
     <None Include="vibe.config.json" />
   </ItemGroup>
   <ItemGroup>

@@ -6,6 +6,37 @@
 
 ---
 
+## SESSION 125: Unattended QA Test Runner — Automated Build/Play/Fix Loop
+
+**Date/Time:** Current Session  
+**Status:** ✅ COMPLETE  
+**Build Status:** ✅ 0 errors, 0 warnings  
+
+### Features Implemented
+- **`--qa-bot` CLI flag** (`Engine/Game.cs`): Added `AutoQABot` static property; game checks `Environment.GetCommandLineArgs()` on startup
+- **Auto-launch QA walkthrough** (`Scenes/LoadingScene.cs`): When `AutoQABot` is set, LoadingScene skips TitleScene and pushes `QABotWalkthroughScene` directly with auto-advance on dialogue/toad-house
+- **QA completion logging** (`Scenes/QABotWalkthroughScene.cs`): Logs `QA_COMPLETE` event with `totalLevels`, `passed`, `failed`, `verdict` to JSONL log
+- **Auto-exit on completion** (`Scenes/QABotWalkthroughScene.cs`): In `--qa-bot` mode, calls `Application.Exit()` after Summary phase
+- **QATestRunner.ps1** (`Tools/QATestRunner.ps1`): Full PowerShell orchestrator with Win32 window detection, keyboard simulation, log monitoring, failure prompt generation, Copilot Chat submission, and rebuild/relaunch loop
+
+### Files Modified
+- `Engine/Game.cs` — AutoQABot flag + CLI parsing
+- `Scenes/LoadingScene.cs` — Auto-launch path
+- `Scenes/QABotWalkthroughScene.cs` — Completion logging + auto-exit
+
+### Files Created
+- `Tools/QATestRunner.ps1` — Automation script
+- `docs/QA_TEST_RUNNER_GUIDE.md` — Full system documentation
+
+### Activation
+Say "Start Q&A test now." in Copilot Chat to launch the loop.
+
+### Next Steps
+- Run the QA test to validate overnight loop
+- Tune stuck-timeout and fix-wait timing as needed
+
+---
+
 ## SESSION 124: Fix Level Transition Screen Numbering (WORLD X-Y)
 
 **Date/Time:** Current Session  

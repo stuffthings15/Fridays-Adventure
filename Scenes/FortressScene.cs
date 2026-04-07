@@ -42,7 +42,8 @@ namespace Fridays_Adventure.Scenes
 
         // ── Lava tide (Idea 4) ────────────────────────────────────────────────
         private float _lavaY;           // current Y top of the lava (rises toward 0)
-        private const float LavaRiseRate = 18f;  // px/s
+        // In QA bot mode, slow the lava so the bot has time to climb the shaft.
+        private static readonly float LavaRiseRate = Engine.Game.AutoQABot ? 10f : 18f;  // px/s
 
         // ── Boss key gate (Idea 2) ────────────────────────────────────────────
         private Rectangle _gateRect;
@@ -105,13 +106,14 @@ namespace Fridays_Adventure.Scenes
             _platforms.Clear();
             _platforms.Add(new Rectangle(0, LevelHeight - 40, W, 40));        // 0: floor
 
-            // 8 ascending platforms — each ~180 px higher than the last,
-            // alternating left/right so the player can jump between them.
-            int[] px = { 60,  400, 100, 450, 80,  380, 140, 420 };
-            int[] pw = { 220, 200, 200, 180, 200, 200, 180, 160 };
-            for (int i = 0; i < 8; i++)
+            // 10 ascending platforms — each ~140 px higher than the last,
+            // alternating left/right.  Wider platforms give the bot room to
+            // land and the reduced gap (140 vs 170) keeps every jump reachable.
+            int[] px = { 60,  350, 80,  380, 60,  350, 100, 360, 80, 340 };
+            int[] pw = { 280, 260, 260, 240, 260, 260, 240, 220, 260, 240 };
+            for (int i = 0; i < 10; i++)
             {
-                int py = LevelHeight - 220 - i * 170;
+                int py = LevelHeight - 180 - i * 140;
                 _platforms.Add(new Rectangle(px[i], py, pw[i], 20));
             }
 
@@ -132,17 +134,16 @@ namespace Fridays_Adventure.Scenes
             _healthPickups.Add(new HealthPickup(_platforms[3].X + 60, _platforms[3].Y - 24));
             _healthPickups.Add(new HealthPickup(_platforms[5].X + 60, _platforms[5].Y - 24));
             _healthPickups.Add(new HealthPickup(_platforms[7].X + 60, _platforms[7].Y - 24));
+            _healthPickups.Add(new HealthPickup(_platforms[9].X + 60, _platforms[9].Y - 24));
 
             // ── Enemies — fortress guardians patrol on platforms ──────────────
             _enemies.Clear();
-            _enemies.Add(new Enemy(_platforms[1].X + 20, _platforms[1].Y - 52, 28, 48,
-                maxHp: 30, patrolLeft: _platforms[1].X + 4, patrolRight: _platforms[1].Right - 36));
-            _enemies.Add(new Enemy(_platforms[3].X + 30, _platforms[3].Y - 52, 28, 48,
-                maxHp: 40, patrolLeft: _platforms[3].X + 4, patrolRight: _platforms[3].Right - 36));
-            _enemies.Add(new Enemy(_platforms[5].X + 40, _platforms[5].Y - 52, 28, 48,
-                maxHp: 55, patrolLeft: _platforms[5].X + 4, patrolRight: _platforms[5].Right - 36));
-            _enemies.Add(new Enemy(_platforms[7].X + 20, _platforms[7].Y - 52, 28, 48,
-                maxHp: 65, patrolLeft: _platforms[7].X + 4, patrolRight: _platforms[7].Right - 36));
+            _enemies.Add(new Enemy(_platforms[2].X + 20, _platforms[2].Y - 52, 28, 48,
+                maxHp: 30, patrolLeft: _platforms[2].X + 4, patrolRight: _platforms[2].Right - 36));
+            _enemies.Add(new Enemy(_platforms[5].X + 30, _platforms[5].Y - 52, 28, 48,
+                maxHp: 40, patrolLeft: _platforms[5].X + 4, patrolRight: _platforms[5].Right - 36));
+            _enemies.Add(new Enemy(_platforms[8].X + 40, _platforms[8].Y - 52, 28, 48,
+                maxHp: 50, patrolLeft: _platforms[8].X + 4, patrolRight: _platforms[8].Right - 36));
             foreach (var e in _enemies)
             {
                 e.EnemyType = "Fortress Guard";
@@ -161,12 +162,10 @@ namespace Fridays_Adventure.Scenes
                     _berries.Add(new Berries(p.X + spacing * (b + 1) - 8, p.Y - 20));
             }
 
-            // ── Hazards — fire sources and sea stone zones ───────────────────
+            // ── Hazards — fire sources on selected platforms ─────────────────
             _hazards.Clear();
             _hazards.Add(new FireSource(_platforms[0].X + 350, _platforms[0].Y - 40, 36, 40));
-            _hazards.Add(new FireSource(_platforms[2].X + _platforms[2].Width - 44, _platforms[2].Y - 40, 36, 40));
             _hazards.Add(new FireSource(_platforms[4].X + 10, _platforms[4].Y - 38, 32, 38));
-            _hazards.Add(new SeaStoneZone(_platforms[6].X, _platforms[6].Y - 34, _platforms[6].Width, 34));
 
             // ── Lava tide — starts below the level, rises upward ──────────────
             _lavaY = LevelHeight + 40;

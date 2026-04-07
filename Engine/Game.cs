@@ -277,6 +277,14 @@ namespace Fridays_Adventure.Engine
         /// </summary>
         public bool CrtFilterEnabled { get; set; }
 
+        // ── Unattended QA Bot auto-start ──────────────────────────────────────
+        /// <summary>
+        /// When true, the game auto-launches QABotWalkthroughScene after loading
+        /// instead of showing TitleScene.  Activated by the --qa-bot command-line
+        /// argument.  Used by the automated QA test runner (Tools/QATestRunner.ps1).
+        /// </summary>
+        public static bool AutoQABot { get; set; }
+
         // ── Phase 2: Team 9 — Accessibility Outline Mode ──────────────────────
         /// <summary>
         /// When true, a solid coloured outline is drawn around every entity and
@@ -403,6 +411,17 @@ namespace Fridays_Adventure.Engine
             // Initialize difficulty modifiers from saved config
             DifficultyModifiers.Initialize();
             
+            // Check for --qa-bot command-line flag (unattended QA test runner)
+            string[] args = Environment.GetCommandLineArgs();
+            foreach (string a in args)
+            {
+                if (a.Equals("--qa-bot", StringComparison.OrdinalIgnoreCase))
+                {
+                    AutoQABot = true;
+                    break;
+                }
+            }
+
             Scenes.Push(new LoadingScene());
             _timer.Start();
         }

@@ -65,7 +65,7 @@ namespace Fridays_Adventure.Data
 
         public static WarlordConfig CentipedeOfTheDeep() => new WarlordConfig(
             "The Centipede",    WarlordType.CentipedeLord,
-            maxHp:   400,       baseDmg: 25, speed: 180f,
+            maxHp:   350,       baseDmg: 22, speed: 160f,
             tauntP1: "CENTIPEDE: \"I am built from every foe you have defeated. You cannot break what cannot die!\"",
             tauntP2: "CENTIPEDE: \"ALL FORMS, UNITE — crush her into the deep!\"",
             epithet: "The Deep Amalgam");

@@ -210,7 +210,14 @@ namespace Fridays_Adventure.Tests
                 bool shouldJump = _comprehensiveBot.ShouldJump;
                 bool wantDouble = _comprehensiveBot.ShouldDoubleJump;
 
-                if (_jumpHoldActive)
+                // Underwater scenes use continuous Space for swimming up —
+                // bypass the jump-hold timer so the bot swims smoothly.
+                if (_comprehensiveBot.IsUnderwaterScene)
+                {
+                    if (shouldJump)
+                        input.InjectHeld(Keys.Space);
+                }
+                else if (_jumpHoldActive)
                 {
                     _jumpHoldRemaining -= dt;
                     if (_jumpHoldRemaining > 0f)

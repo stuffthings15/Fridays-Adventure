@@ -63,7 +63,18 @@ namespace Fridays_Adventure.Scenes
             if (_elapsed >= MinDisplay && (audioReady || _elapsed >= Timeout))
             {
                 _transitioned = true;
-                Game.Instance.Scenes.ReplaceAll(new TitleScene());
+
+                // Unattended QA: skip title screen and go straight to bot walkthrough
+                if (Game.AutoQABot)
+                {
+                    DialogueScene.AutoAdvance = true;
+                    ToadHouseScene.AutoAdvance = true;
+                    Game.Instance.Scenes.ReplaceAll(new QABotWalkthroughScene());
+                }
+                else
+                {
+                    Game.Instance.Scenes.ReplaceAll(new TitleScene());
+                }
             }
         }
 

@@ -23,7 +23,10 @@ namespace Fridays_Adventure.Scenes
     /// </summary>
     public sealed class UnderwaterScene : Scene
     {
-        private const float LevelScale = 1.5f;
+        // Level scale was previously 1.5, but that pushed exit zones and
+        // platforms beyond the canvas bounds while the player is clamped
+        // to (0,0)-(W,H).  Scale 1.0 keeps all geometry reachable.
+        private const float LevelScale = 1.0f;
         private Player _player;
         private List<Rectangle>  _platforms   = new List<Rectangle>();
         private List<Rectangle>  _coralHazards = new List<Rectangle>();
