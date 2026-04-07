@@ -77,6 +77,13 @@ namespace Fridays_Adventure.Engine
         /// </summary>
         public string WorldLevelLabel => $"WORLD {WorldNumber}-{LevelNumber}";
 
+        /// <summary>
+        /// Display name of the level currently being played (e.g. "Dinosaur Island").
+        /// Set by the QA bot or overworld before pushing a level scene, and shown
+        /// in the GameHUD so the viewer always knows which level is on screen.
+        /// </summary>
+        public string CurrentLevelName { get; set; } = "";
+
         // ── Team 1 (Game Director) — Coin/Life system ─────────────────────────
         // Idea 4: 100-coins grants an extra life (classic SMB3 mechanic).
 

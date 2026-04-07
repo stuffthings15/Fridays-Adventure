@@ -265,15 +265,28 @@ namespace Fridays_Adventure.Systems
             g.DrawString(text, _f10, Brushes.Gold, cx - sz.Width / 2f, 4);
         }
 
-        // ── Center: world/level label ─────────────────────────────────────────
+        // ── Center: world/level label + level name ─────────────────────────────
         private static void DrawWorldRow(Graphics g, int W)
         {
+            // Line 1: "WORLD X-Y" label
             string label = Game.Instance?.WorldLevelLabel ?? "";
-            if (string.IsNullOrEmpty(label)) return;
-            int cx = W / 2;
-            SizeF sz = g.MeasureString(label, _f9);
-            using (var br = new SolidBrush(Color.LightSteelBlue))
-                g.DrawString(label, _f9, br, cx - sz.Width / 2f, 22);
+            if (!string.IsNullOrEmpty(label))
+            {
+                int cx = W / 2;
+                SizeF sz = g.MeasureString(label, _f9);
+                using (var br = new SolidBrush(Color.LightSteelBlue))
+                    g.DrawString(label, _f9, br, cx - sz.Width / 2f, 22);
+            }
+
+            // Line 2: Current level display name (e.g. "DINOSAUR ISLAND")
+            string levelName = Game.Instance?.CurrentLevelName ?? "";
+            if (!string.IsNullOrEmpty(levelName))
+            {
+                int cx = W / 2;
+                SizeF nsz = g.MeasureString(levelName, _f8);
+                using (var br = new SolidBrush(Color.Gold))
+                    g.DrawString(levelName, _f8, br, cx - nsz.Width / 2f, 34);
+            }
         }
 
         // ── Center: ability cooldowns Q / E / R ───────────────────────────────

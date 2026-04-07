@@ -29,6 +29,10 @@ namespace Fridays_Adventure.Scenes
             if (Game.Instance?.Save != null)
                 Game.Instance.Save.CurrentNodeId = levelId;
 
+            // Set the display name so the GameHUD shows the level name at the top
+            if (Game.Instance != null)
+                Game.Instance.CurrentLevelName = (levelName ?? levelId).ToUpperInvariant();
+
             switch (levelId)
             {
                 // Storm-deck survival levels

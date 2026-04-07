@@ -27,6 +27,8 @@ namespace Fridays_Adventure.Scenes
         private Rectangle _saveBtn;
         private Rectangle _loadBtn;
         private Rectangle _demoBtn;
+        // QA Bot Walkthrough button — launches the full automated QA test
+        private Rectangle _qaWalkthroughBtn;
         // Text RPG mini-game button — launches the standalone RPG in a modal dialog
         private Rectangle _textRpgBtn;
         // Video Demo Mode buttons — scripted auto-play showcases
@@ -234,6 +236,7 @@ namespace Fridays_Adventure.Scenes
             if (_textRpgBtn.Contains(p)) LaunchTextRPG();
             if (_videoDemoBtn.Contains(p)) Game.Instance.Scenes.Push(new VideoDemoScene());
             if (_rpgDemoBtn.Contains(p))   LaunchTextRPGDemo();
+            if (_qaWalkthroughBtn.Contains(p)) Game.Instance.Scenes.Push(new QABotWalkthroughScene());
             if (_exitBtn.Contains(p))    Game.RequestClose();
             if (_scoresBtn.Contains(p))  Game.Instance.Scenes.Push(new HighScoreScene(0, 0, isNewEntry: false));
             // DEV MENU button — open password prompt
@@ -349,6 +352,13 @@ namespace Fridays_Adventure.Scenes
             DrawButton(g, _videoDemoBtn, "\u25B6 VIDEO DEMO: GAME",    Color.FromArgb(140, 80, 20));
             DrawButton(g, _rpgDemoBtn,   "\u25B6 VIDEO DEMO: RPG",     Color.FromArgb(140, 80, 20));
 
+            // Row 3: QA Bot Walkthrough — full game automated test
+            int qaY = vidY + 36 + 8;
+            int qaW = 260;
+            int qaX = (W - qaW) / 2;
+            _qaWalkthroughBtn = new Rectangle(qaX, qaY, qaW, 36);
+            DrawButton(g, _qaWalkthroughBtn, "\u2699 QA BOT WALKTHROUGH", Color.FromArgb(20, 100, 120));
+
             // AFK idle countdown — shown in the last 15 seconds before auto-demo
             if (_idleTimer >= IdleAutoDemo - 15f)
             {
@@ -358,7 +368,7 @@ namespace Fridays_Adventure.Scenes
                 {
                     SizeF sz = g.MeasureString(hint, f);
                     int hx = (int)((W - sz.Width) / 2f);
-                    int hy = vidY + 36 + 6;
+                    int hy = qaY + 36 + 6;
                     using (var br = new SolidBrush(Color.FromArgb(180, 0, 0, 0)))
                         g.FillRectangle(br, hx - 6, hy - 2, (int)sz.Width + 12, (int)sz.Height + 4);
                     using (var br = new SolidBrush(Color.FromArgb(220, Color.Orange)))

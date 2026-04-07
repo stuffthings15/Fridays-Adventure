@@ -522,6 +522,8 @@ namespace Fridays_Adventure.Scenes
             Game.Instance.WorldNumber = worldNum;
             Game.Instance.LevelNumber = levelInWorld;
             Game.Instance.LevelElapsedSeconds = 0f;
+            // Set the display name so the GameHUD shows the level name at the top
+            Game.Instance.CurrentLevelName = node.Name.ToUpperInvariant();
 
             var intro = new LevelIntroScene(
                 worldNum,
