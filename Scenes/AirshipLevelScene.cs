@@ -63,6 +63,9 @@ namespace Fridays_Adventure.Scenes
         private Rectangle _exitFlag;
         private const float WorldWidth = 3600f;
 
+        // ── Health pickups — scattered along the airship deck ─────────────────
+        private readonly List<HealthPickup> _healthPickups = new List<HealthPickup>();
+
         // ── Background ────────────────────────────────────────────────────────
         private Bitmap _bg;
 
@@ -124,6 +127,12 @@ namespace Fridays_Adventure.Scenes
 
             // Exit flagpole.
             _exitFlag = new Rectangle((int)WorldWidth - 100, H - 200, 40, 140);
+
+            // ── Health pickups on elevated platforms ──────────────────────────
+            _healthPickups.Clear();
+            _healthPickups.Add(new HealthPickup(_platforms[2].X + 40, _platforms[2].Y - 24));
+            _healthPickups.Add(new HealthPickup(_platforms[5].X + 50, _platforms[5].Y - 24));
+            _healthPickups.Add(new HealthPickup(_platforms[8].X + 60, _platforms[8].Y - 24));
 
             ApplyLevelScale();
         }
@@ -292,6 +301,18 @@ namespace Fridays_Adventure.Scenes
                 if (!b.Active) _balls.RemoveAt(i);
             }
 
+            // ── Health pickup collection ─────────────────────────────────────
+            foreach (var hp in _healthPickups)
+            {
+                hp.Update(dt);
+                if (hp.TryCollect(_player))
+                {
+                    PowerUpInventory.AddHealthItem(1);
+                    Game.Instance.FloatingText.Spawn("+1 MEDKIT", hp.X, hp.Y - 16, Color.LimeGreen, large: false);
+                    Game.Instance.Audio.BeepHeal();
+                }
+            }
+
             // ── Exit check ────────────────────────────────────────────────────
             var playerRect = new Rectangle((int)_player.X, (int)_player.Y, _player.Width, _player.Height);
             if (_exitFlag.IntersectsWith(playerRect) && !_levelComplete)
@@ -429,6 +450,9 @@ namespace Fridays_Adventure.Scenes
 
             // ── Player ────────────────────────────────────────────────────────
             _player.Draw(g);
+
+            // ── Health pickups ────────────────────────────────────────────────
+            foreach (var hp in _healthPickups) hp.Draw(g);
 
             g.ResetTransform();
 

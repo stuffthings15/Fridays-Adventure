@@ -48,6 +48,9 @@ namespace Fridays_Adventure.Scenes
         private float _completeTimer;
         private Rectangle _exitDoor;
 
+        // ── Health pickups — placed on mid/high platforms ─────────────────────
+        private readonly List<HealthPickup> _healthPickups = new List<HealthPickup>();
+
         // ── Camera ────────────────────────────────────────────────────────────
         private float _cameraY;
 
@@ -108,6 +111,13 @@ namespace Fridays_Adventure.Scenes
 
             // ── Exit door ─────────────────────────────────────────────────────
             _exitDoor = new Rectangle(W - 80, H - 440 - 60, 36, 60);
+
+            // ── Health pickups on mid/high platforms ──────────────────────────
+            _healthPickups.Clear();
+            // Platform index 3 (H-200), 5 (H-320), 7 (H-400) — spread across climb
+            _healthPickups.Add(new HealthPickup(_platforms[3].X + 60, _platforms[3].Y - 24));
+            _healthPickups.Add(new HealthPickup(_platforms[5].X + 80, _platforms[5].Y - 24));
+            _healthPickups.Add(new HealthPickup(_platforms[7].X + 100, _platforms[7].Y - 24));
 
             // ── Lava tide ─────────────────────────────────────────────────────
             _lavaY = H + 40;  // starts below screen
@@ -201,6 +211,18 @@ namespace Fridays_Adventure.Scenes
             {
                 _iceWalls[i].Update(dt, nearFire: false);
                 if (!_iceWalls[i].IsAlive) _iceWalls.RemoveAt(i);
+            }
+
+            // ── Health pickup collection ─────────────────────────────────────
+            foreach (var p in _healthPickups)
+            {
+                p.Update(dt);
+                if (p.TryCollect(_player))
+                {
+                    PowerUpInventory.AddHealthItem(1);
+                    Game.Instance.FloatingText.Spawn("+1 MEDKIT", p.X, p.Y - 16, Color.LimeGreen, large: false);
+                    Game.Instance.Audio.BeepHeal();
+                }
             }
 
             if (_thwompFreezeTimer > 0f) _thwompFreezeTimer -= dt;
@@ -394,15 +416,52 @@ namespace Fridays_Adventure.Scenes
             foreach (var wall in _iceWalls)
                 if (wall.IsAlive) wall.Draw(g);
 
+            // ── Health pickups ────────────────────────────────────────────────
+            foreach (var p in _healthPickups) p.Draw(g);
+
             // ── Unified HUD (single call) ─────────────────────────────────────
             g.ResetTransform();
             GameHUD.Draw(g, _player, W, H);
+
+            // ── Fortress-specific HUD: lava proximity warning ─────────────────
+            DrawLavaWarningHUD(g, W);
             DrawDevMenuButton(g);
         }
 
         public override void HandleClick(Point p)
         {
             if (HandleDevMenuClick(p)) return;
+        }
+
+        /// <summary>
+        /// Draws a lava proximity bar below the GameHUD showing how close the
+        /// rising lava is to the player.  Turns red when lava is dangerously close.
+        /// </summary>
+        /// <remarks>PHASE 2 - Session 113: Fortress lava HUD</remarks>
+        private void DrawLavaWarningHUD(Graphics g, int W)
+        {
+            int hudY = GameHUD.BandHeight + 4;
+            float gap = _lavaY - (_player.Y + _player.Height);
+            // Normalize: 0 = lava touching player, 1 = 400+ px away (safe)
+            float safety = Math.Max(0f, Math.Min(1f, gap / 400f));
+
+            // Background bar
+            using (var bg = new SolidBrush(Color.FromArgb(120, 0, 0, 0)))
+                g.FillRectangle(bg, 8, hudY, 200, 18);
+
+            // Fill color: green→yellow→red based on safety
+            Color fill = safety > 0.5f
+                ? Color.FromArgb(200, (int)(255 * (1f - safety) * 2), 255, 0)
+                : Color.FromArgb(200, 255, (int)(255 * safety * 2), 0);
+            int fillW = (int)(196 * safety);
+            using (var br = new SolidBrush(fill))
+                g.FillRectangle(br, 10, hudY + 2, fillW, 14);
+
+            // Label
+            string label = safety < 0.25f ? "⚠ LAVA CLOSE!" : "LAVA";
+            using (var f = new Font("Courier New", 8, FontStyle.Bold))
+            using (var tb = new SolidBrush(safety < 0.25f ? Color.Red : Color.White))
+                g.DrawString(label, f, tb, 214, hudY + 2);
         }
 
         private static void DrawBrickBackground(Graphics g, int W, int H)

@@ -20,6 +20,7 @@ namespace Fridays_Adventure.Scenes
         private List<Rectangle>    _platforms = new List<Rectangle>();
         private List<Hazard>       _hazards   = new List<Hazard>();
         private List<IceWallInstance> _iceWalls = new List<IceWallInstance>();
+        private List<Berries>      _berries   = new List<Berries>();
 
         private const int LevelWidth  = 900;
         private const int LevelHeight = 3200;
@@ -45,6 +46,11 @@ namespace Fridays_Adventure.Scenes
         private static readonly Font       _hud8      = new Font("Courier New", 8);
         private static readonly SolidBrush _cloudBrush   = new SolidBrush(Color.FromArgb(120, 255, 255, 255));
         private static readonly SolidBrush _platTopBrush = new SolidBrush(Color.FromArgb(200, 200, 255));
+        // ── Cached platform brushes — prevents 130+ GDI allocations per frame ──
+        private static readonly SolidBrush _platBaseBrush      = new SolidBrush(Color.FromArgb(230, 240, 250, 255));
+        private static readonly SolidBrush _platBumpBrush      = new SolidBrush(Color.FromArgb(245, 250, 255, 255));
+        private static readonly SolidBrush _platHighlightBrush = new SolidBrush(Color.FromArgb(180, 200, 220, 255));
+        private static readonly SolidBrush _platShadowBrush    = new SolidBrush(Color.FromArgb(40, 100, 140, 200));
         private readonly Random _rng = new Random();
 
         public override void OnEnter()
@@ -120,6 +126,15 @@ namespace Fridays_Adventure.Scenes
                 // SeaStone on one platform
                 if (i == 7)
                     _hazards.Add(new SeaStoneZone(px, py - 36, pw, 36));
+
+                // Berry pickups on even-numbered platforms (incentive to climb)
+                if (i % 2 == 0)
+                {
+                    int berryCount = (i < 6) ? 2 : 3; // more berries on higher platforms
+                    float berrySpacing = pw / (berryCount + 1f);
+                    for (int b = 0; b < berryCount; b++)
+                        _berries.Add(new Berries(px + berrySpacing * (b + 1) - 8, py - 24));
+                }
             }
 
             // Player at the bottom (selected from Crew screen)
@@ -140,11 +155,13 @@ namespace Fridays_Adventure.Scenes
             _player.Update(dt);
             MoveAndCollide(_player, dt);
             foreach (var hz in _hazards) hz.Update(dt);
+            foreach (var b  in _berries) b.Update(dt);
             DevilFruitRules.Check(_player, _hazards, dt);
             IceSystem.Update(_iceWalls, _hazards, _player, dt);
             CheckWater(dt);
             UpdateEnemies(dt);
             CheckCombat();
+            CollectBerries();
             CheckExit();
             UpdateCamera();
         }
@@ -233,10 +250,33 @@ namespace Fridays_Adventure.Scenes
             }
         }
 
+        /// <summary>
+        /// Horizontal collision resolution.
+        /// Floating platforms (index > 0) are ONE-WAY: the player can pass
+        /// through them from below/side.  Only block horizontally when the
+        /// character's feet are at or above the platform top (standing on it
+        /// or sliding along its surface).  The ground platform (index 0) is
+        /// always fully solid.  Ice walls are always fully solid.
+        /// </summary>
         private void ResolveH(Character c)
         {
-            foreach (var p in _platforms) if (c.Hitbox.IntersectsWith(p))
-            { c.X = c.VelocityX > 0 ? p.Left - c.Width : p.Right; c.VelocityX = 0; }
+            for (int i = 0; i < _platforms.Count; i++)
+            {
+                var p = _platforms[i];
+                if (!c.Hitbox.IntersectsWith(p)) continue;
+
+                // Ground platform (index 0) is always solid
+                if (i > 0)
+                {
+                    // One-way platform: only block if character's feet are
+                    // at or above the platform top (i.e., on the surface).
+                    float feetY = c.Y + c.Height;
+                    if (feetY > p.Top + 4f) continue; // below platform → pass through
+                }
+
+                c.X = c.VelocityX > 0 ? p.Left - c.Width : p.Right;
+                c.VelocityX = 0;
+            }
             foreach (var wall in _iceWalls)
             {
                 if (!wall.IsAlive) continue;
@@ -247,13 +287,38 @@ namespace Fridays_Adventure.Scenes
             }
         }
 
+        /// <summary>
+        /// Vertical collision resolution with one-way platform support.
+        /// Floating platforms (index > 0) only resolve when the character is
+        /// FALLING (VelocityY >= 0) — the player passes through from below.
+        /// The ground (index 0) is fully solid (blocks rising too).
+        /// Ice walls are fully solid.
+        /// </summary>
         private void ResolveV(Character c)
         {
-            foreach (var p in _platforms)
+            for (int i = 0; i < _platforms.Count; i++)
             {
+                var p = _platforms[i];
                 if (!c.Hitbox.IntersectsWith(p)) continue;
-                if (c.VelocityY >= 0) { c.Y = p.Top - c.Height; c.VelocityY = 0; c.IsGrounded = true; }
-                else { c.Y = p.Bottom; c.VelocityY = 0; }
+
+                if (i == 0)
+                {
+                    // Ground platform — fully solid (land or headbonk)
+                    if (c.VelocityY >= 0) { c.Y = p.Top - c.Height; c.VelocityY = 0; c.IsGrounded = true; }
+                    else { c.Y = p.Bottom; c.VelocityY = 0; }
+                }
+                else
+                {
+                    // Floating platform — one-way: only land when falling.
+                    // Rising (VelocityY < 0) → pass through (no headbonk).
+                    if (c.VelocityY >= 0)
+                    {
+                        c.Y = p.Top - c.Height;
+                        c.VelocityY = 0;
+                        c.IsGrounded = true;
+                    }
+                    // else: rising → do nothing, player passes through
+                }
             }
             foreach (var wall in _iceWalls)
             {
@@ -333,6 +398,24 @@ namespace Fridays_Adventure.Scenes
             if (!_player.IsAlive) { SessionStats.Instance.RecordDeath(); Game.Instance.Scenes.Replace(new GameOverScene()); }
         }
 
+        /// <summary>
+        /// Collects berries the player touches and awards score/berries.
+        /// </summary>
+        /// <remarks>PHASE 2 - Session 112: sky island pickups</remarks>
+        private void CollectBerries()
+        {
+            var pr = _player.Hitbox;
+            for (int i = _berries.Count - 1; i >= 0; i--)
+            {
+                if (_berries[i].Hitbox.IntersectsWith(pr))
+                {
+                    Game.Instance.TotalBerriesCollected += 10;
+                    Game.Instance.Audio.BeepBerry();
+                    _berries.RemoveAt(i);
+                }
+            }
+        }
+
         private void CheckExit()
         {
             if (!_levelComplete && _player.Hitbox.IntersectsWith(_exitZone))
@@ -393,25 +476,25 @@ namespace Fridays_Adventure.Scenes
             // Clouds
             DrawClouds(g);
             // Platforms
+            // Draw only platforms visible on screen (camera-Y culling)
             foreach (var p in _platforms)
             {
-                // Fluffy cloud platforms: soft white base with a sky-blue tint strip
-                using (var br = new SolidBrush(Color.FromArgb(230, 240, 250, 255)))
-                    g.FillRectangle(br, p);
+                // Skip platforms that are entirely off-screen (above or below viewport)
+                if (p.Bottom < _cameraY - 30 || p.Top > _cameraY + H + 30) continue;
+
+                // Fluffy cloud platforms — uses cached brushes to avoid per-frame GDI allocation
+                g.FillRectangle(_platBaseBrush, p);
                 // Rounded cloud puff bumps along the top edge
                 int bumpCount = Math.Max(1, p.Width / 28);
                 for (int b = 0; b < bumpCount; b++)
                 {
                     int bx = p.Left + 4 + b * (p.Width - 8) / Math.Max(1, bumpCount - 1);
-                    using (var br = new SolidBrush(Color.FromArgb(245, 250, 255, 255)))
-                        g.FillEllipse(br, bx - 16, p.Top - 10, 32, 20);
+                    g.FillEllipse(_platBumpBrush, bx - 16, p.Top - 10, 32, 20);
                 }
                 // Sky-blue highlight strip at the very top
-                using (var br = new SolidBrush(Color.FromArgb(180, 200, 220, 255)))
-                    g.FillRectangle(br, p.X, p.Y, p.Width, 4);
+                g.FillRectangle(_platHighlightBrush, p.X, p.Y, p.Width, 4);
                 // Soft shadow on the underside
-                using (var br = new SolidBrush(Color.FromArgb(40, 100, 140, 200)))
-                    g.FillRectangle(br, p.X + 4, p.Bottom - 5, p.Width - 8, 5);
+                g.FillRectangle(_platShadowBrush, p.X + 4, p.Bottom - 5, p.Width - 8, 5);
             }
             // Exit zone
             using (var br = new SolidBrush(Color.FromArgb(120, Color.Gold))) g.FillRectangle(br, _exitZone);
@@ -419,12 +502,16 @@ namespace Fridays_Adventure.Scenes
 
             foreach (var hz in _hazards)   hz.Draw(g);
             foreach (var w  in _iceWalls)  w.Draw(g);
+            // Berry pickups on platforms
+            foreach (var b  in _berries)   b.Draw(g);
             foreach (var e  in _enemies)   if (e.IsAlive) e.Draw(g);
             _player.Draw(g);
 
             g.ResetTransform();
             // ── Unified HUD (single call) ─────────────────────────────────────
             GameHUD.Draw(g, _player, W, H);
+            // ── Sky-specific altitude + keybinds (below GameHUD band) ─────────
+            DrawSkyOverlay(g, W, H);
             if (_windAnnouncTimer > 0) DrawWindWarning(g, W, H);
             if (_showRescue) DrawRescuePrompt(g, W, H);
             if (_levelComplete) DrawComplete(g, W, H);
@@ -437,6 +524,28 @@ namespace Fridays_Adventure.Scenes
             float[] cy = { 400, 900, 1500, 2000, 2500, 800 };
             for (int i = 0; i < cx.Length; i++)
                 g.FillEllipse(_cloudBrush, cx[i], cy[i], 180, 60);
+        }
+
+        /// <summary>
+        /// Renders sky-specific info below the GameHUD band: altitude percentage
+        /// and ability keybind labels. Gives the player a sense of vertical progress.
+        /// </summary>
+        private void DrawSkyOverlay(Graphics g, int W, int H)
+        {
+            int y = GameHUD.BandHeight + 4;
+
+            // Semi-transparent background strip for readability
+            using (var bg = new SolidBrush(Color.FromArgb(140, 0, 0, 0)))
+                g.FillRectangle(bg, 0, y, W, 20);
+
+            // Altitude percentage — how far up the player has climbed
+            int pct = (int)(100f * (1f - _cameraY / Math.Max(1, LevelHeight - H)));
+            g.DrawString($"Sky Island   Altitude: {pct}%", _hud8, Brushes.LightBlue, 6, y + 2);
+
+            // Ability keybind labels
+            float iceRem = _player.IceWallCooldownRemaining;
+            string wallState = iceRem > 0.05f ? $"Q:Wall[{iceRem:F1}s]" : "Q:Wall[RDY]";
+            g.DrawString($"{wallState}  E:Freeze  R:Break  Z:Attack", _hud8, Brushes.Gray, W - 340, y + 2);
         }
 
         private void DrawHUD(Graphics g, int W, int H)

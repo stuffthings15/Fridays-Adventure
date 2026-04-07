@@ -27,11 +27,23 @@ namespace Fridays_Adventure.Scenes
         private Rectangle _saveBtn;
         private Rectangle _loadBtn;
         private Rectangle _demoBtn;
+        // Text RPG mini-game button — launches the standalone RPG in a modal dialog
+        private Rectangle _textRpgBtn;
+        // Start Game button — prominent entry point to begin Miss Friday's Adventure II
+        private Rectangle _startBtn;
+        // Dev Menu button — opens a password prompt to access the developer menu
+        private Rectangle _devMenuBtn;
 
         // Name entry — shown when player has not entered a name yet
         private bool   _nameActive;
         private string _nameInput = "";
         private float  _nameCursor;
+
+        // Password entry — shown when the player clicks the DEV MENU button
+        private bool   _passwordActive;
+        private string _passwordInput = "";
+        private float  _passwordCursor;
+        private string _passwordError = "";
         // Both "Luffy" and "Loofy" (case-insensitive) unlock the dev menu.
         private static readonly string[] SecretPasswords = { "Luffy", "Loofy" };
 
@@ -51,9 +63,8 @@ namespace Fridays_Adventure.Scenes
             // Continue lyrical theme music started in LoadingScene; ContinueOrPlay avoids a restart.
             Game.Instance.Audio.PlayTheme();
 
-            // If no name has been set yet, show the name entry prompt
-            if (string.IsNullOrEmpty(Game.Instance.PlayerName))
-                _nameActive = true;
+            // Name entry is NOT shown automatically — the player must click START GAME first
+            _nameActive = false;
         }
 
         public override void OnExit()
@@ -86,6 +97,62 @@ namespace Fridays_Adventure.Scenes
                 _idleTimer = 0f;
                 Game.Instance.Scenes.Push(new DemoModeScene(autoStart: true));
                 return;
+            }
+
+            // ── Password entry for Dev Menu ──────────────────────────────────
+            // Shown when the player clicks the DEV MENU button on the title screen
+            if (_passwordActive)
+            {
+                _passwordCursor += dt;
+
+                string typed = input.ConsumeTyped();
+                if (typed.Length > 0)
+                {
+                    _passwordInput += typed;
+                    if (_passwordInput.Length > 16) _passwordInput = _passwordInput.Substring(0, 16);
+                    _passwordError = ""; // clear error on new input
+                }
+
+                if (input.IsPressed(System.Windows.Forms.Keys.Back) && _passwordInput.Length > 0)
+                {
+                    _passwordInput = _passwordInput.Substring(0, _passwordInput.Length - 1);
+                    _passwordError = "";
+                }
+
+                // Escape cancels the password prompt
+                if (input.PausePressed)
+                {
+                    _passwordActive = false;
+                    _passwordInput = "";
+                    _passwordError = "";
+                    return;
+                }
+
+                if (input.IsPressed(System.Windows.Forms.Keys.Return) && _passwordInput.Length > 0)
+                {
+                    // Validate against accepted passwords (case-insensitive)
+                    bool valid = false;
+                    foreach (string pw in SecretPasswords)
+                        if (string.Equals(_passwordInput, pw, StringComparison.OrdinalIgnoreCase))
+                        { valid = true; break; }
+
+                    if (valid)
+                    {
+                        Game.Instance.GodMode = true;
+                        _passwordActive = false;
+                        _passwordInput = "";
+                        _passwordError = "";
+                        Game.Instance.Scenes.Push(new DevMenuScene());
+                    }
+                    else
+                    {
+                        _passwordError = "Incorrect password!";
+                        _passwordInput = "";
+                    }
+                    return;
+                }
+
+                return; // block regular navigation while entering password
             }
 
             // ── Name entry box ────────────────────────────────────────────────
@@ -121,8 +188,10 @@ namespace Fridays_Adventure.Scenes
                     }
                     else
                     {
+                        // Name confirmed — proceed to save slot selection
                         Game.Instance.PlayerName = _nameInput;
                         _nameActive = false;
+                        Game.Instance.Scenes.Replace(new SaveSlotScene());
                     }
                     return;
                 }
@@ -131,10 +200,10 @@ namespace Fridays_Adventure.Scenes
             }
 
             // ── Regular navigation ────────────────────────────────────────────
-            // Route through Save Slot selection before starting the game so the
-            // player can pick/continue a save file (SMB3 file select style).
-            if (input.InteractPressed || input.AttackPressed || input.JumpPressed)
-                Game.Instance.Scenes.Replace(new SaveSlotScene());
+            // START GAME is handled via the on-screen button click.
+            // Keyboard shortcut: Enter also triggers start.
+            if (input.IsPressed(System.Windows.Forms.Keys.Return))
+                StartGame();
 
             // Main-menu save/load shortcuts
             if (input.IsPressed(System.Windows.Forms.Keys.F5)) SaveGameJson();
@@ -153,12 +222,23 @@ namespace Fridays_Adventure.Scenes
         public override void HandleClick(Point p)
         {
             if (HandleDevMenuClick(p)) return;
+            // START GAME button — the primary entry point
+            if (_startBtn.Contains(p))  { StartGame(); return; }
             if (_loadBtn.Contains(p))   { LoadGameJson(); return; }
             if (_saveBtn.Contains(p))   { SaveGameJson(); return; }
             if (_optionsBtn.Contains(p)) Game.Instance.Scenes.Push(new OptionsScene());
             if (_demoBtn.Contains(p))    Game.Instance.Scenes.Push(new DemoModeScene());
+            if (_textRpgBtn.Contains(p)) LaunchTextRPG();
             if (_exitBtn.Contains(p))    Game.RequestClose();
             if (_scoresBtn.Contains(p))  Game.Instance.Scenes.Push(new HighScoreScene(0, 0, isNewEntry: false));
+            // DEV MENU button — open password prompt
+            if (_devMenuBtn.Contains(p))
+            {
+                _passwordActive = true;
+                _passwordInput = "";
+                _passwordError = "";
+                _passwordCursor = 0f;
+            }
         }
 
         public override void Draw(Graphics g)
@@ -216,24 +296,18 @@ namespace Fridays_Adventure.Scenes
                 g.DrawString(tag, f, Brushes.DarkSlateGray, (W - sz.Width) / 2f, taglineY);
             }
 
-            // ── Press-to-start prompt ─────────────────────────────────────────
-            if (_showPrompt)
-            {
-                using (var br = new SolidBrush(Color.FromArgb(190, 0, 0, 0)))
-                    g.FillRectangle(br, 0, (int)(H * 0.64f), W, 54);
-                using (var f = new Font("Courier New", 22, FontStyle.Bold))
-                {
-                    const string s = "Press  ENTER  or  Z  to  set  sail";
-                    SizeF sz = g.MeasureString(s, f);
-                    g.DrawString(s, f, Brushes.Yellow, (W - sz.Width) / 2f, H * 0.65f);
-                }
-            }
-
             // ── Main action buttons ───────────────────────────────────────────
             const int btnW = 150, btnH = 46, gap = 12;
             int totalW = btnW * 5 + gap * 4;
             int startX = (W - totalW) / 2;
             int btnY = (int)(H * 0.75f);
+
+            // ── START GAME button — prominent, centered above the main row ──
+            int startW = 320, startH = 56;
+            int startX2 = (W - startW) / 2;
+            int startY2 = btnY - startH - 20;
+            _startBtn = new Rectangle(startX2, startY2, startW, startH);
+            DrawButton(g, _startBtn, "\u25B6 START GAME", Color.FromArgb(20, 120, 50));
 
             _loadBtn    = new Rectangle(startX + (btnW + gap) * 0, btnY, btnW, btnH);
             _saveBtn    = new Rectangle(startX + (btnW + gap) * 1, btnY, btnW, btnH);
@@ -247,12 +321,16 @@ namespace Fridays_Adventure.Scenes
             DrawButton(g, _scoresBtn,  "SCORES",  Color.FromArgb(120, 100, 20));
             DrawButton(g, _exitBtn,    "EXIT",    Color.FromArgb(120, 30, 30));
 
-            // ── Demo button (below main buttons) ──────────────────────────────
-            int demoBtnW = 200;
-            int demoBtnX = (W - demoBtnW) / 2;
-            int demoBtnY = btnY + btnH + 15;
-            _demoBtn = new Rectangle(demoBtnX, demoBtnY, demoBtnW, btnH);
-            DrawButton(g, _demoBtn, "WATCH DEMO", Color.FromArgb(100, 150, 50));
+            // ── Secondary buttons (below main row) — Demo + Text RPG side-by-side ──
+            int secBtnW = 180;
+            int secGap  = 20;
+            int secTotalW = secBtnW * 2 + secGap;
+            int secX = (W - secTotalW) / 2;
+            int secY = btnY + btnH + 15;
+            _demoBtn    = new Rectangle(secX, secY, secBtnW, btnH);
+            _textRpgBtn = new Rectangle(secX + secBtnW + secGap, secY, secBtnW, btnH);
+            DrawButton(g, _demoBtn,    "WATCH DEMO",    Color.FromArgb(100, 150, 50));
+            DrawButton(g, _textRpgBtn, "\u2694 TEXT RPG", Color.FromArgb(90, 60, 130));
 
             // AFK idle countdown — shown in the last 15 seconds before auto-demo
             if (_idleTimer >= IdleAutoDemo - 15f)
@@ -263,7 +341,7 @@ namespace Fridays_Adventure.Scenes
                 {
                     SizeF sz = g.MeasureString(hint, f);
                     int hx = (int)((W - sz.Width) / 2f);
-                    int hy = demoBtnY + btnH + 8;
+                    int hy = secY + btnH + 6;
                     using (var br = new SolidBrush(Color.FromArgb(180, 0, 0, 0)))
                         g.FillRectangle(br, hx - 6, hy - 2, (int)sz.Width + 12, (int)sz.Height + 4);
                     using (var br = new SolidBrush(Color.FromArgb(220, Color.Orange)))
@@ -290,9 +368,16 @@ namespace Fridays_Adventure.Scenes
 
             DrawDevMenuButton(g);
 
-            // Team 15 (UI/UX Artist) — blinking "PRESS START" text
+            // ── DEV MENU button — small button in the bottom-right area ──
+            int dmW = 120, dmH = 32;
+            int dmX = W - dmW - 14;
+            int dmY = H - panelH - dmH - 6;
+            _devMenuBtn = new Rectangle(dmX, dmY, dmW, dmH);
+            DrawButton(g, _devMenuBtn, "DEV MENU", Color.FromArgb(60, 60, 60));
+
+            // Team 15 (UI/UX Artist) — blinking prompt below START button
             if (_showPrompt)
-                UIArtFeatures.DrawPressStart(g, W, H, _timer, "Press  ENTER  or  Z  to  set  sail");
+                UIArtFeatures.DrawPressStart(g, W, H, _timer, "Click  START  GAME  or  press  ENTER");
 
             // Team 11 (Build Engineer) — version stamp in debug mode
             BuildEngineerFeatures.DrawVersionStamp(g, W, H);
@@ -303,15 +388,14 @@ namespace Fridays_Adventure.Scenes
             // Team 12 (Art Director) — vignette
             ArtDirectorFeatures.DrawVignette(g, W, H);
 
+            // Draw active overlays (name entry or password prompt)
             if (_nameActive) DrawNameEntryBox(g, W, H);
+            if (_passwordActive) DrawPasswordEntryBox(g, W, H);
         }
 
         private void DrawNameEntryBox(Graphics g, int W, int H)
         {
-            // Dim background
-            using (var br = new SolidBrush(Color.FromArgb(160, 0, 0, 0)))
-                g.FillRectangle(br, 0, 0, W, H);
-
+            // No full-screen overlay — the title screen remains fully visible behind the box
             const int bw = 420, bh = 110;
             int bx = (W - bw) / 2, by = (int)(H * 0.38f);
 
@@ -330,6 +414,43 @@ namespace Fridays_Adventure.Scenes
 
             using (var f = new Font("Courier New", 9))
                 g.DrawString("[Enter] Confirm   [Backspace] Delete", f, Brushes.DimGray, bx + 20, by + 86);
+        }
+
+        /// <summary>
+        /// Draws the password entry popup for accessing the dev menu.
+        /// Input is masked with asterisks for secrecy.
+        /// </summary>
+        private void DrawPasswordEntryBox(Graphics g, int W, int H)
+        {
+            const int bw = 420, bh = 140;
+            int bx = (W - bw) / 2, by = (int)(H * 0.35f);
+
+            // Dark box background with gold border
+            using (var br = new SolidBrush(Color.FromArgb(240, 10, 10, 40)))
+                g.FillRectangle(br, bx, by, bw, bh);
+            using (var pen = new Pen(Color.Gold, 2))
+                g.DrawRectangle(pen, bx, by, bw, bh);
+
+            // Title label
+            using (var f = new Font("Courier New", 14, FontStyle.Bold))
+                g.DrawString("Enter password:", f, Brushes.Gold, bx + 20, by + 14);
+
+            // Masked password display (asterisks) with blinking cursor
+            string cursor = (int)(_passwordCursor / 0.45f) % 2 == 0 ? "|" : " ";
+            string masked  = new string('*', _passwordInput.Length) + cursor;
+            using (var f = new Font("Courier New", 20, FontStyle.Bold))
+                g.DrawString(masked, f, Brushes.White, bx + 20, by + 46);
+
+            // Error message (wrong password)
+            if (!string.IsNullOrEmpty(_passwordError))
+            {
+                using (var f = new Font("Courier New", 11, FontStyle.Bold))
+                    g.DrawString(_passwordError, f, Brushes.Red, bx + 20, by + 84);
+            }
+
+            // Help text
+            using (var f = new Font("Courier New", 9))
+                g.DrawString("[Enter] Confirm   [Esc] Cancel   [Backspace] Delete", f, Brushes.DimGray, bx + 20, by + 114);
         }
 
         private static void DrawButton(Graphics g, Rectangle r, string label, Color bg)
@@ -377,6 +498,45 @@ namespace Fridays_Adventure.Scenes
             catch (Exception ex)
             {
                 DebugLogger.LogError("TitleScene.LoadGameJson", ex);
+            }
+        }
+
+        /// <summary>
+        /// Opens the Text RPG mini-game in a separate modal dialog window.
+        /// The main game pauses while the RPG is open and resumes when it closes.
+        /// </summary>
+        private static void LaunchTextRPG()
+        {
+            try
+            {
+                // Show the TextRPG as a modal dialog — main game pauses until closed
+                using (var rpgForm = new TextRPG.MainForm())
+                {
+                    rpgForm.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
+                    rpgForm.ShowDialog();
+                }
+            }
+            catch (Exception ex)
+            {
+                DebugLogger.LogError("TitleScene.LaunchTextRPG", ex);
+            }
+        }
+
+        /// <summary>
+        /// Handles the START GAME flow: if the player has not entered a name yet,
+        /// show the name entry box first. Otherwise go straight to save slot selection.
+        /// </summary>
+        private void StartGame()
+        {
+            if (string.IsNullOrEmpty(Game.Instance.PlayerName))
+            {
+                // First time — prompt for a name before proceeding
+                _nameActive = true;
+            }
+            else
+            {
+                // Name already set — go to save slot / game
+                Game.Instance.Scenes.Replace(new SaveSlotScene());
             }
         }
 

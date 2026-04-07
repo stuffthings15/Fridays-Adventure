@@ -81,6 +81,12 @@ namespace Fridays_Adventure.Scenes
         public override void OnExit()  { _bg?.Dispose(); _bg = null; }
         public override void OnResume() => Game.Instance.Audio.ContinueOrPlay("exploration");
 
+        /// <summary>
+        /// Builds the underwater level layout.  Each of the 6 underwater
+        /// levels gets a unique arrangement of platforms, hazards, currents,
+        /// jellyfish, and exit position for gameplay variety.
+        /// </summary>
+        /// <remarks>PHASE 2 - Session 112: per-level layout variety</remarks>
         private void BuildLevel()
         {
             int W = Game.Instance.CanvasWidth;
@@ -94,33 +100,130 @@ namespace Fridays_Adventure.Scenes
             _iceWalls.Clear();
             _jellyFreezeTimer = 0f;
 
-            // Coral platforms.
-            _platforms.Add(new Rectangle(0,       H - 40,  W,   40));
-            _platforms.Add(new Rectangle(80,      H - 120, 140, 20));
-            _platforms.Add(new Rectangle(280,     H - 180, 120, 20));
-            _platforms.Add(new Rectangle(480,     H - 240, 100, 20));
-            _platforms.Add(new Rectangle(660,     H - 180, 140, 20));
-            _platforms.Add(new Rectangle(820,     H - 300, 100, 20));
+            // Shared floor — every underwater level has a seabed
+            _platforms.Add(new Rectangle(0, H - 40, W, 40));
 
-            // Coral hazards.
-            _coralHazards.Add(new Rectangle(200, H - 70,  30, 30));
-            _coralHazards.Add(new Rectangle(420, H - 70,  25, 30));
-            _coralHazards.Add(new Rectangle(600, H - 70,  28, 30));
+            // Per-level layouts give each underwater stage a distinct feel
+            string nodeId = Game.Instance.Save.CurrentNodeId ?? "coral";
+            switch (nodeId)
+            {
+                case "dive_gate":
+                    // Dive Gate — wide coral shelves, strong upward current, few jellyfish
+                    _platforms.Add(new Rectangle(60,  H - 140, 200, 20));
+                    _platforms.Add(new Rectangle(340, H - 200, 180, 20));
+                    _platforms.Add(new Rectangle(620, H - 260, 160, 20));
+                    _coralHazards.Add(new Rectangle(250, H - 70, 30, 30));
+                    _currents.Add(new Rectangle(450, H - 300, 60, 220));
+                    _bubbleStations.Add(new Rectangle(200, H - 170, 20, 20));
+                    _bubbleStations.Add(new Rectangle(650, H - 290, 20, 20));
+                    AddJelly(400, H - 180, 0.5f, 70f);
+                    AddJelly(720, H - 200, 0.6f, 50f);
+                    _exitZone = new Rectangle(W - 100, H - 320, 80, 80);
+                    break;
 
-            // Upward current zones.
-            _currents.Add(new Rectangle(350, H - 250, 50, 180));
-            _currents.Add(new Rectangle(700, H - 350, 50, 260));
+                case "sunken_gate":
+                    // Sunken Gate — maze-like shelves, more coral hazards
+                    _platforms.Add(new Rectangle(100, H - 120, 140, 20));
+                    _platforms.Add(new Rectangle(300, H - 200, 100, 20));
+                    _platforms.Add(new Rectangle(200, H - 300, 160, 20));
+                    _platforms.Add(new Rectangle(500, H - 160, 120, 20));
+                    _platforms.Add(new Rectangle(700, H - 250, 110, 20));
+                    _coralHazards.Add(new Rectangle(150, H - 70,  28, 30));
+                    _coralHazards.Add(new Rectangle(450, H - 70,  32, 30));
+                    _coralHazards.Add(new Rectangle(680, H - 70,  26, 30));
+                    _coralHazards.Add(new Rectangle(350, H - 170, 25, 25));
+                    _currents.Add(new Rectangle(600, H - 350, 50, 250));
+                    _bubbleStations.Add(new Rectangle(250, H - 230, 20, 20));
+                    _bubbleStations.Add(new Rectangle(550, H - 190, 20, 20));
+                    AddJelly(180, H - 200, 0.7f, 60f);
+                    AddJelly(520, H - 250, 0.5f, 80f);
+                    AddJelly(750, H - 160, 0.6f, 40f);
+                    _exitZone = new Rectangle(W - 110, H - 380, 80, 80);
+                    break;
 
-            // Air bubble refill stations.
-            _bubbleStations.Add(new Rectangle(300, H - 160, 20, 20));
-            _bubbleStations.Add(new Rectangle(600, H - 260, 20, 20));
+                case "kelp":
+                    // Kelp Maze — many narrow platforms like kelp forest, upward currents
+                    _platforms.Add(new Rectangle(80,  H - 100, 80, 20));
+                    _platforms.Add(new Rectangle(200, H - 160, 80, 20));
+                    _platforms.Add(new Rectangle(340, H - 220, 80, 20));
+                    _platforms.Add(new Rectangle(460, H - 280, 80, 20));
+                    _platforms.Add(new Rectangle(580, H - 200, 80, 20));
+                    _platforms.Add(new Rectangle(700, H - 320, 100, 20));
+                    _platforms.Add(new Rectangle(820, H - 250, 60, 20));
+                    _coralHazards.Add(new Rectangle(300, H - 70, 25, 30));
+                    _coralHazards.Add(new Rectangle(550, H - 70, 28, 30));
+                    _currents.Add(new Rectangle(150, H - 280, 40, 200));
+                    _currents.Add(new Rectangle(500, H - 350, 40, 200));
+                    _currents.Add(new Rectangle(750, H - 400, 40, 250));
+                    _bubbleStations.Add(new Rectangle(380, H - 250, 20, 20));
+                    _bubbleStations.Add(new Rectangle(720, H - 350, 20, 20));
+                    AddJelly(260, H - 200, 0.5f, 50f);
+                    AddJelly(620, H - 260, 0.6f, 70f);
+                    _exitZone = new Rectangle(W - 90, H - 400, 80, 80);
+                    break;
 
-            // Jellyfish.
-            AddJelly(160, H - 180, 0.6f, 60f);
-            AddJelly(500, H - 250, 0.5f, 80f);
-            AddJelly(780, H - 200, 0.7f, 50f);
+                case "boiling_vent":
+                    // Vent Ruins — hazardous floor, strong upward currents from vents
+                    _platforms.Add(new Rectangle(120, H - 150, 160, 20));
+                    _platforms.Add(new Rectangle(400, H - 200, 140, 20));
+                    _platforms.Add(new Rectangle(650, H - 280, 130, 20));
+                    _coralHazards.Add(new Rectangle(100, H - 70,  35, 30));
+                    _coralHazards.Add(new Rectangle(300, H - 70,  35, 30));
+                    _coralHazards.Add(new Rectangle(500, H - 70,  35, 30));
+                    _coralHazards.Add(new Rectangle(700, H - 70,  35, 30));
+                    // Multiple vent currents (the "boiling" part)
+                    _currents.Add(new Rectangle(200, H - 320, 60, 250));
+                    _currents.Add(new Rectangle(480, H - 350, 60, 280));
+                    _currents.Add(new Rectangle(760, H - 380, 60, 300));
+                    _bubbleStations.Add(new Rectangle(350, H - 230, 20, 20));
+                    _bubbleStations.Add(new Rectangle(600, H - 310, 20, 20));
+                    AddJelly(250, H - 200, 0.8f, 90f);
+                    AddJelly(550, H - 280, 0.7f, 60f);
+                    AddJelly(800, H - 180, 0.6f, 50f);
+                    _exitZone = new Rectangle(W - 100, H - 420, 80, 80);
+                    break;
 
-            _exitZone = new Rectangle(W - 80, H - 340, 60, 60);
+                case "abyss":
+                    // Abyss — deep, dark, exit at the very top, lots of jellyfish
+                    _platforms.Add(new Rectangle(60,  H - 100, 120, 20));
+                    _platforms.Add(new Rectangle(250, H - 180, 100, 20));
+                    _platforms.Add(new Rectangle(450, H - 260, 120, 20));
+                    _platforms.Add(new Rectangle(650, H - 340, 100, 20));
+                    _platforms.Add(new Rectangle(350, H - 400, 140, 20));
+                    _coralHazards.Add(new Rectangle(180, H - 70, 30, 30));
+                    _coralHazards.Add(new Rectangle(550, H - 70, 30, 30));
+                    _currents.Add(new Rectangle(300, H - 350, 50, 280));
+                    _currents.Add(new Rectangle(700, H - 420, 50, 330));
+                    _bubbleStations.Add(new Rectangle(100, H - 130, 20, 20));
+                    _bubbleStations.Add(new Rectangle(500, H - 290, 20, 20));
+                    _bubbleStations.Add(new Rectangle(700, H - 370, 20, 20));
+                    AddJelly(150, H - 160, 0.6f, 60f);
+                    AddJelly(380, H - 220, 0.5f, 80f);
+                    AddJelly(600, H - 300, 0.7f, 70f);
+                    AddJelly(750, H - 180, 0.8f, 50f);
+                    _exitZone = new Rectangle(W / 2 - 40, 40, 80, 80);
+                    break;
+
+                default: // "coral" and any other
+                    // Coral Reef — the original default layout
+                    _platforms.Add(new Rectangle(80,  H - 120, 140, 20));
+                    _platforms.Add(new Rectangle(280, H - 180, 120, 20));
+                    _platforms.Add(new Rectangle(480, H - 240, 100, 20));
+                    _platforms.Add(new Rectangle(660, H - 180, 140, 20));
+                    _platforms.Add(new Rectangle(820, H - 300, 100, 20));
+                    _coralHazards.Add(new Rectangle(200, H - 70,  30, 30));
+                    _coralHazards.Add(new Rectangle(420, H - 70,  25, 30));
+                    _coralHazards.Add(new Rectangle(600, H - 70,  28, 30));
+                    _currents.Add(new Rectangle(350, H - 250, 50, 180));
+                    _currents.Add(new Rectangle(700, H - 350, 50, 260));
+                    _bubbleStations.Add(new Rectangle(300, H - 160, 20, 20));
+                    _bubbleStations.Add(new Rectangle(600, H - 260, 20, 20));
+                    AddJelly(160, H - 180, 0.6f, 60f);
+                    AddJelly(500, H - 250, 0.5f, 80f);
+                    AddJelly(780, H - 200, 0.7f, 50f);
+                    _exitZone = new Rectangle(W - 100, H - 360, 80, 80);
+                    break;
+            }
 
             ApplyLevelScale();
         }
@@ -389,11 +492,8 @@ namespace Fridays_Adventure.Scenes
             foreach (var wall in _iceWalls)
                 if (wall.IsAlive) wall.Draw(g);
 
-            // ── Exit zone ─────────────────────────────────────────────────────
-            using (var br = new SolidBrush(Color.FromArgb(100, 0, 220, 0)))
-                g.FillRectangle(br, _exitZone);
-            using (var f = new Font("Courier New", 8, FontStyle.Bold))
-                g.DrawString("EXIT", f, Brushes.LimeGreen, _exitZone.X + 8, _exitZone.Y + 22);
+            // ── Exit zone — animated underwater beacon ──────────────────────
+            DrawExitBeacon(g);
 
             // ── Player ────────────────────────────────────────────────────────
             _player.Draw(g);
@@ -401,6 +501,9 @@ namespace Fridays_Adventure.Scenes
             // ── HUD + oxygen bar ──────────────────────────────────────────────
             g.ResetTransform();
             GameHUD.Draw(g, _player, W, H);
+
+            // Directional arrow toward exit when exit is off-screen
+            DrawExitDirectionArrow(g, W, H);
 
             // Oxygen bar drawn below HUD band
             float oxyPct = Math.Max(0f, _oxygenTimer / MaxOxygen);
@@ -415,6 +518,117 @@ namespace Fridays_Adventure.Scenes
             using (var f = new Font("Courier New", 8))
                 g.DrawString($"O2  {_oxygenTimer:F0}s", f, Brushes.Cyan, oxyBarX - 36, oxyBarY - 1);
             DrawDevMenuButton(g);
+        }
+
+        /// <summary>
+        /// Draws an animated underwater exit beacon — pulsing glow, rotating
+        /// light ring, "EXIT" label, and animated arrows.  Much more visible
+        /// than the old dim green square.
+        /// </summary>
+        /// <remarks>PHASE 2 - Session 111: clear underwater goal</remarks>
+        private void DrawExitBeacon(Graphics g)
+        {
+            int tick = Environment.TickCount;
+            float pulse = (float)(Math.Sin(tick / 300.0) * 0.5 + 0.5); // 0..1 pulse
+
+            int cx = _exitZone.X + _exitZone.Width / 2;
+            int cy = _exitZone.Y + _exitZone.Height / 2;
+
+            // Outer glow halo (pulsing radius 50-70)
+            int glowR = 50 + (int)(20f * pulse);
+            int glowAlpha = 40 + (int)(60f * pulse);
+            using (var br = new SolidBrush(Color.FromArgb(glowAlpha, 0, 255, 120)))
+                g.FillEllipse(br, cx - glowR, cy - glowR, glowR * 2, glowR * 2);
+
+            // Inner bright zone
+            using (var br = new SolidBrush(Color.FromArgb(140, 0, 220, 80)))
+                g.FillRectangle(br, _exitZone);
+            using (var pen = new Pen(Color.FromArgb(200, 0, 255, 100), 2))
+                g.DrawRectangle(pen, _exitZone);
+
+            // Animated arrows pointing into the exit zone (3 arrows descending)
+            for (int a = 0; a < 3; a++)
+            {
+                int aOff = (int)((tick / 4 + a * 18) % 54) - 54;
+                int aAlpha = Math.Max(50, 220 - Math.Abs(aOff) * 4);
+                using (var br = new SolidBrush(Color.FromArgb(aAlpha, 100, 255, 150)))
+                {
+                    // Down-arrow shapes pointing at the exit zone
+                    g.FillPolygon(br, new Point[] {
+                        new Point(cx - 8, _exitZone.Top + aOff),
+                        new Point(cx + 8, _exitZone.Top + aOff),
+                        new Point(cx,     _exitZone.Top + aOff + 12)
+                    });
+                }
+            }
+
+            // "EXIT" text — bold, bright, larger
+            using (var f = new Font("Courier New", 11, FontStyle.Bold))
+            {
+                var sz = g.MeasureString("EXIT", f);
+                g.DrawString("EXIT", f, Brushes.White, cx - sz.Width / 2, cy - sz.Height / 2);
+            }
+
+            // ">>> GOAL <<<" label above the beacon
+            using (var f = new Font("Courier New", 9, FontStyle.Bold))
+            {
+                string lbl = ">>> GOAL <<<";
+                var sz = g.MeasureString(lbl, f);
+                int lblAlpha = 140 + (int)(80f * pulse);
+                using (var br = new SolidBrush(Color.FromArgb(lblAlpha, 100, 255, 180)))
+                    g.DrawString(lbl, f, br, cx - sz.Width / 2, _exitZone.Top - 22);
+            }
+        }
+
+        /// <summary>
+        /// Draws a directional arrow on the HUD pointing toward the exit
+        /// zone when it is off-screen or far from the player.  Helps the
+        /// player know which direction to swim.
+        /// </summary>
+        /// <remarks>PHASE 2 - Session 111: underwater navigation aid</remarks>
+        private void DrawExitDirectionArrow(Graphics g, int W, int H)
+        {
+            // Distance from player to exit center
+            float ex = _exitZone.X + _exitZone.Width / 2f;
+            float ey = _exitZone.Y + _exitZone.Height / 2f;
+            float dx = ex - (_player.X + _player.Width / 2f);
+            float dy = ey - (_player.Y + _player.Height / 2f);
+            float dist = (float)Math.Sqrt(dx * dx + dy * dy);
+
+            // Only show arrow if far enough away (>150 px)
+            if (dist < 150f) return;
+
+            // Determine direction label
+            string dir = "";
+            if (Math.Abs(dx) > Math.Abs(dy))
+                dir = dx > 0 ? "EXIT  >>>" : "<<<  EXIT";
+            else
+                dir = dy > 0 ? "EXIT  vvv" : "^^^  EXIT";
+
+            int tick = Environment.TickCount;
+            int alpha = 160 + (int)(60f * Math.Sin(tick / 250.0));
+
+            // Draw at top of screen below HUD
+            using (var f = new Font("Courier New", 10, FontStyle.Bold))
+            using (var br = new SolidBrush(Color.FromArgb(alpha, 100, 255, 180)))
+            {
+                var sz = g.MeasureString(dir, f);
+                int arrowX = W / 2 - (int)(sz.Width / 2);
+                int arrowY = GameHUD.BandHeight + 6;
+                // Semi-transparent background for readability
+                using (var bgBr = new SolidBrush(Color.FromArgb(100, 0, 30, 60)))
+                    g.FillRectangle(bgBr, arrowX - 6, arrowY - 2, (int)sz.Width + 12, (int)sz.Height + 4);
+                g.DrawString(dir, f, br, arrowX, arrowY);
+            }
+
+            // Also draw distance indicator
+            using (var f = new Font("Courier New", 8))
+            using (var br = new SolidBrush(Color.FromArgb(180, 180, 220, 255)))
+            {
+                string distStr = $"{(int)dist}px away";
+                var sz = g.MeasureString(distStr, f);
+                g.DrawString(distStr, f, br, W / 2 - sz.Width / 2, GameHUD.BandHeight + 22);
+            }
         }
 
         public override void HandleClick(Point p)

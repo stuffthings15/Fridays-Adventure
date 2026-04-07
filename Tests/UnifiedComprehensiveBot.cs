@@ -47,6 +47,10 @@ namespace Fridays_Adventure.Tests
         private readonly bool _isSkyIslandScene;
         private readonly bool _isUnderwaterScene;
         private readonly bool _isBossScene;
+        /// <summary>True when the inner scene is a FortressScene (rising lava, vertical climb).</summary>
+        private readonly bool _isFortressScene;
+        /// <summary>True when the inner scene is an AirshipLevelScene (auto-scrolling, no left movement).</summary>
+        private readonly bool _isAirshipScene;
 
         // ── Cached reflected fields (avoid per-frame allocation) ──────────
         private readonly System.Reflection.FieldInfo _enemiesField;
@@ -86,6 +90,13 @@ namespace Fridays_Adventure.Tests
         private float _lastGroundedY;           // Y when the bot last stood on ground
         private float _fallingTimer = 0f;       // how long the bot has been falling
         private const float FALL_WALL_JUMP_TIME = 0.3f;  // start wall-jumping after falling this long
+
+        // ── Post-pit-escape forward drive ─────────────────────────────────
+        // After escaping a pit (wall-jump recovery), the bot forces forward
+        // movement for a short period to clear the pit area and avoid
+        // immediately falling back in.
+        private float _pitEscapeForwardTimer = 0f;
+        private const float PIT_ESCAPE_FORWARD_TIME = 0.6f; // seconds to force forward after escape
 
         // ── Combat ────────────────────────────────────────────────────────
         private Enemy _lastEnemy;
@@ -156,6 +167,13 @@ namespace Fridays_Adventure.Tests
         public bool   ShouldFrostBall   { get; private set; }
 
         /// <summary>
+        /// True when the bot wants to swim downward in UnderwaterScene.
+        /// BotPlayerController injects Keys.Down when this is set.
+        /// </summary>
+        /// <remarks>PHASE 2 - Session 112: underwater vertical navigation</remarks>
+        public bool   ShouldSwimDown    { get; private set; }
+
+        /// <summary>
         /// Exposes the player's grounded state so BotPlayerController can
         /// reset the jump sequence when the player lands.
         /// </summary>
@@ -204,6 +222,8 @@ namespace Fridays_Adventure.Tests
             _isSkyIslandScene  = scene is SkyIslandScene;
             _isUnderwaterScene = scene is UnderwaterScene;
             _isBossScene       = scene is BossScene || scene is WarlordBossScene;
+            _isFortressScene   = scene is FortressScene;
+            _isAirshipScene    = scene is AirshipLevelScene;
 
             // Cache reflection fields once — avoids per-frame GetField calls
             var flags = System.Reflection.BindingFlags.NonPublic |
@@ -230,7 +250,8 @@ namespace Fridays_Adventure.Tests
             LogEvent("BOT_INIT",
                 $"Scene={scene.GetType().Name} IsStorm={_isStormScene} " +
                 $"IsSky={_isSkyIslandScene} IsUnderwater={_isUnderwaterScene} " +
-                $"IsBoss={_isBossScene} ExitField={(_exitFlagField?.Name ?? "NONE")} " +
+                $"IsBoss={_isBossScene} IsFortress={_isFortressScene} " +
+                $"IsAirship={_isAirshipScene} ExitField={(_exitFlagField?.Name ?? "NONE")} " +
                 $"BossField={(_bossField != null ? "YES" : "NO")} " +
                 $"Player X={player.X:F0} Y={player.Y:F0} HP={player.Health}");
         }
@@ -245,6 +266,7 @@ namespace Fridays_Adventure.Tests
             _dt           = dt;    // store for sub-methods that need delta time
             _jumpTimer   += dt;
             if (_medkitCooldown > 0f) _medkitCooldown -= dt;
+            if (_pitEscapeForwardTimer > 0f) _pitEscapeForwardTimer -= dt;
 
             // Reset outputs
             ShouldJump        = false;
@@ -254,6 +276,7 @@ namespace Fridays_Adventure.Tests
             ShouldMoveLeft    = false;
             ShouldDodge       = false;
             ShouldFrostBall   = false;
+            ShouldSwimDown    = false;
             ShouldUseIceWall  = false;
 
             try
@@ -293,6 +316,8 @@ namespace Fridays_Adventure.Tests
                     RunVerticalLogic();
                 else if (_isUnderwaterScene)
                     RunUnderwaterLogic();
+                else if (_isFortressScene)
+                    RunFortressLogic();
                 else
                     RunNormalLogic();
 
@@ -334,14 +359,15 @@ namespace Fridays_Adventure.Tests
                             {
                                 // Jump AND keep moving forward — momentum carries
                                 // the bot over the gap. Stopping here was the old bug.
-                                ShouldJump   = true;
-                                _crossingGap = true;
-                                _crossingDir = ShouldMoveLeft ? -1f : 1f;
+                                ShouldJump       = true;
+                                ShouldDoubleJump = true;  // double-jump for max clearance
+                                _crossingGap     = true;
+                                _crossingDir     = 1f;  // always cross forward (right)
                                 // Ensure forward movement is ON so the arc clears the gap
-                                if (_crossingDir > 0f) ShouldMoveRight = true;
-                                else                   ShouldMoveLeft  = true;
+                                ShouldMoveRight = true;
+                                ShouldMoveLeft  = false;
                                 LogEvent("EDGE_JUMP",
-                                    $"No ground {EDGE_PROBE_AHEAD}px ahead — jumping + moving to clear gap");
+                                    $"No ground {EDGE_PROBE_AHEAD}px ahead — jumping + moving RIGHT to clear gap");
                             }
                             else
                             {
@@ -359,11 +385,14 @@ namespace Fridays_Adventure.Tests
                             float gapDist = FindNearestGapDistance(EDGE_PROBE_FAR);
                             if (gapDist != float.MaxValue && CanJumpOverGap(gapDist))
                             {
-                                ShouldJump   = true;
-                                _crossingGap = true;
-                                _crossingDir = ShouldMoveLeft ? -1f : 1f;
+                                ShouldJump       = true;
+                                ShouldDoubleJump = true;  // double-jump for max clearance
+                                _crossingGap     = true;
+                                _crossingDir     = 1f;  // always cross forward (right)
+                                ShouldMoveRight  = true;
+                                ShouldMoveLeft   = false;
                                 LogEvent("GAP_PREJUMP",
-                                    $"Gap at {gapDist:F0}px — pre-jumping to clear");
+                                    $"Gap at {gapDist:F0}px — pre-jumping RIGHT to clear");
                             }
                         }
                         else
@@ -376,10 +405,12 @@ namespace Fridays_Adventure.Tests
                                 if (gap < 80f)
                                 {
                                     // Close to pit — jump to clear it, keep moving forward
-                                    ShouldJump   = true;
-                                    _crossingGap = true;
-                                    _crossingDir = 1f;
-                                    ShouldMoveRight = true;
+                                    ShouldJump       = true;
+                                    ShouldDoubleJump = true;
+                                    _crossingGap     = true;
+                                    _crossingDir     = 1f;
+                                    ShouldMoveRight  = true;
+                                    ShouldMoveLeft   = false;
                                 }
                             }
                         }
@@ -412,6 +443,8 @@ namespace Fridays_Adventure.Tests
                         // ── Wall-jump recovery ────────────────────────────────
                         // If falling for too long (fell into a pit), press into
                         // the nearest wall and jump to wall-kick out.
+                        // ALWAYS exit pits to the RIGHT (forward) to avoid
+                        // jumping backward and re-entering the same hole.
                         bool fellIntoPit = _player.Y > _lastGroundedY + 60f
                                            && _fallingTimer > FALL_WALL_JUMP_TIME;
 
@@ -421,52 +454,44 @@ namespace Fridays_Adventure.Tests
                             if (_player.IsOnLeftWall || _player.IsOnRightWall)
                             {
                                 ShouldJump = true;
-                                // After wall jump, move AWAY from the wall to kick out
-                                ShouldMoveRight = _player.IsOnLeftWall;
-                                ShouldMoveLeft  = _player.IsOnRightWall;
+                                // Always kick RIGHT (forward) regardless of which
+                                // wall we're on.  The old code moved away from the
+                                // wall, which sent the bot LEFT when on the right
+                                // wall — directly back into the hole.
+                                ShouldMoveRight = true;
+                                ShouldMoveLeft  = false;
+                                // Start the post-escape forward drive so the bot
+                                // clears the pit area before resuming normal logic
+                                _pitEscapeForwardTimer = PIT_ESCAPE_FORWARD_TIME;
                                 LogEvent("WALL_JUMP_RECOVERY",
-                                    $"Wall-jumping out of pit — OnLeft={_player.IsOnLeftWall} OnRight={_player.IsOnRightWall}");
+                                    $"Wall-jumping out of pit FORWARD — OnLeft={_player.IsOnLeftWall} OnRight={_player.IsOnRightWall}");
                             }
                             else
                             {
-                                // Not touching a wall yet — press into nearest wall
-                                // to initiate wall slide, then jump catches wall contact.
-                                float playerCenterX = _player.X + _player.Width / 2f;
-                                var platforms = GetPlatforms();
-                                float nearestWallDist = float.MaxValue;
-                                bool wallIsRight = true;
-
-                                if (platforms != null)
-                                {
-                                    foreach (var plat in platforms)
-                                    {
-                                        // Only consider platforms whose top is reachable
-                                        if (plat.Top > _player.Y + _player.Height + 80f) continue;
-
-                                        float distToLeft  = Math.Abs(playerCenterX - plat.Left);
-                                        float distToRight = Math.Abs(playerCenterX - plat.Right);
-
-                                        if (distToLeft < nearestWallDist)
-                                        {
-                                            nearestWallDist = distToLeft;
-                                            wallIsRight = playerCenterX < plat.Left;
-                                        }
-                                        if (distToRight < nearestWallDist)
-                                        {
-                                            nearestWallDist = distToRight;
-                                            wallIsRight = playerCenterX < plat.Right;
-                                        }
-                                    }
-                                }
-
-                                ShouldMoveRight = wallIsRight;
-                                ShouldMoveLeft  = !wallIsRight;
+                                // Not touching a wall yet — press into the LEFT wall
+                                // so we can wall-kick RIGHT (forward) out of the pit.
+                                // Previously the bot picked the nearest wall, which
+                                // could send it backward if the right wall was closer.
+                                ShouldMoveLeft  = true;
+                                ShouldMoveRight = false;
                                 ShouldJump      = true;  // mash jump — catches wall contact
                                 LogEvent("PIT_RECOVERY",
-                                    $"Falling in pit Y={_player.Y:F0} — seeking wall (right={wallIsRight})");
+                                    $"Falling in pit Y={_player.Y:F0} — pressing LEFT to find wall, will kick RIGHT");
                             }
                         }
                     }
+                }
+
+                // ── Post-pit-escape forward drive ─────────────────────────────
+                // After wall-jumping out of a pit, force forward movement for a
+                // short time.  This prevents the bot from immediately turning
+                // around and falling back into the same hole.
+                if (_pitEscapeForwardTimer > 0f)
+                {
+                    ShouldMoveRight = true;
+                    ShouldMoveLeft  = false;
+                    ShouldJump      = true;  // keep jumping to clear the pit edge
+                    CurrentState    = "PIT_ESCAPE_FORWARD";
                 }
             }
             catch (Exception ex)
@@ -482,6 +507,15 @@ namespace Fridays_Adventure.Tests
                     $"State={CurrentState} Pos=({_player.X:F0},{_player.Y:F0}) " +
                     $"HP={_player.Health:F0}/{_player.MaxHealth:F0} " +
                     $"Enemies={_detectedEnemies.Count} Stuck={IsStuck}");
+
+            // ── Global airship guard — auto-scroll levels MUST never go left ─
+            // Applied after all logic so combat retreat / item collection
+            // can't accidentally send the bot backward into the scrolling edge.
+            if (_isAirshipScene && ShouldMoveLeft)
+            {
+                ShouldMoveLeft  = false;
+                ShouldMoveRight = true;
+            }
         }
 
         // ══════════════════════════════════════════════════════════════════
@@ -664,28 +698,48 @@ namespace Fridays_Adventure.Tests
         ///
         /// PHYSICS (computed from SkyIslandScene.cs):
         ///   Gravity     = 860 px/s²
-        ///   JumpForce   = −520 px/s  → single jump peak = 157 px
-        ///   Double jump peak = 314 px (jump again at apex)
+        ///   JumpForce   = −520 px/s  → single jump peak ≈ 157 px
+        ///   Double jump peak ≈ 314 px (jump again after 0.18 s cooldown)
         ///   Platform gap     = 250 px vertical, 18 px thick
-        ///   Player           = 48 × 81 px, MoveSpeed = 290 px/s
-        ///   Horizontal range per jump ≈ 350 px (1.21 s air time × 290 px/s)
+        ///   Player           ≈ 48 × 56 px, MoveSpeed = 290 px/s
+        ///   Horizontal range per double-jump ≈ 440 px (1.5 s air × 290 px/s)
         ///   LevelWidth  = 900, LevelHeight = 3200
         ///
         /// PLATFORMS ARE SOLID FROM BELOW — jumping under one bonks the head.
+        /// The bot must jump from OUTSIDE the target platform's horizontal
+        /// span to avoid headbonking, then drift inward during the arc.
         ///
         /// Algorithm:
         ///   1. Find the platform the player is standing on ("current").
-        ///   2. Find the next platform above within double-jump reach.
-        ///   3. Compute a LAUNCH POSITION: an X coordinate on the current
-        ///      platform that is horizontally outside the target platform's
-        ///      span, close to its nearest edge.
-        ///   4. Walk to the launch position (stay on current platform).
-        ///   5. Jump + drift toward the target platform center.
-        ///   6. Double-jump at apex for maximum height.
-        ///   7. Land on target.  Repeat.
+        ///   2. Find the next platform above within double-jump height.
+        ///   3. Walk to the edge of the CURRENT platform that faces the
+        ///      target, so the horizontal distance is minimized.
+        ///   4. Jump from that edge — always double-jump.
+        ///   5. Drift toward target platform center while airborne.
+        ///   6. Land on target.  Repeat until exit zone is reached.
         /// </summary>
+        /// <summary>
+        /// Vertical platformer strategy for SkyIslandScene.
+        ///
+        /// PLATFORMS ARE ONE-WAY — the player passes through from below and
+        /// lands on top when falling.  No headbonk is possible.  This means
+        /// the bot can jump from DIRECTLY UNDER the target platform and will
+        /// pass through it, landing on top when VelocityY turns positive.
+        ///
+        /// Algorithm:
+        ///   1. Find the next platform above within double-jump height.
+        ///   2. Walk toward the target platform center on the current platform.
+        ///   3. Jump + double-jump; drift toward platform center during arc.
+        ///   4. The player passes through the platform from below and lands
+        ///      on top at the apex / descent.
+        ///   5. Repeat until exit zone is reached.
+        /// </summary>
+        /// <remarks>PHASE 2 - Simplified for one-way platform physics</remarks>
         private void RunVerticalLogic()
         {
+            // ── Max horizontal reach during a double-jump arc ─────────
+            const float MAX_JUMP_REACH = 400f;
+
             // ── P1: Kill enemies (only if very close) ─────────────────
             Enemy nearest = FindNearestAliveEnemy();
             if (nearest != null && Math.Abs(nearest.X - _player.X) < 150f
@@ -703,30 +757,46 @@ namespace Fridays_Adventure.Tests
 
             if (platforms == null || platforms.Count == 0)
             {
-                // No platform data — fallback
+                // No platform data — fallback: jump and move right
                 CurrentState = "SKY_NO_DATA";
                 ShouldMoveRight = true;
                 ShouldJump = _player.IsGrounded;
+                ShouldDoubleJump = true;
                 return;
             }
 
             // ── Find the platform the player is currently ON ──────────
-            // "On" means player's feet are within 5 px of a platform top
-            // and the player horizontally overlaps it.
             Rectangle currentPlat = Rectangle.Empty;
             foreach (var p in platforms)
             {
                 float feetDist = Math.Abs(playerFeetY - p.Top);
                 bool hOverlap = (_player.X + _player.Width) > p.Left && _player.X < p.Right;
-                if (feetDist < 5f && hOverlap && _player.IsGrounded)
+                if (feetDist < 8f && hOverlap && _player.IsGrounded)
                 {
                     currentPlat = p;
                     break;
                 }
             }
 
+            // ── Exit zone check — aim directly if close ───────────────
+            if (exitZone != Rectangle.Empty)
+            {
+                float exitDistY = playerFeetY - exitZone.Y;
+                if (exitDistY > 0f && exitDistY < 320f)
+                {
+                    CurrentState = "SKY_GOAL";
+                    float dx = (exitZone.X + exitZone.Width / 2f) - playerCenterX;
+                    ShouldMoveRight = dx > 10f;
+                    ShouldMoveLeft  = dx < -10f;
+                    ShouldDoubleJump = true;
+                    if (_player.IsGrounded) ShouldJump = true;
+                    return;
+                }
+            }
+
             // ── Find the next platform ABOVE to climb to ──────────────
             // Must be 10–320 px above player's feet (within double-jump).
+            // Pick the CLOSEST one above (highest Y value = smallest gap).
             Rectangle targetPlat = Rectangle.Empty;
             float bestY = float.MinValue;
             foreach (var p in platforms)
@@ -740,146 +810,68 @@ namespace Fridays_Adventure.Tests
                 }
             }
 
-            // ── Exit zone check — aim directly if close ───────────────
-            // Only engage when the exit is within actual double-jump reach
-            // (314px height).  The player must clear the gap between their
-            // feet and the exit zone bottom — subtract player height.
-            if (exitZone != Rectangle.Empty)
-            {
-                float exitDistY = playerFeetY - exitZone.Y;
-                if (exitDistY > 0f && exitDistY < 300f)
-                {
-                    CurrentState = "SKY_GOAL";
-                    float dx = (exitZone.X + exitZone.Width / 2f) - playerCenterX;
-                    ShouldMoveRight = dx > 10f;
-                    ShouldMoveLeft  = dx < -10f;
-                    if (_player.IsGrounded)
-                    {
-                        ShouldJump = true;
-                        ShouldDoubleJump = true;  // need max height to reach exit
-                    }
-                    return;
-                }
-            }
-
             // ── No target platform found ──────────────────────────────
             if (targetPlat == Rectangle.Empty)
             {
-                // Might be airborne between tiers — just drift and try to land
                 if (!_player.IsGrounded)
                 {
+                    // Airborne with no target above — land on nearest platform
                     CurrentState = "SKY_DRIFTING";
-                    // Try to land on any platform below
+                    ShouldDoubleJump = true;
+                    Rectangle landTarget = FindNearestPlatformBelow(platforms, playerCenterX, playerFeetY);
+                    if (landTarget != Rectangle.Empty)
+                    {
+                        float dx = (landTarget.Left + landTarget.Width / 2f) - playerCenterX;
+                        ShouldMoveRight = dx > 5f;
+                        ShouldMoveLeft  = dx < -5f;
+                    }
                     return;
                 }
+                // Grounded but nothing above — move to level center and jump
                 CurrentState = "SKY_SEARCH";
-                // Move toward center and jump to discover platforms
                 float toCenter = 450f - playerCenterX;
                 ShouldMoveRight = toCenter > 20f;
                 ShouldMoveLeft  = toCenter < -20f;
                 ShouldJump = true;
+                ShouldDoubleJump = true;
                 return;
             }
 
             // ════════════════════════════════════════════════════════════
-            // CORE CLIMB LOGIC
+            // CORE CLIMB LOGIC — ONE-WAY PLATFORMS
+            // Player passes through platforms from below, lands on top
+            // when falling.  No headbonk possible, so the bot can jump
+            // from directly under the target.
             // ════════════════════════════════════════════════════════════
 
-            float targetLeft   = targetPlat.Left;
-            float targetRight  = targetPlat.Right;
-            float targetCenterX = targetLeft + targetPlat.Width / 2f;
-
-            // Is the player horizontally underneath the target platform?
-            // "Under" means the player's CENTER is within the target's X span.
-            bool centerUnder = playerCenterX > targetLeft && playerCenterX < targetRight;
+            float targetCenterX = targetPlat.Left + targetPlat.Width / 2f;
+            float distToCenter  = Math.Abs(targetCenterX - playerCenterX);
 
             if (_player.IsGrounded)
             {
-                // ── GROUNDED LOGIC ──────────────────────────────────
+                // ── GROUNDED ──────────────────────────────────────────
+                // With one-way platforms the ideal launch position is
+                // directly UNDER the target center so the bot rises
+                // straight through and lands on top.
 
-                // Determine the best edge to jump from.
-                // Pick the edge of the TARGET platform that is CLOSER to
-                // the player.  The launch point is just outside that edge.
-                float distToLeft  = Math.Abs(playerCenterX - targetLeft);
-                float distToRight = Math.Abs(playerCenterX - targetRight);
-
-                // Choose which edge to approach
-                bool useLeftEdge;
-                if (playerCenterX <= targetLeft)
-                    useLeftEdge = true;   // already left of platform
-                else if (playerCenterX >= targetRight)
-                    useLeftEdge = false;  // already right of platform
-                else
-                    useLeftEdge = distToLeft < distToRight; // under — go to nearest edge
-
-                // The launch X: just outside the chosen edge, with a small
-                // buffer so the jump arc clears the platform bottom.
-                // 20 px outside the edge is enough — the player will drift
-                // inward during the 1.2 s jump arc.
-                float launchX;
-                if (useLeftEdge)
-                    launchX = targetLeft - _player.Width - 15f;
-                else
-                    launchX = targetRight + 15f;
-
-                // Clamp to level bounds
-                launchX = Math.Max(0f, Math.Min(900f - _player.Width, launchX));
-
-                float distToLaunch = launchX - _player.X;
-
-                // Are we at the launch position?
-                bool atLaunch = Math.Abs(distToLaunch) < 20f;
-
-                // Also check: is the player already CLEAR of the target
-                // platform (no horizontal overlap)?
-                bool playerClear = (_player.X + _player.Width) <= targetLeft
-                                || _player.X >= targetRight;
-
-                if (!atLaunch && !playerClear)
+                if (distToCenter < 60f)
                 {
-                    // ── WALK TO LAUNCH POSITION ────────────────────
-                    // Must stay on the current platform while walking.
-                    CurrentState = "SKY_WALK_TO_LAUNCH";
-                    ShouldMoveRight = distToLaunch > 0f;
-                    ShouldMoveLeft  = distToLaunch < 0f;
-                    ShouldJump = false;
+                    // Close enough to center — JUMP straight up through it
+                    CurrentState = "SKY_LAUNCH";
+                    ShouldJump = true;
+                    ShouldDoubleJump = true;
+                    // Slight drift toward exact center during arc
+                    float dx = targetCenterX - playerCenterX;
+                    ShouldMoveRight = dx > 5f;
+                    ShouldMoveLeft  = dx < -5f;
 
-                    // Edge guard: don't walk off the current platform
-                    if (currentPlat != Rectangle.Empty)
-                    {
-                        float edgeMargin = 10f;
-                        if (ShouldMoveLeft && _player.X <= currentPlat.Left + edgeMargin)
-                        {
-                            // At left edge of current platform — can't walk further
-                            // Force a jump from here even though not ideal
-                            ShouldMoveLeft = false;
-                            ShouldJump = true;
-                            ShouldDoubleJump = true;  // always double-jump in Sky
-                            ShouldMoveRight = targetCenterX > playerCenterX;
-                            ShouldMoveLeft  = targetCenterX < playerCenterX;
-                            CurrentState = "SKY_EDGE_JUMP";
-                        }
-                        if (ShouldMoveRight && (_player.X + _player.Width) >= currentPlat.Right - edgeMargin)
-                        {
-                            // At right edge of current platform — can't walk further
-                            ShouldMoveRight = false;
-                            ShouldJump = true;
-                            ShouldDoubleJump = true;  // always double-jump in Sky
-                            ShouldMoveRight = targetCenterX > playerCenterX;
-                            ShouldMoveLeft  = targetCenterX < playerCenterX;
-                            CurrentState = "SKY_EDGE_JUMP";
-                        }
-                    }
-
-                    LogEvent("SKY_WALK", $"Walking to launch X={launchX:F0} (dist={distToLaunch:F0}) " +
-                        $"Target=[{targetLeft}-{targetRight}] Y={targetPlat.Top}");
+                    LogEvent("SKY_LAUNCH",
+                        $"Jump-through from X={_player.X:F0} toward target " +
+                        $"[{targetPlat.Left}-{targetPlat.Right}] Y={targetPlat.Top}");
                 }
-                else
+                else if (distToCenter < MAX_JUMP_REACH)
                 {
-                    // ── LAUNCH JUMP ────────────────────────────────
-                    // At launch position or already clear — JUMP NOW.
-                    // Always double-jump in Sky — single jump (157px) can't
-                    // clear the 250px platform gap.
+                    // Within reach but not centered — jump with drift
                     CurrentState = "SKY_LAUNCH";
                     ShouldJump = true;
                     ShouldDoubleJump = true;
@@ -887,30 +879,88 @@ namespace Fridays_Adventure.Tests
                     ShouldMoveRight = dx > 0f;
                     ShouldMoveLeft  = dx < 0f;
 
-                    LogEvent("SKY_LAUNCH", $"Jumping from X={_player.X:F0} " +
-                        $"toward target center X={targetCenterX:F0} Y={targetPlat.Top}");
+                    LogEvent("SKY_LAUNCH",
+                        $"Angled jump from X={_player.X:F0} dist={distToCenter:F0} " +
+                        $"toward [{targetPlat.Left}-{targetPlat.Right}]");
+                }
+                else
+                {
+                    // Too far — walk toward the target center first
+                    bool walkRight = targetCenterX > playerCenterX;
+                    CurrentState = "SKY_WALK_TO_LAUNCH";
+                    ShouldMoveRight = walkRight;
+                    ShouldMoveLeft  = !walkRight;
+                    ShouldJump = false;
+
+                    // Edge guard: if at current platform edge, jump anyway
+                    if (currentPlat != Rectangle.Empty)
+                    {
+                        float margin = 12f;
+                        bool atLeftEdge  = _player.X <= currentPlat.Left + margin;
+                        bool atRightEdge = (_player.X + _player.Width) >= currentPlat.Right - margin;
+                        if ((ShouldMoveLeft && atLeftEdge) || (ShouldMoveRight && atRightEdge))
+                        {
+                            CurrentState = "SKY_EDGE_JUMP";
+                            ShouldJump = true;
+                            ShouldDoubleJump = true;
+                            float dx = targetCenterX - playerCenterX;
+                            ShouldMoveRight = dx > 0f;
+                            ShouldMoveLeft  = dx < 0f;
+                        }
+                    }
+
+                    LogEvent("SKY_WALK",
+                        $"Walking toward target center X={targetCenterX:F0} " +
+                        $"dist={distToCenter:F0}");
                 }
             }
             else
             {
-                // ── AIRBORNE LOGIC ──────────────────────────────────
-                // BotPlayerController handles the double-jump timing
-                // automatically via the JumpPhase state machine.
-                // Here we just drift toward the target platform.
+                // ── AIRBORNE: drift toward target platform center ─────
                 CurrentState = "SKY_AIRBORNE";
+                ShouldDoubleJump = true;
 
                 float dx = targetCenterX - playerCenterX;
                 ShouldMoveRight = dx > 5f;
                 ShouldMoveLeft  = dx < -5f;
 
-                // If we're above the target and falling, tighten drift
-                // to land precisely on the platform.
-                if (_player.Y + _player.Height < targetPlat.Top + 30f && _player.VelocityY > 0f)
+                // Tighten drift when above the target and falling
+                bool aboveTarget = (_player.Y + _player.Height) < targetPlat.Top + 20f;
+                bool falling     = _player.VelocityY > 0f;
+                if (aboveTarget && falling)
                 {
                     ShouldMoveRight = dx > 2f;
                     ShouldMoveLeft  = dx < -2f;
                 }
             }
+        }
+
+        /// <summary>
+        /// Finds the nearest platform that is below (or at) the player's
+        /// current Y position, for landing recovery when drifting.
+        /// </summary>
+        /// <remarks>PHASE 2 - SkyIsland bot landing recovery helper</remarks>
+        private Rectangle FindNearestPlatformBelow(List<Rectangle> platforms,
+            float playerCenterX, float playerFeetY)
+        {
+            Rectangle best = Rectangle.Empty;
+            float bestDist = float.MaxValue;
+            foreach (var p in platforms)
+            {
+                // Platform must be at or below the player
+                if (p.Top < playerFeetY - 10f) continue;
+                float hDist = 0f;
+                if (playerCenterX < p.Left) hDist = p.Left - playerCenterX;
+                else if (playerCenterX > p.Right) hDist = playerCenterX - p.Right;
+                float vDist = p.Top - playerFeetY;
+                float totalDist = hDist + Math.Abs(vDist);
+                if (totalDist < bestDist)
+                {
+                    bestDist = totalDist;
+                    best = p;
+                }
+            }
+            return best;
         }
 
         // ══════════════════════════════════════════════════════════════════
@@ -920,31 +970,48 @@ namespace Fridays_Adventure.Tests
         /// <summary>
         /// Underwater navigation for UnderwaterScene.
         /// No gravity-based platforming — the player floats with buoyancy.
-        /// Strategy: head toward exit zone, avoid coral hazards, collect
-        /// air bubbles to refill oxygen.
+        /// Strategy: head toward exit zone, collect air bubbles when O2 is
+        /// low, avoid coral hazards, and use frost ball on jellyfish.
         /// </summary>
+        /// <remarks>PHASE 2 - Session 111: improved underwater navigation</remarks>
         private void RunUnderwaterLogic()
         {
             // ── P1: Pursue exit zone ──────────────────────────────────
             Rectangle exitZone = GetExitFlag();
             if (exitZone != Rectangle.Empty)
             {
-                float distX = exitZone.X + exitZone.Width / 2f - _player.X;
-                float distY = exitZone.Y + exitZone.Height / 2f - _player.Y;
+                float exitCX = exitZone.X + exitZone.Width / 2f;
+                float exitCY = exitZone.Y + exitZone.Height / 2f;
+                float distX = exitCX - (_player.X + _player.Width / 2f);
+                float distY = exitCY - (_player.Y + _player.Height / 2f);
+                float dist  = (float)Math.Sqrt(distX * distX + distY * distY);
 
                 CurrentState = "UNDERWATER_GOAL";
-                ShouldMoveRight = distX > 20f;
-                ShouldMoveLeft  = distX < -20f;
+                ShouldMoveRight = distX > 15f;
+                ShouldMoveLeft  = distX < -15f;
 
-                // Use jump to swim upward when exit is above
-                ShouldJump = distY < -20f;
+                // Swim up (Jump = Space/Up) or down (SwimDown = Down key)
+                ShouldJump     = distY < -15f;
+                ShouldSwimDown = distY > 15f;
+
+                // Frost ball any jellyfish in the path (100-250px ahead)
+                Enemy nearJelly = FindNearestAliveEnemy();
+                if (nearJelly != null)
+                {
+                    float jDist = Math.Abs(nearJelly.X - _player.X);
+                    if (jDist < 250f && jDist > 60f)
+                        ShouldFrostBall = true;
+                }
 
                 LogEvent("UNDERWATER_GOAL",
-                    $"ExitX={exitZone.X} ExitY={exitZone.Y} DistX={distX:F0} DistY={distY:F0}");
+                    $"Exit ({exitZone.X},{exitZone.Y}) dist={dist:F0} " +
+                    $"dX={distX:F0} dY={distY:F0}");
                 return;
             }
 
-            // ── P2: Default exploration — swim right and periodically up
+            // ── P2: Default exploration — swim toward upper-right ─────
+            // Exit is typically in the upper-right area of the level.
+            // Swim right and periodically up to explore.
             CurrentState    = "UNDERWATER_EXPLORE";
             ShouldMoveRight = true;
 
@@ -1023,6 +1090,124 @@ namespace Fridays_Adventure.Tests
                 ShouldJump      = true;
                 ShouldMoveRight = true;  // press into wall to trigger wall slide/jump
                 LogEvent("FALL_RECOVERY", $"Y={_player.Y:F0} — mashing jump + wall seek");
+            }
+
+            // ── Airship override: NEVER move left in auto-scroll levels ───
+            // AirshipLevelScene auto-scrolls to the right at a constant rate.
+            // If the bot moves left, the scrolling left edge kills it.
+            if (_isAirshipScene && ShouldMoveLeft)
+            {
+                ShouldMoveLeft  = false;
+                ShouldMoveRight = true;
+            }
+        }
+
+        // ══════════════════════════════════════════════════════════════════
+        // FORTRESS LOGIC — vertical climb with rising lava
+        // ══════════════════════════════════════════════════════════════════
+
+        /// <summary>
+        /// FortressScene has rising lava from below and platforms ascending
+        /// toward an exit door near the top.  The bot must climb upward
+        /// (not just move right) to stay above the lava and reach the exit.
+        /// </summary>
+        /// <remarks>PHASE 2 - Session 113: Fortress climbing AI</remarks>
+        private void RunFortressLogic()
+        {
+            int W = Game.Instance.CanvasWidth;
+            int H = Game.Instance.CanvasHeight;
+
+            // ── P1: Pursue exit door if visible ───────────────────────────
+            Rectangle exitDoor = GetExitFlag();
+            if (exitDoor != Rectangle.Empty)
+            {
+                float distX = (exitDoor.X + exitDoor.Width / 2f) - (_player.X + _player.Width / 2f);
+                float distY = (exitDoor.Y + exitDoor.Height / 2f) - (_player.Y + _player.Height / 2f);
+
+                // Close to exit? Go directly
+                if (Math.Abs(distX) < 200f && Math.Abs(distY) < 200f)
+                {
+                    CurrentState    = "FORTRESS_EXIT";
+                    ShouldMoveRight = distX > 10f;
+                    ShouldMoveLeft  = distX < -10f;
+                    ShouldJump      = _player.IsGrounded;
+                    ShouldDoubleJump = true;
+                    LogEvent("FORTRESS_EXIT",
+                        $"Exit dX={distX:F0} dY={distY:F0}");
+                    return;
+                }
+            }
+
+            // ── P2: Find the best platform ABOVE current position ─────────
+            // Always try to move upward to escape the rising lava.
+            var platforms = GetPlatforms();
+            float playerCenterX = _player.X + _player.Width / 2f;
+            float playerFeet    = _player.Y + _player.Height;
+
+            Rectangle bestAbove = Rectangle.Empty;
+            float bestDist = float.MaxValue;
+
+            foreach (var p in platforms)
+            {
+                // Only consider platforms above the player
+                float pTop = p.Y;
+                if (pTop >= playerFeet - 10f) continue;  // not above
+
+                // Reachable vertically? (within ~250px above)
+                float vertDist = playerFeet - pTop;
+                if (vertDist > 300f) continue;
+
+                // Prefer the closest-above platform
+                float horizDist = Math.Abs((p.X + p.Width / 2f) - playerCenterX);
+                float totalDist = vertDist + horizDist * 0.5f;
+
+                if (totalDist < bestDist)
+                {
+                    bestDist  = totalDist;
+                    bestAbove = p;
+                }
+            }
+
+            if (bestAbove != Rectangle.Empty)
+            {
+                float targetCenterX = bestAbove.X + bestAbove.Width / 2f;
+                float distToTarget  = targetCenterX - playerCenterX;
+
+                CurrentState    = "FORTRESS_CLIMB";
+                ShouldMoveRight = distToTarget > 15f;
+                ShouldMoveLeft  = distToTarget < -15f;
+
+                // Jump when grounded (or when close horizontally to the target)
+                if (_player.IsGrounded && Math.Abs(distToTarget) < bestAbove.Width)
+                {
+                    ShouldJump       = true;
+                    ShouldDoubleJump = true;
+                }
+
+                LogEvent("FORTRESS_CLIMB",
+                    $"Target=({bestAbove.X},{bestAbove.Y}) dX={distToTarget:F0} bestDist={bestDist:F0}");
+                return;
+            }
+
+            // ── P3: No platform above — move toward exit X and keep jumping ─
+            // Fallback when at the top or no visible higher platform
+            CurrentState    = "FORTRESS_SEARCH";
+            ShouldMoveRight = true;
+            if (_player.IsGrounded && _jumpTimer >= JUMP_INTERVAL)
+            {
+                ShouldJump       = true;
+                ShouldDoubleJump = true;
+                _jumpTimer       = 0f;
+            }
+
+            // ── P4: Lava panic — if near bottom, mash jump ───────────────
+            if (_player.Y > H * 0.75f)
+            {
+                ShouldJump       = true;
+                ShouldDoubleJump = true;
+                ShouldMoveRight  = true;
+                LogEvent("FORTRESS_LAVA_PANIC",
+                    $"Y={_player.Y:F0} — too close to rising lava, mashing jump");
             }
         }
 
@@ -1193,7 +1378,7 @@ namespace Fridays_Adventure.Tests
             // (SkyIslandScene) and underwater levels Y progress is equally important.
             float dx = _player.X - _stuckAnchorX;
             float dy = _player.Y - _stuckAnchorY;
-            float totalMoved = (_isSkyIslandScene || _isUnderwaterScene || _isBossScene)
+            float totalMoved = (_isSkyIslandScene || _isUnderwaterScene || _isBossScene || _isFortressScene)
                 ? (float)Math.Sqrt(dx * dx + dy * dy)  // 2D distance
                 : Math.Abs(dx);                         // horizontal only
 

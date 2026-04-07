@@ -267,6 +267,12 @@ namespace Fridays_Adventure.Tests
                     input.InjectPressed(Keys.B);
                 }
 
+                // Swim down (Down key) — underwater vertical navigation.
+                if (_comprehensiveBot.ShouldSwimDown)
+                {
+                    input.InjectHeld(Keys.Down);
+                }
+
                 return;  // ← Always use comprehensive bot
             }
 

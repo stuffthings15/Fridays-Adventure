@@ -6,6 +6,407 @@
 
 ---
 
+## SESSION 116: Password-Protected DEV MENU Button on Title Screen
+
+**Date/Time:** Current Session  
+**Status:** ✅ COMPLETE  
+**Build Status:** ✅ 0 errors, 0 warnings  
+
+### FEATURE: DEV MENU button with password prompt added to title screen
+- Added a small gray **DEV MENU** button in the bottom-right corner of the title screen (above the controls panel)
+- Clicking the button opens a **password entry popup** overlay
+- Password input is **masked with asterisks** for secrecy
+- Accepts **"Luffy"** or **"Loofy"** (case-insensitive) — same passwords as the name-entry secret
+- **Correct password:** enables GodMode and pushes to `DevMenuScene`
+- **Wrong password:** shows red "Incorrect password!" error message, clears the input field
+- **Escape key** cancels the password prompt and returns to the title screen
+- All regular title screen navigation is blocked while the password prompt is active
+
+### UI Details
+- Button: 120×32px, dark gray (`Color.FromArgb(60, 60, 60)`), bottom-right of screen
+- Password box: 420×140px centered popup with dark navy background + gold border
+- Input displayed as `****|` (asterisks + blinking cursor)
+- Help text: `[Enter] Confirm   [Esc] Cancel   [Backspace] Delete`
+
+### Files Changed
+| File | Changes |
+|------|---------|
+| `Scenes/TitleScene.cs` | Added `_devMenuBtn` rectangle, `_passwordActive`/`_passwordInput`/`_passwordCursor`/`_passwordError` fields; password entry Update logic with validation; `DrawPasswordEntryBox()` method; DEV MENU button draw + click handler |
+
+---
+
+## SESSION 115: Text RPG Integrated into Title Screen + Sky Island Performance Fix + Title Screen UX Fix
+
+**Date/Time:** Current Session  
+**Status:** ✅ COMPLETE  
+**Build Status:** ✅ 0 errors, 0 warnings  
+
+### FEATURE: Text RPG button added to main title screen
+- Added "⚔ TEXT RPG" button to TitleScene, placed side-by-side with "WATCH DEMO"
+- Button opens the TextRPG `MainForm` as a **modal dialog** via `ShowDialog()`
+- Main game pauses while the RPG window is open; resumes when closed
+- Purple-themed button (`Color.FromArgb(90, 60, 130)`) for visual distinction
+- Click handler with try/catch and `DebugLogger` error logging
+- TextRPG source files were already compiled into the main project (Session 114)
+
+### BUG FIX: Sky Island level lagged severely and crashed to title screen
+- **Root Cause:** `SkyIslandScene.Draw()` allocated **~130+ GDI `SolidBrush` objects per frame**
+  - 4 `using (var br = new SolidBrush(...))` blocks × 13 platforms = 52 brush allocations
+  - Plus ~85 bump ellipse brushes (6-7 per platform × 13 platforms)
+  - Each allocation triggers GDI handle creation + disposal + GC pressure
+  - At 60 FPS = ~7,800 GDI allocations per second → severe lag → eventual crash
+- **Fix 1: Cached platform brushes as static readonly fields**
+  - `_platBaseBrush` (platform fill), `_platBumpBrush` (cloud puffs), `_platHighlightBrush` (top strip), `_platShadowBrush` (underside shadow)
+  - Zero per-frame GDI allocations for platform rendering
+- **Fix 2: Added visibility culling for off-screen platforms**
+  - Platforms above or below the camera viewport (with 30px margin) are skipped entirely
+  - With camera at bottom of level, only ~4-5 of 13 platforms are drawn instead of all 13
+  - Reduces draw calls by ~60% in typical play
+
+### BUG FIX: Title screen showed name entry immediately + gray overlay
+- **Problem 1:** Name entry box appeared as soon as the title screen loaded — no way to see the title or choose what to do first
+- **Root Cause:** `OnEnter()` auto-set `_nameActive = true` whenever `PlayerName` was empty
+- **Problem 2:** A dark semi-transparent overlay (`Color.FromArgb(160, 0, 0, 0)`) covered the entire screen behind the name entry box, graying out the title
+- **Fix 1: Added ▶ START GAME button** — large green button (320×56px) centered above the main button row
+  - Clicking START GAME shows the name entry box if no name is set, or goes directly to save slot selection
+  - Enter key also triggers START GAME
+- **Fix 2: Removed auto-show of name entry** — `_nameActive` now defaults to `false`; only set to `true` when the player clicks START GAME
+- **Fix 3: Removed gray overlay** — deleted the full-screen `FillRectangle(160, 0, 0, 0)` from `DrawNameEntryBox()`; title screen remains fully visible behind the name entry box
+- **Fix 4: Name entry now proceeds to game** — after confirming a name, the scene replaces to `SaveSlotScene` instead of just closing the name box
+- **Fix 5: Updated blinking prompt text** — changed from "Press ENTER or Z to set sail" to "Click START GAME or press ENTER"
+
+### Title Screen Layout (New)
+```
+   [Title Banner]
+   [Tagline]
+
+   [▶ START GAME]        ← New prominent green button
+
+   [LOAD][SAVE][OPTIONS][SCORES][EXIT]
+   [WATCH DEMO] [⚔ TEXT RPG]
+
+   [Controls panel at bottom]
+```
+
+### Files Changed
+| File | Changes |
+|------|---------|
+| `Scenes/TitleScene.cs` | Added `_startBtn` field + `StartGame()` method; removed auto-show of name entry; removed gray overlay from `DrawNameEntryBox()`; added START GAME button drawing; updated prompt text; name confirmation now proceeds to SaveSlotScene |
+| `Scenes/SkyIslandScene.cs` | Added 4 cached static `SolidBrush` fields; replaced per-frame `using` blocks with cached brushes; added camera-Y culling in platform draw loop |
+
+---
+
+## SESSION 114: Text RPG Prototype — Standalone WinForms Game
+
+**Date/Time:** Current Session  
+**Status:** ✅ COMPLETE  
+**Build Status:** ✅ 0 errors, 0 warnings  
+
+### Created: Full text-based RPG game prototype (separate project)
+- Built in `TextRPG/` subfolder as a standalone .NET Framework 4.7.2 WinForms project
+- 12 source files, clean OOP architecture with separated concerns
+- **6 screens:** Title, Game (exploration), Combat, Inventory, Dialogue, Game Over
+- **9 rooms:** Village Square, Dark Forest, Goblin Cave, Library, Riverbank, Troll Bridge, Shrine, Crystal Hall, Dragon's Lair
+- **3 enemies:** Cave Goblin (HP 40), Bridge Troll (HP 70), Shadow Dragon (HP 120)
+- **7 items:** Iron Sword, Leather Armor, Health Potion, Goblin Tooth, Troll's Club, Dragon Scale Amulet, Dragon's Heart
+- **2 NPCs:** Elder Mathis (Village Square), Scholar Elara (Library) — both with branching dialogue
+- **Save/Load system:** Text-based serialization to `savegame.txt`
+- **Dark themed UI:** Consistent color palette, styled buttons, HP bars
+- Demo completable in 2-4 minutes: explore → collect gear → fight goblin → talk to NPCs → save → enter portal → defeat dragon → victory
+
+### Files Created
+| File | Purpose |
+|------|---------|
+| `TextRPG/TextRPG.csproj` | .NET Framework 4.7.2 WinForms project |
+| `TextRPG/Program.cs` | Application entry point |
+| `TextRPG/MainForm.cs` | Main form + Theme helper class |
+| `TextRPG/Models.cs` | Player, Enemy, Item, Room, NPC, GameState classes |
+| `TextRPG/GameManager.cs` | Core game logic (navigation, combat, items, world) |
+| `TextRPG/SaveSystem.cs` | Save/load to text file |
+| `TextRPG/Screens/TitleScreen.cs` | Title menu + name entry |
+| `TextRPG/Screens/GameScreen.cs` | Main exploration HUD + navigation |
+| `TextRPG/Screens/CombatScreen.cs` | Turn-based combat with HP bars |
+| `TextRPG/Screens/InventoryScreen.cs` | Item list with equip/use actions |
+| `TextRPG/Screens/DialogueScreen.cs` | NPC dialogue with branching options |
+| `TextRPG/Screens/GameOverScreen.cs` | Victory/defeat with play again |
+
+---
+
+## SESSION 113: Bot Fortress/Airship AI + Health Pickups for Fortress & Airship + Lava HUD
+
+**Date/Time:** Current Session  
+**Status:** ✅ COMPLETE  
+**Build Status:** ✅ 0 errors, 0 warnings  
+
+### BUG: Bot used generic horizontal logic for FortressScene (vertical level with rising lava)
+- FortressScene has rising lava from below and platforms ascending toward an exit door at the top
+- Bot used `RunNormalLogic()` which moves RIGHT — wrong direction for a vertical climb
+- Bot would get killed by rising lava if it didn't climb upward fast enough
+- **Fix:** Added `_isFortressScene` flag to detect FortressScene
+- **Fix:** Added `RunFortressLogic()` with vertical climbing AI:
+  - **FORTRESS_EXIT**: When close to exit door, navigate directly
+  - **FORTRESS_CLIMB**: Find best platform ABOVE current position, walk under it and jump
+  - **FORTRESS_SEARCH**: Fallback — move right and keep jumping
+  - **FORTRESS_LAVA_PANIC**: When player Y > 75% of screen height, mash jump to escape
+
+### BUG: Bot could move LEFT in AirshipScene auto-scroll — instant death
+- AirshipLevelScene auto-scrolls right at 60px/s; the left edge pushes forward
+- If bot moved left (combat retreat, item chasing), it got pushed off the left edge and died
+- Bot had no awareness of auto-scroll mechanics
+- **Fix:** Added `_isAirshipScene` flag to detect AirshipLevelScene
+- **Fix:** Added global post-processing guard at end of `Update()`: if `_isAirshipScene && ShouldMoveLeft`, force `ShouldMoveRight` instead
+- Guard runs AFTER all logic (combat, collection, platforming) so no path can send bot left
+
+### IMPROVEMENT: Updated stuck detection for FortressScene
+- FortressScene progress is vertical (Y-axis), not horizontal
+- Stuck detection now uses 2D distance for FortressScene (same as SkyIsland/Underwater/Boss)
+- Previously used horizontal-only distance, so vertical climbing looked like "no progress"
+
+### IMPROVEMENT: Health pickups added to FortressScene
+- 3 health pickups placed on mid/high platforms (indices 3, 5, 7)
+- Player collects with body contact → "+1 MEDKIT" floating text + heal sound
+- Critical for surviving Thwomp damage during the lava-escape climb
+
+### IMPROVEMENT: Health pickups added to AirshipLevelScene
+- 3 health pickups placed on elevated platforms (indices 2, 5, 8)
+- Player collects while progressing through auto-scroll level
+- Helps survive cannonball damage during the airship gauntlet
+
+### IMPROVEMENT: Lava proximity HUD added to FortressScene
+- Color-coded bar below GameHUD shows distance between player and rising lava
+- Green = safe (400+ px gap), Yellow = caution, Red = danger (< 100px)
+- "⚠ LAVA CLOSE!" warning text appears when lava is within 25% of bar range
+- Gives players real-time awareness of lava position without looking down
+
+### Files Changed
+| File | Changes |
+|------|---------|
+| `Tests/UnifiedComprehensiveBot.cs` | Added `_isFortressScene`/`_isAirshipScene` flags; `RunFortressLogic()` vertical climb AI; global airship left-movement guard; 2D stuck detection for fortress |
+| `Scenes/FortressScene.cs` | Added `_healthPickups` list, 3 pickups on platforms, collection logic, `DrawLavaWarningHUD()` method, pickup drawing |
+| `Scenes/AirshipLevelScene.cs` | Added `_healthPickups` list, 3 pickups on elevated platforms, collection logic, pickup drawing |
+
+---
+
+## SESSION 112: Bot Swim-Down + Underwater Level Variety + Sky Island Berries
+
+**Date/Time:** Current Session  
+**Status:** ✅ COMPLETE  
+**Build Status:** ✅ 0 errors, 0 warnings  
+
+### BUG: Bot could never swim DOWN in underwater levels
+- `ShouldDodge` was commented as "doubles as swim down" but mapped to `Keys.E` (ability key), NOT `Keys.Down`
+- Bot had no `ShouldSwimDown` output flag at all
+- When exit was below the player, bot could only swim up or sideways — never reach a low exit
+- **Fix:** Added `ShouldSwimDown` property to `UnifiedComprehensiveBot`
+- **Fix:** Added `Keys.Down` injection in `BotPlayerController` when `ShouldSwimDown` is true
+- **Fix:** Set `ShouldSwimDown = distY > 15f` in UNDERWATER_GOAL logic (exit is below player)
+
+### IMPROVEMENT: All 6 underwater levels now have unique layouts
+- Previously all 6 levels (coral, dive_gate, sunken_gate, kelp, boiling_vent, abyss) used identical platform/hazard/exit layout
+- Each level now has a distinct arrangement:
+  - **Dive Gate**: Wide coral shelves, strong upward current, few jellyfish, exit upper-right
+  - **Sunken Gate**: Maze-like shelves, more coral hazards, 3 jellyfish, exit upper-right
+  - **Kelp Maze**: Many narrow platforms (kelp forest feel), 3 upward currents, exit high upper-right
+  - **Boiling Vent**: Hazardous floor (4 coral hazards), 3 strong vent currents, exit very high
+  - **Abyss**: Deep level, exit at TOP CENTER (not upper-right), 4 jellyfish, most challenging
+  - **Coral Reef** (default): Original layout preserved as the introductory underwater level
+
+### IMPROVEMENT: Sky Island now has berry pickups on platforms
+- Added `_berries` list to `SkyIslandScene`
+- Berry pickups spawn on even-numbered platforms (0, 2, 4, 6, 8, 10)
+- Lower platforms get 2 berries, higher platforms get 3 (incentive to climb)
+- Berries update (bob animation), draw, and collect with `BeepBerry()` sound
+- Each berry awards 10 to `TotalBerriesCollected`
+
+### Files Changed
+| File | Changes |
+|------|---------|
+| `Tests/UnifiedComprehensiveBot.cs` | Added `ShouldSwimDown` property + reset + underwater goal logic |
+| `Tests/BotPlayerController.cs` | Added `Keys.Down` injection for `ShouldSwimDown` |
+| `Scenes/UnderwaterScene.cs` | `BuildLevel()` rewritten with per-level switch on `CurrentNodeId` |
+| `Scenes/SkyIslandScene.cs` | Added `_berries` list, berry spawning, `CollectBerries()`, berry draw/update |
+
+---
+
+## SESSION 111: One-Way Platforms + Underwater Exit Beacon — Sky Climbing & Underwater Goals Fixed
+
+**Date/Time:** Current Session  
+**Status:** ✅ COMPLETE  
+**Build Status:** ✅ 0 errors, 0 warnings  
+
+### BUG: Bot headbonked on platform bottoms in Sky Island — could never climb
+- `ResolveV()` treated ALL upward collisions (VelocityY < 0) as headbonks
+- Player rising toward a thin 18px platform from below got pushed to `p.Bottom` with VelocityY = 0
+- `ResolveH()` also blocked horizontal entry into platforms from below, preventing side approaches
+- Player is 48×81px — taller than the 18px platforms. Any overlap while rising = bonk
+- With 250px vertical gaps between platforms and a double-jump peak of ~314px, the player MUST pass through from below to reach the top
+- **Root cause**: Solid collision on thin floating platforms — standard platformers use one-way platforms
+
+### Fix: Batch 1/5 — One-Way Platforms in SkyIslandScene
+- **`ResolveV()`**: Floating platforms (index > 0) only resolve when VelocityY >= 0 (falling). Rising players pass through.
+- **`ResolveH()`**: Floating platforms only block horizontally when the player's feet are at/above platform top (standing on surface). Players below the platform pass through horizontally too.
+- **Ground platform (index 0)**: Remains fully solid — blocks both up and down
+- **Ice walls**: Remain fully solid — block from all directions
+- Result: Player jumps up through platforms and lands on top when falling — standard platformer behavior
+
+### Fix: Batch 2/5 — Simplified Bot Climbing Logic
+- Removed all headbonk-avoidance code (`underTarget` check, walk-away-from-platform logic)
+- Bot now walks UNDER the target platform center (ideal launch position)
+- Jumps straight up through the platform — passes through and lands on top
+- Three launch modes:
+  - `SKY_LAUNCH` (< 60px from center): Jump straight up through
+  - `SKY_LAUNCH` (< 400px from center): Angled jump with drift
+  - `SKY_WALK_TO_LAUNCH` (> 400px): Walk closer first, edge-jump if needed
+- Much simpler and more reliable than the old headbonk-avoidance state machine
+
+### BUG: Underwater levels had no clear goals
+- Exit zone was a tiny 60×60 dim green rectangle with 8pt "EXIT" text
+- No directional indicator — players had no idea which way to swim
+- Same layout for all 6 underwater levels — no visual distinction
+- Bot could find the exit via reflection but players couldn't see it
+
+### Fix: Batch 3/5 — Animated Exit Beacon + Directional Arrow
+- **Exit zone enlarged**: 60×60 → 80×80 for easier reach
+- **Animated beacon**: Pulsing green glow halo (radius 50-70px), bright border, ">>> GOAL <<<" label
+- **Animated arrows**: 3 descending arrow shapes pointing at the exit zone
+- **Bold "EXIT" text**: 11pt bold white text centered in the zone
+- **Directional HUD arrow**: Shows "EXIT >>>" / "<<< EXIT" / "^^^ EXIT" / "EXIT vvv" when exit is >150px away
+- **Distance indicator**: Shows "Xpx away" below the direction arrow
+- Semi-transparent backgrounds for readability against underwater scenes
+
+### Fix: Batch 4/5 — Improved Bot Underwater Navigation
+- Bot now computes actual distance to exit (not just X/Y offsets)
+- Improved deadzone to 15px (was 20px) for tighter swimming
+- Bot swims toward exit using both horizontal AND vertical movement
+- Bot fires frost ball at jellyfish in the path (60-250px range)
+- Explorer mode swims toward upper-right (where exit typically is)
+- Better event logging with actual distance values
+
+### Build: Batch 5/5 — Verification
+- ✅ Build: 0 errors, 0 warnings
+- ✅ All 5 batches applied successfully
+
+### Files Changed
+| File | Changes |
+|------|---------|
+| `Scenes/SkyIslandScene.cs` | `ResolveV`/`ResolveH` rewritten for one-way floating platforms; ground + ice walls stay solid |
+| `Tests/UnifiedComprehensiveBot.cs` | `RunVerticalLogic()` simplified for one-way platforms (no headbonk avoidance); `RunUnderwaterLogic()` improved with distance calc, frost ball, and better navigation |
+| `Scenes/UnderwaterScene.cs` | Exit zone enlarged 60→80px; added `DrawExitBeacon()` with animated glow/arrows; added `DrawExitDirectionArrow()` HUD indicator |
+
+---
+
+## SESSION 110: SkyIsland Bot Can't Climb Platforms + Boss Spawn Off-Screen Fix
+
+**Date/Time:** Current Session  
+**Status:** ✅ COMPLETE  
+**Build Status:** ✅ 0 errors, 0 warnings  
+
+### BUG: Bot never climbed platforms in Sky Island level
+- Bot ran `RunVerticalLogic()` and found target platforms correctly
+- But jumped prematurely from positions where the target was out of horizontal reach
+- After missing, bot fell back to ground and repeated the same failed jump
+
+### Root Cause Analysis — THREE compounding bugs in RunVerticalLogic
+
+**Bug 1: `playerClear` check caused premature jumping**
+- The old code checked if the player was horizontally OUTSIDE the target platform (`playerClear`)
+- If true, it jumped IMMEDIATELY without checking horizontal distance
+- Example: bot on P3 (X=650-820), target P4 (X=150-340). Bot at X=700 is "clear" (700 ≥ 340)
+- But target center is 490px away — beyond the 440px max horizontal double-jump range
+- Bot needed to walk to the LEFT edge of P3 (X=650) to bring the target within range (310px)
+- **Fix:** Replaced `playerClear` with explicit horizontal distance check against `MAX_JUMP_REACH` (380px)
+
+**Bug 2: Airborne section never set `ShouldDoubleJump`**
+- All output flags are reset at the start of each frame
+- The GROUNDED section set `ShouldDoubleJump = true` on launch
+- But once airborne, the AIRBORNE section never set it again
+- BotPlayerController reads `ShouldDoubleJump` every frame — without it, the early-landing check uses `SINGLE_JUMP_HOLD` (0.55s) instead of `DOUBLE_JUMP_HOLD` (0.85s)
+- **Fix:** AIRBORNE section now always sets `ShouldDoubleJump = true`
+
+**Bug 3: SKY_DRIFTING did nothing**
+- When no target platform was found while airborne, the bot entered SKY_DRIFTING state
+- This state set no movement flags — bot just fell straight down with no attempt to land
+- **Fix:** Added `FindNearestPlatformBelow()` helper that finds the closest platform below/beside the player, and drifts toward it
+
+### New SkyIsland Climbing Algorithm
+| State | Condition | Action |
+|-------|-----------|--------|
+| `SKY_LAUNCH` | Target within MAX_JUMP_REACH (380px) and not under it | Jump + double-jump, drift toward target center |
+| `SKY_WALK_TO_LAUNCH` | Target too far or player under it | Walk on current platform toward target; stop at platform edge |
+| `SKY_EDGE_JUMP` | At edge of current platform, can't walk further | Forced jump toward target with double-jump |
+| `SKY_AIRBORNE` | In air after launch | Drift toward target center, keep ShouldDoubleJump set |
+| `SKY_DRIFTING` | In air with no target above | Find nearest platform below and drift to land on it |
+| `SKY_GOAL` | Exit zone within 320px vertically | Aim directly at exit with double-jump |
+
+### CRITICAL BUG: Boss enemies spawned off-screen (WarlordBossScene + BossScene)
+- `Enemy` constructor silently scales width/height by 1.5× (line 26 of Enemy.cs)
+- `WarlordBossScene` created boss with `new Enemy(W-180, gY-110, 80, 110, ...)`
+  - Actual dimensions: 120×165 (not 80×110)
+  - Boss extended 55px BELOW ground surface (gY-110+165 = gY+55)
+  - On first frame, horizontal collision against ground platform pushed boss to X=W (off-screen right)
+  - **Lord Sudo was invisible** — spawned but immediately pushed off the right edge
+- `BossScene` had identical bug: `new Enemy(W-200, g-220, 160, 220, ...)` → actual 240×330
+  - Boss extended 110px below ground, pushed off-screen by same mechanism
+- **Fix:** Both scenes now compute actual dimensions (w×1.5, h×1.5) and use those for spawn position and sprite scaling
+
+### Files Changed
+| File | Changes |
+|------|---------|
+| `Tests/UnifiedComprehensiveBot.cs` | Complete rewrite of `RunVerticalLogic()`: horizontal reachability check, walk-toward-target logic, airborne double-jump persistence, `FindNearestPlatformBelow()` landing helper |
+| `Scenes/WarlordBossScene.cs` | Boss spawn accounts for 1.5× scaling; sprite scaled to actual hitbox size |
+| `Scenes/BossScene.cs` | Same 1.5× scaling fix; sprite loaded at actual dimensions in Build() |
+
+---
+
+## SESSION 109: Bot Stuck in Pit Loop — Jumping In and Out of Holes Repeatedly
+
+
+**Date/Time:** Current Session  
+**Status:** ✅ COMPLETE  
+**Build Status:** ✅ 0 errors, 0 warnings  
+
+### BUG: Bot oscillates in and out of pits on Dinosaur Island
+- On level 1, the bot falls into water pits, wall-jumps out, then immediately falls back in
+- This creates an infinite loop: fall in → wall-jump out → walk back in → repeat
+
+### Root Cause Analysis — THREE compounding bugs
+
+**Bug 1: Wall-jump recovery kicked BACKWARD**
+- When the bot fell into a pit and touched the RIGHT wall, the old code set `ShouldMoveLeft = true`
+- This sent the bot LEFT (backward) — directly over the same hole it just escaped
+- The intent was "move away from wall" but the correct intent is "move FORWARD past the pit"
+- **Fix:** Wall-jump recovery now ALWAYS kicks RIGHT (forward), regardless of which wall is touched
+
+**Bug 2: Pit-seeking pressed into nearest wall (could be right wall)**
+- When falling and not yet touching a wall, the bot sought the NEAREST wall
+- If the right wall of the pit was closer, the bot pressed RIGHT into it
+- Then wall-jumped LEFT (backward) per Bug 1
+- **Fix:** Bot now always presses LEFT to find a wall, so the wall-kick goes RIGHT (forward)
+
+**Bug 3: No forward momentum after escaping a pit**
+- After wall-jumping out, the bot immediately resumed normal logic
+- Normal logic could decide to move left (e.g., chasing a pickup behind it)
+- This sent the bot right back over the pit edge
+- **Fix:** Added `_pitEscapeForwardTimer` (0.6 seconds) that forces forward movement + jumping after any pit escape, ensuring the bot clears the pit area before resuming decisions
+
+### Additional Improvement: Double-jump on all gap crossings
+- Edge jumps, gap pre-jumps, and water pit jumps now all request `ShouldDoubleJump = true`
+- Double-jump gives much more height and air time to clear wider gaps
+- Previously only single jumps were used, which often didn't clear the gap
+
+### Additional Improvement: Crossing direction always forward
+- `_crossingDir` was previously set based on current movement direction (`ShouldMoveLeft ? -1f : 1f`)
+- This could set crossing direction to LEFT if the bot was retreating when the edge was detected
+- Now hardcoded to `1f` (forward/right) for all gap crossings in normal levels
+
+### Files Changed
+| File | Changes |
+|------|---------|
+| `Tests/UnifiedComprehensiveBot.cs` | Wall-jump always kicks forward; pit-seek always goes left; added post-escape forward drive timer; double-jump on gap crossings; crossing dir always right |
+| `Scenes/SkyIslandScene.cs` | Added `DrawSkyOverlay()` with altitude percentage and keybind labels below GameHUD |
+
+---
+
 ## SESSION 108: Frozen Jellyfish Still Damage Player + Missing SessionStats Tracking in 5 Scenes
 
 **Date/Time:** Current Session  

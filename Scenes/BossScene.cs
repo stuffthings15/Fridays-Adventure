@@ -65,11 +65,9 @@ namespace Fridays_Adventure.Scenes
 
         public override void OnEnter()
         {
-            _bossSprite   = SpriteManager.GetScaled("boss_Garp.png", 160, 220);
-
             // Background — bg_Marine_Blockade.png lives in Assets\Sprites\
             _bg = SpriteManager.Get("bg_Marine_Blockade.png");
-            
+
             Build();
             Game.Instance.Audio.ContinueOrPlay("boss");
         }
@@ -101,11 +99,20 @@ namespace Fridays_Adventure.Scenes
             _player = new Player(80, g - 60);
             _player.ApplySelectedSprite();
 
-            _boss = new Enemy(W - 200, g - 220, 160, 220, 200,
+            // Enemy constructor scales w/h by 1.5× internally:
+            //   passed (160,220) → actual (240,330).
+            // Spawn Y must use the ACTUAL height so the boss stands
+            // on the ground surface rather than clipping below it.
+            int bossW = 160, bossH = 220;
+            int actualW = (int)(bossW * 1.5f);
+            int actualH = (int)(bossH * 1.5f);
+            _boss = new Enemy(W - actualW - 40, g - actualH, bossW, bossH, 200,
                               patrolLeft: W * 0.25f, patrolRight: W * 0.80f);
             _boss.EnemyType    = "Boss";
             _boss.MoveSpeed    = 130f;
             _boss.AttackDamage = 18;
+            // Scale sprite to match actual hitbox size
+            _bossSprite = SpriteManager.GetScaled("boss_Garp.png", actualW, actualH);
             if (_bossSprite != null) _boss.Sprite = _bossSprite;
         }
 

@@ -104,14 +104,24 @@ namespace Fridays_Adventure.Scenes
             _player = new Player(80, gY - 60);
             _player.ApplySelectedSprite();
 
-            _boss = new Enemy(W - 180, gY - 110,  80, 110,
+            // Enemy constructor scales w/h by 1.5× internally:
+            //   passed (80,110) → actual (120,165).
+            // Spawn Y must use the ACTUAL height so the boss stands on
+            // the ground surface rather than clipping 55px below it.
+            // The old Y = gY-110 caused the boss to overlap the floor
+            // platform on frame 1, and horizontal collision pushed it
+            // to X = platformRight = W — completely off-screen.
+            int bossW = 80, bossH = 110;
+            int actualW = (int)(bossW * 1.5f);
+            int actualH = (int)(bossH * 1.5f);
+            _boss = new Enemy(W - actualW - 60, gY - actualH, bossW, bossH,
                               (int)(_config.MaxHp * ThreatSystem.EnemyHpMultiplier()),
                               patrolLeft: W * 0.15f, patrolRight: W * 0.85f);
             _boss.EnemyType    = "Boss";
             _boss.MoveSpeed    = _config.MoveSpeed;
             _boss.AttackDamage = _config.BaseDamage;
-            // Use dedicated boss sprite art instead of the generic GARP placeholder
-            var bs = SpriteManager.GetScaled("enemy_boss.png", 80, 110);
+            // Use dedicated boss sprite art scaled to match actual hitbox size
+            var bs = SpriteManager.GetScaled("enemy_boss.png", actualW, actualH);
             if (bs != null) _boss.Sprite = bs;
 
             if (_config.Type == WarlordType.CentipedeLord)
