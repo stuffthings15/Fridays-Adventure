@@ -232,7 +232,29 @@ namespace Fridays_Adventure.Scenes
             ThreatSystem.Tick(dt);
             _stormAnim += dt;
 
-            if (_complete) { _completeTimer += dt; if (_completeTimer >= 1.0f) { SessionStats.Instance.RecordLevelComplete(); Game.Instance.LevelJustCompleted = true; Game.Instance.Scenes.Pop(); } return; }
+            if (_complete)
+            {
+                _completeTimer += dt;
+                // Push CourseClearScene for the SMB3-style fanfare, then
+                // double-pop back to the Overworld map screen.
+                if (_completeTimer >= 0.35f && _completeTimer - dt < 0.35f)
+                {
+                    Game.Instance.Scenes.Push(new CardRouletteScene(() =>
+                    {
+                        Game.Instance.Scenes.Pop(); // pop CardRoulette
+                        Game.Instance.Scenes.Push(new CourseClearScene(
+                            "Storm Belt", (int)(SurvivalGoal - _survivalTimer), 0,
+                            onContinue: () =>
+                            {
+                                SessionStats.Instance.RecordLevelComplete();
+                                Game.Instance.LevelJustCompleted = true;
+                                Game.Instance.Scenes.Pop(); // pop CourseClear
+                                Game.Instance.Scenes.Pop(); // pop StormScene → Overworld
+                            }));
+                    }));
+                }
+                return;
+            }
             if (_failed)   { Game.Instance.Scenes.Replace(new GameOverScene(() => new StormScene())); return; }
 
             UpdateDeck(dt);

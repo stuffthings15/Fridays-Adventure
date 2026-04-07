@@ -378,10 +378,22 @@ namespace Fridays_Adventure.Scenes
         private void CompleteLevel()
         {
             DebugLogger.LogInfo("AirshipLevelScene", "Airship cleared!");
-            Game.Instance.LevelJustCompleted = true;
-            SessionStats.Instance.RecordLevelComplete();
             AchievementSystem.Grant("ach_first_step");
-            Game.Instance.Scenes.Pop();
+            // Push CourseClearScene for the SMB3-style fanfare, then
+            // double-pop back to the Overworld map screen.
+            Game.Instance.Scenes.Push(new CardRouletteScene(() =>
+            {
+                Game.Instance.Scenes.Pop(); // pop CardRoulette
+                Game.Instance.Scenes.Push(new CourseClearScene(
+                    "Airship", 0, 0,
+                    onContinue: () =>
+                    {
+                        SessionStats.Instance.RecordLevelComplete();
+                        Game.Instance.LevelJustCompleted = true;
+                        Game.Instance.Scenes.Pop(); // pop CourseClear
+                        Game.Instance.Scenes.Pop(); // pop AirshipLevelScene → Overworld
+                    }));
+            }));
         }
 
         public override void Draw(Graphics g)

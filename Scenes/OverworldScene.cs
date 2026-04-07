@@ -132,6 +132,11 @@ namespace Fridays_Adventure.Scenes
                 if (_pendingNode.Type != NodeType.Start)
                     Game.Instance.CurrentLevel++;
 
+                // Auto-save after completion processing
+                Game.Instance.SyncRuntimeToSaveData();
+                Game.Instance.Save.Save();
+                SMB3Hud.ShowToast("Progress saved.");
+
                 // ── END CONDITION ─────────────────────────────────────────────
                 if (AllIslandsCompleted())
                 {
@@ -176,14 +181,6 @@ namespace Fridays_Adventure.Scenes
             {
                 // Returned without clearing (e.g. quit via pause) — do NOT advance level.
                 _status = "Choose your next destination.";
-            }
-
-            // Auto-save after level completion processing
-            if (Game.Instance.LevelJustCompleted)
-            {
-                Game.Instance.SyncRuntimeToSaveData();
-                Game.Instance.Save.Save();
-                SMB3Hud.ShowToast("Progress saved.");
             }
 
             _pendingNode = null;

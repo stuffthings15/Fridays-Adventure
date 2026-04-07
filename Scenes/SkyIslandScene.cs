@@ -157,7 +157,29 @@ namespace Fridays_Adventure.Scenes
 
         public override void Update(float dt)
         {
-            if (_levelComplete) { _completeTimer += dt; if (_completeTimer >= 1.0f) { SessionStats.Instance.RecordLevelComplete(); Game.Instance.LevelJustCompleted = true; Game.Instance.Scenes.Pop(); } return; }
+            // Completion handler — push CourseClearScene for the SMB3-style
+            // fanfare, then double-pop back to the Overworld map.
+            if (_levelComplete)
+            {
+                _completeTimer += dt;
+                if (_completeTimer >= 0.35f && _completeTimer - dt < 0.35f)
+                {
+                    Game.Instance.Scenes.Push(new CardRouletteScene(() =>
+                    {
+                        Game.Instance.Scenes.Pop(); // pop CardRoulette
+                        Game.Instance.Scenes.Push(new CourseClearScene(
+                            "Sky Island", 0, 0,
+                            onContinue: () =>
+                            {
+                                SessionStats.Instance.RecordLevelComplete();
+                                Game.Instance.LevelJustCompleted = true;
+                                Game.Instance.Scenes.Pop(); // pop CourseClear
+                                Game.Instance.Scenes.Pop(); // pop SkyIslandScene → Overworld
+                            }));
+                    }));
+                }
+                return;
+            }
 
             UpdateWind(dt);
             HandleInput(dt);
