@@ -104,7 +104,7 @@ namespace TextRPG.Screens
             _talkBtn   = Theme.MakeButton("\U0001F4AC Talk",    100, ay, 120, 38, (s, e) => TalkToNpc());
             _portalBtn = Theme.MakeButton("\u2728 Portal",     230, ay, 120, 38, (s, e) => EnterPortal());
             _invBtn    = Theme.MakeButton("\U0001F392 Inventory", 360, ay, 150, 38, (s, e) => OpenInventory());
-            _saveBtn   = Theme.MakeButton("\U0001F4BE Save",   520, ay, 120, 38, (s, e) => SaveGame());
+            _saveBtn   = Theme.MakeButton($"\U0001F4BE Save (Slot {_gm.ActiveSlot})", 520, ay, 150, 38, (s, e) => SaveGame());
             Controls.Add(_talkBtn); Controls.Add(_portalBtn);
             Controls.Add(_invBtn);  Controls.Add(_saveBtn);
 
@@ -194,7 +194,7 @@ namespace TextRPG.Screens
         private void SaveGame()
         {
             _gm.SaveGame();
-            _statusLabel.Text = "\u2705 Game saved!";
+            _statusLabel.Text = $"\u2705 Game saved to Slot {_gm.ActiveSlot}!";
         }
     }
 }

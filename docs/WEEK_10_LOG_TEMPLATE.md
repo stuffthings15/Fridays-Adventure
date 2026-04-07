@@ -6,6 +6,221 @@
 
 ---
 
+## SESSION 120: Demo Enhancement + Miss Friday Mode — Both Systems
+
+**Date/Time:** Current Session  
+**Status:** ✅ COMPLETE  
+**Build Status:** ✅ 0 errors, 0 warnings  
+
+### FEATURE: Miss Friday's Adventure 2 Mode added to Text RPG
+- New `GameMode` enum (`RPG`, `MissFriday`) added to `GameManager`
+- `BuildFridayWorld()` — same room structure, narrative-rich pirate-themed descriptions
+- Unique NPC: **Captain Crow** (Harbor Docks) with 4 dialogue options
+- Unique NPC: **Keeper Iris** (Lighthouse Archive) — replaces Scholar Elara
+- Room names: Harbor Docks, Darkwood Trail, Coral Cove, Tidal Shrine, Crystal Caverns, Serpent's Grotto
+- Final boss: **Sea Serpent** (replaces Shadow Dragon, same stats)
+- Mode selection screen on TitleScreen — RPG or Miss Friday cards
+- Miss Friday mode locks name to "Miss Friday" (ReadOnly textbox)
+
+### ENHANCEMENT: DemoScreen expanded from 9 → 11 steps
+- **Step 1 (NEW):** Mode Selection screen showing RPG vs Miss Friday cards with gold highlight
+- **Step 9 (NEW):** Miss Friday Preview — spins up a second GameManager in Friday mode, shows Harbor Docks room with Captain Crow's NPC dialogue and all 4 branching options
+- Complete screen updated with 11 feature checkmarks including both modes
+- All steps now have blinking `▶ action indicator` labels showing what's being "clicked"
+- Combat HP bars now animate per-round via snapshot list (not final mutated state)
+- Attack button flashes gold during each combat round
+- `MakeBtn` now applies the `bg` color parameter
+
+### ENHANCEMENT: VideoDemoScene expanded from 6 → 7 phases
+- **StatsShow phase (NEW):** 4-second overlay showing items collected, enemies defeated, total play time, and per-level breakdown before save screen
+- Complete screen updated with 10-item checklist including stats and Text RPG reference
+- HandleClick now handles StatsShow → SaveShow transition
+
+### Files Changed
+| File | Changes |
+|------|---------|
+| `TextRPG/GameManager.cs` | Added `GameMode` enum, `Mode` property, `BuildFridayWorld()` with pirate-themed rooms |
+| `TextRPG/Screens/TitleScreen.cs` | Added `ShowModeSelection()` screen, Friday-aware name entry (locked name, custom title) |
+| `TextRPG/Screens/DemoScreen.cs` | 9→11 steps, mode select + Friday preview, HP snapshots, action indicators, button flash |
+| `Scenes/VideoDemoScene.cs` | Added `StatsShow` phase, expanded checklist, click handler for stats phase |
+
+---
+
+## SESSION 119: Video Demo Rewrite — Live Visual Gameplay
+
+**Date/Time:** Current Session  
+**Status:** ✅ COMPLETE  
+**Build Status:** ✅ 0 errors, 0 warnings  
+
+### CHANGE: Rewrote both video demos to show ACTUAL gameplay instead of text slides
+
+Both demo screens were previously showing ASCII art / narrated text descriptions.
+Now they embed the REAL game UI controls and push REAL bot-controlled levels,
+so the viewer sees exactly what a human player would see.
+
+### Text RPG Video Demo (`TextRPG/Screens/DemoScreen.cs`) — REWRITTEN
+- **Old:** RichTextBox with ASCII art descriptions of each screen
+- **New:** Each step builds the ACTUAL WinForms controls (same Theme helpers, same layouts)
+- Step 0: Real title screen layout (buttons, gold title, credits)
+- Step 1: Zelda-style 3-slot card panels with gold highlight on selected slot
+- Step 2: Name entry with **animated letter-by-letter typing** ("L-u-f-f-y")
+- Step 3: Real GameScreen layout (HUD bar with HP bar, room description, nav buttons, action buttons)
+- Step 4: Forest room with item pickup toast panel + mini inventory panel showing equipped sword
+- Step 5: Full CombatScreen layout with HP bars, VS label, animated round-by-round combat log
+- Step 6: Real DialogueScreen layout (NPC banner, greeting text, branching option buttons)
+- Step 7: Game screen with green save confirmation toast
+- Step 8: Feature checklist with green checkmarks
+- Uses real `GameManager` — all data (HP, items, rooms, combat) is authentic
+- Narration banner at top describes what's happening each step
+- Progress bar, Skip, and Exit buttons
+
+### Main Game Video Demo (`Scenes/VideoDemoScene.cs`) — REWRITTEN
+- **Old:** 8 static text slides with bullet-point descriptions
+- **New:** State machine that shows live gameplay:
+  1. **Title phase:** Draws the actual title screen elements (buttons, title text) for 5 seconds
+  2. **Name entry:** Animated letter-by-letter typing of "Luffy" with blinking cursor
+  3. **Pre-level card:** Loading screen with level name and countdown
+  4. **Level 1 — Dinosaur Island:** Pushes `BotPlayLevelScene` — the BOT PLAYS THE LEVEL LIVE
+  5. **Level 2 — Storm Belt:** Same — real bot-controlled gameplay visible to the viewer
+  6. **Save phase:** Green save confirmation overlay
+  7. **Complete phase:** Feature checklist with per-level results (time, items, kills)
+- Uses `DialogueScene.AutoAdvance` for NPC dialogue during levels
+- Finn dialogue shown before Dinosaur Island (same as real game)
+- Result cards between levels with time/items/enemies stats
+- Narration bar at bottom of every phase
+
+### Files Changed
+| File | Changes |
+|------|---------|
+| `TextRPG/Screens/DemoScreen.cs` | Complete rewrite — now embeds real WinForms controls for each game screen |
+| `Scenes/VideoDemoScene.cs` | Complete rewrite — now pushes `BotPlayLevelScene` for live gameplay |
+
+---
+
+## SESSION 118: Video Demo Mode for Both Games (Text RPG + Miss Friday's Adventure II)
+
+**Date/Time:** Current Session  
+**Status:** ✅ COMPLETE  
+**Build Status:** ✅ 0 errors, 0 warnings  
+
+### FEATURE: Video Demo Mode buttons added to both games
+- Two new **▶ VIDEO DEMO** buttons on the main game's title screen
+- One new **▶ Video Demo Mode** button on the Text RPG's title screen
+- Each demo auto-plays through all required assignment features with narrated steps
+
+### Text RPG Video Demo (`TextRPG/Screens/DemoScreen.cs`) — NEW FILE
+- 9-step scripted auto-playing demo with timed transitions
+- Uses a `Timer` (100ms tick) for smooth step auto-advancement
+- Each step shows: step title, narration text, detailed content, countdown timer
+- Creates a fresh `GameManager` and actually runs game logic (move, combat, equip, etc.)
+- **Step 1:** Title screen display (5 sec)
+- **Step 2:** Save slot selection — Zelda-style 3-slot screen
+- **Step 3:** Name entry — types "Luffy", starts new game
+- **Step 4:** Room 1 — Village Square (shows description, exits, NPC present)
+- **Step 5:** Room 2 — Dark Forest (moves North, picks up Iron Sword, equips it, shows inventory)
+- **Step 6:** Combat — Goblin's Cave (full turn-by-turn combat log until goblin defeated)
+- **Step 7:** NPC Dialogue — Returns to Village Square, talks to Elder Mathis (branching options)
+- **Step 8:** Save game — Shows all save data that would be written to disk
+- **Step 9:** Demo complete — Checklist of all features demonstrated
+- UI: progress bar, step counter, timer countdown, Skip/Exit buttons
+- Orange-themed "VIDEO DEMO MODE" badge in header
+
+### Miss Friday's Adventure II Video Demo (`Scenes/VideoDemoScene.cs`) — NEW FILE
+- 8-step narrated feature showcase with auto-advancing slides
+- Each step: colored title banner, narration text, detailed feature descriptions
+- **Step 1:** Title screen overview (buttons, controls, AFK timer)
+- **Step 2:** Name entry + new game flow
+- **Step 3:** Room 1 — Dinosaur Island (side-scrolling platformer)
+- **Step 4:** Room 2 — Storm Belt (survival mode with lightning)
+- **Step 5:** Combat system (stomp, melee, frost ball, dash, combos, bosses)
+- **Step 6:** Items & inventory (berries, pickups, power-ups, Star Coins, Card Roulette)
+- **Step 7:** NPC dialogue (Meet Finn, branching options, crew system)
+- **Step 8:** Save system + demo complete summary with full checklist
+- Color-coded detail lines (cyan labels, gold highlights, green checkmarks)
+- Overall progress bar, step countdown, Skip/Exit buttons, ESC to exit
+- Gradient background, semi-transparent panels
+
+### Title Screen Updates
+- **Main game (`TitleScene.cs`):** Added 2 new orange buttons below the existing row:
+  - `▶ VIDEO DEMO: GAME` — pushes `VideoDemoScene`
+  - `▶ VIDEO DEMO: RPG` — opens TextRPG `MainForm` directly into `DemoScreen`
+- Added `LaunchTextRPGDemo()` method that skips the RPG title screen
+- Added `_videoDemoBtn` and `_rpgDemoBtn` rectangles + click handlers
+- AFK countdown repositioned below the new button row
+
+### Text RPG Title Screen Update
+- Added `▶ Video Demo Mode` button (orange, below Quit) on the RPG title screen
+- Clicking it navigates directly to the new `DemoScreen`
+
+### Files Created
+| File | Purpose |
+|------|---------|
+| `TextRPG/Screens/DemoScreen.cs` | Text RPG auto-playing 9-step video demo |
+| `Scenes/VideoDemoScene.cs` | Main game narrated 8-step feature showcase |
+
+### Files Changed
+| File | Changes |
+|------|---------|
+| `Scenes/TitleScene.cs` | Added `_videoDemoBtn`/`_rpgDemoBtn` fields; new button row drawing; `LaunchTextRPGDemo()` method; click handlers for both video demo buttons |
+| `TextRPG/Screens/TitleScreen.cs` | Added `▶ Video Demo Mode` button on RPG title menu |
+
+---
+
+## SESSION 117: Text RPG — Zelda-Style 3-Slot Save System
+
+**Date/Time:** Current Session  
+**Status:** ✅ COMPLETE  
+**Build Status:** ✅ 0 errors, 0 warnings  
+
+### FEATURE: Multi-slot save/load system (Legend of Zelda style)
+- Upgraded from a single `savegame.txt` file to **3 independent save slots**
+- Each slot stored as `savegame_slot1.txt`, `savegame_slot2.txt`, `savegame_slot3.txt`
+- Now records **save timestamp** in each file for display on the slot screen
+
+### Title Screen Overhaul — 3-State UI
+1. **Main Menu** — New Game / Load Game / Quit
+   - "Load Game" disabled and grayed out when all 3 slots are empty
+2. **Slot Selection Screen** — 3 large card panels, one per save slot
+   - **Occupied slots** display: Player name, HP, location, item count, save date/time
+   - **Empty slots** display: "— EMPTY —"
+   - **Load Mode**: ▶ PLAY button + ✖ Delete button per occupied slot; clicking the card also loads
+   - **New Game Mode**: "New Game" button on empty slots; "Overwrite" button (with confirmation dialog) on occupied slots
+   - Delete confirmation dialog before erasing a save
+   - Overwrite confirmation dialog before replacing a save with a new game
+   - ← Back button returns to main menu
+3. **Name Entry** — shows which slot the player is saving to
+
+### Save System Enhancements (`SaveSystem.cs`)
+- `Save(state, slot)` — write to a specific slot
+- `Load(slot)` — load from a specific slot
+- `SaveExists(slot)` — check if a specific slot has data
+- `GetSlotSummary(slot)` — returns a `SlotSummary` with player name, HP, location, items, save time
+- `DeleteSlot(slot)` — erase a save slot from disk
+- `SlotSummary` class — lightweight data object for slot UI display
+- `RoomDisplayName` property maps room IDs to friendly names
+- Legacy backward compatibility: `Load()` falls back to old `savegame.txt` if slot 1 is empty
+
+### GameManager Enhancements
+- Added `ActiveSlot` property (1–3) to track which slot the player is using
+- `SaveGame()` now saves to the active slot
+- `SaveGame(int slot)` overload for explicit slot targeting
+- `LoadGame(int slot)` overload for loading a specific slot
+- Auto-saves to the chosen slot immediately when starting a new game
+
+### In-Game UI Updates
+- Save button now reads "💾 Save (Slot N)" showing the active slot number
+- Status text says "✅ Game saved to Slot N!" after saving
+
+### Files Changed
+| File | Changes |
+|------|---------|
+| `TextRPG/SaveSystem.cs` | Complete rewrite: multi-slot file paths, `SlotSummary` class, `GetSlotSummary()`, `DeleteSlot()`, legacy fallback, save timestamp |
+| `TextRPG/GameManager.cs` | Added `ActiveSlot` property; `SaveGame(int)` and `LoadGame(int)` overloads; slot tracking on save/load |
+| `TextRPG/Screens/TitleScreen.cs` | Complete rewrite: 3-state UI (menu → slot selection → name entry); Zelda-style slot cards with player info; delete/overwrite confirmations |
+| `TextRPG/Screens/GameScreen.cs` | Save button label shows active slot; status text shows slot number |
+
+---
+
 ## SESSION 116: Password-Protected DEV MENU Button on Title Screen
 
 **Date/Time:** Current Session  

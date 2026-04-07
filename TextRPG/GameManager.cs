@@ -2,12 +2,21 @@
 // TEXT RPG — Game Manager (Core Logic Controller)
 // Purpose: World building, navigation, combat, item management,
 //          NPC interaction, save/load orchestration.
+//          Supports two modes sharing the same engine:
+//            RPG Mode — classic text adventure
+//            Miss Friday Mode — narrative-driven with preset protagonist
 // ────────────────────────────────────────────────────────────
 using System;
 using System.Collections.Generic;
 
 namespace TextRPG
 {
+    /// <summary>
+    /// Game mode determines world flavor text and protagonist.
+    /// Both modes use the same engine, rooms, and combat system.
+    /// </summary>
+    public enum GameMode { RPG, MissFriday }
+
     /// <summary>
     /// Central game logic controller. UI screens call GameManager
     /// methods for all game actions; GameManager fires events to
@@ -21,6 +30,17 @@ namespace TextRPG
             ? Rooms[Player.CurrentRoomId] : null;
         public Enemy CurrentEnemy { get; set; }
 
+        /// <summary>Current game mode (RPG or Miss Friday).</summary>
+        public GameMode Mode { get; set; } = GameMode.RPG;
+
+        /// <summary>
+        /// The currently active save slot (1–3). Set when the player
+        /// starts a new game into a slot or loads an existing slot.
+        /// Used by the in-game save button so the player doesn't have
+        /// to re-pick a slot every time they save.
+        /// </summary>
+        public int ActiveSlot { get; set; } = 1;
+
         /// <summary>Fired when the game wants to show a toast/notification.</summary>
         public event Action<string> OnNotification;
 
@@ -32,13 +52,22 @@ namespace TextRPG
         public void StartNewGame(string playerName)
         {
             Player = new Player(playerName);
-            BuildWorld();
+            if (Mode == GameMode.MissFriday)
+                BuildFridayWorld();
+            else
+                BuildWorld();
         }
 
         // ── Save / Load ──────────────────────────────────────────
 
-        /// <summary>Persist the current game state to disk.</summary>
+        /// <summary>Persist the current game state to the active save slot.</summary>
         public void SaveGame()
+        {
+            SaveGame(ActiveSlot);
+        }
+
+        /// <summary>Persist the current game state to a specific save slot (1–3).</summary>
+        public void SaveGame(int slot)
         {
             var state = new GameState
             {
@@ -60,14 +89,15 @@ namespace TextRPG
                 if (kv.Value.Items.Count == 0 && kv.Value.Enemy == null)
                     state.ClearedRoomIds.Add(kv.Key);
 
-            SaveSystem.Save(state);
-            OnNotification?.Invoke("Game saved successfully!");
+            SaveSystem.Save(state, slot);
+            ActiveSlot = slot;
+            OnNotification?.Invoke($"Game saved to Slot {slot}!");
         }
 
-        /// <summary>Load a previously saved game. Returns false if no save.</summary>
-        public bool LoadGame()
+        /// <summary>Load a previously saved game from a specific slot. Returns false if empty.</summary>
+        public bool LoadGame(int slot)
         {
-            var state = SaveSystem.Load();
+            var state = SaveSystem.Load(slot);
             if (state == null) return false;
 
             Player = new Player
@@ -99,6 +129,44 @@ namespace TextRPG
                 if (Rooms.ContainsKey(rid))
                 { Rooms[rid].Items.Clear(); Rooms[rid].Enemy = null; }
 
+            ActiveSlot = slot;
+            return true;
+        }
+
+        /// <summary>Legacy overload — loads from slot 1 or old single file.</summary>
+        public bool LoadGame()
+        {
+            // Try slot 1 with fallback to legacy single-file
+            var state = SaveSystem.Load();
+            if (state == null) return false;
+
+            Player = new Player
+            {
+                Name = state.PlayerName,
+                Health = state.Health,
+                MaxHealth = state.MaxHealth,
+                BaseAttack = state.BaseAttack,
+                BaseDefense = state.BaseDefense,
+                CurrentRoomId = state.CurrentRoomId,
+                Inventory = new List<Item>()
+            };
+
+            BuildWorld();
+
+            foreach (var name in state.InventoryNames)
+            {
+                var item = MakeItem(name);
+                if (item != null) Player.Inventory.Add(item);
+            }
+            if (!string.IsNullOrEmpty(state.EquippedWeaponName))
+                Player.EquippedWeapon = Player.Inventory.Find(i => i.Name == state.EquippedWeaponName);
+            if (!string.IsNullOrEmpty(state.EquippedArmorName))
+                Player.EquippedArmor = Player.Inventory.Find(i => i.Name == state.EquippedArmorName);
+            foreach (var rid in state.ClearedRoomIds)
+                if (Rooms.ContainsKey(rid))
+                { Rooms[rid].Items.Clear(); Rooms[rid].Enemy = null; }
+
+            ActiveSlot = 1;
             return true;
         }
 
@@ -372,6 +440,174 @@ namespace TextRPG
                 Enemy = new Enemy
                 {
                     Name = "Shadow Dragon", Health = 120, MaxHealth = 120,
+                    Attack = 20, Defense = 10,
+                    Loot = { new Item("Dragon's Heart", "A pulsing gem of immense power.", ItemType.Key, 0) }
+                }
+            };
+        }
+
+        // ── Miss Friday World — narrative-driven variant ──────────
+
+        /// <summary>
+        /// Builds the same room structure but with narrative-rich descriptions
+        /// and a unique NPC (Captain Crow) exclusive to Miss Friday mode.
+        /// Uses the same items, enemies, and game mechanics.
+        /// </summary>
+        private void BuildFridayWorld()
+        {
+            Rooms = new Dictionary<string, Room>();
+
+            // 1. Harbor Docks — starting area (narrative style)
+            Rooms["village_square"] = new Room
+            {
+                Id = "village_square", Name = "Harbor Docks",
+                Description = "The salt-worn planks creak beneath Miss Friday's boots as she " +
+                    "steps ashore. Lanterns swing in the evening breeze, casting dancing " +
+                    "shadows across barrel stacks and coiled rope. A weathered signpost reads:\n" +
+                    "  North → Darkwood Trail\n  East → Coral Cove\n  South → Lighthouse Archive",
+                Exits = { {Direction.North,"forest"}, {Direction.East,"riverbank"}, {Direction.South,"library"} },
+                Npc = new NPC
+                {
+                    Name = "Captain Crow",
+                    Greeting = "Ahoy, Miss Friday! The Sea Serpent has been terrorizing the ruins " +
+                        "beyond the Crystal Caverns. You'll need steel and courage before facing it. " +
+                        "I once sailed those waters — let me tell you what I know.",
+                    Options = new List<DialogueOption>
+                    {
+                        new DialogueOption { Text = "Where can I find a good weapon?",
+                            Response = "Head north through the Darkwood Trail. A fallen adventurer's " +
+                                "blade still gleams beneath the old oak — finest iron I've ever seen." },
+                        new DialogueOption { Text = "Tell me about the Sea Serpent.",
+                            Response = "The Sea Serpent is ancient as the tides. Its scales deflect " +
+                                "most blades. Equip your best gear, stock potions, and enter through " +
+                                "the Crystal Caverns portal." },
+                        new DialogueOption { Text = "I'm ready to set sail.",
+                            Response = "That's the Friday spirit! May the winds be at your back." },
+                        new DialogueOption { Text = "Any advice for a pirate?",
+                            Response = "Save often, explore every room, and never fight a boss " +
+                                "without a potion in your pocket. Trust me — I've lost three ships " +
+                                "learning that lesson." }
+                    }
+                }
+            };
+
+            // 2. Darkwood Trail — same item, richer prose
+            Rooms["forest"] = new Room
+            {
+                Id = "forest", Name = "Darkwood Trail",
+                Description = "Gnarled trees arch overhead like the ribs of a shipwreck. " +
+                    "Fireflies drift through the undergrowth, illuminating a faint " +
+                    "metallic gleam at the base of an ancient oak. Miss Friday kneels — " +
+                    "a blade, still sharp despite years in the wild.",
+                Exits = { {Direction.South,"village_square"}, {Direction.East,"goblin_cave"} },
+                Items = { new Item("Iron Sword", "A sturdy blade with a leather grip (+7 ATK)", ItemType.Weapon, 7) }
+            };
+
+            // 3. Goblin Hideout — narrative combat room
+            Rooms["goblin_cave"] = new Room
+            {
+                Id = "goblin_cave", Name = "Goblin Hideout",
+                Description = "Torchlight flickers off damp stone walls covered in crude " +
+                    "charcoal drawings. The air is thick with smoke and menace. A pair " +
+                    "of yellow eyes glint from the darkness — something snarls.",
+                Exits = { {Direction.West,"forest"} },
+                Enemy = new Enemy
+                {
+                    Name = "Cave Goblin", Health = 40, MaxHealth = 40,
+                    Attack = 8, Defense = 2,
+                    Loot = { new Item("Goblin Tooth", "A sharp fang — proof of your kill.", ItemType.Misc, 0) }
+                }
+            };
+
+            // 4. Lighthouse Archive — unique NPC + Health Potion
+            Rooms["library"] = new Room
+            {
+                Id = "library", Name = "Lighthouse Archive",
+                Description = "The spiral staircase opens into a circular room lined with " +
+                    "salt-stained charts and leather-bound journals. A lantern hangs from " +
+                    "the rafters. A crimson vial glows softly on the map table.",
+                Exits = { {Direction.North,"village_square"}, {Direction.East,"crystal_hall"} },
+                Items = { new Item("Health Potion", "A crimson elixir that restores 40 HP.", ItemType.Potion, 40) },
+                Npc = new NPC
+                {
+                    Name = "Keeper Iris",
+                    Greeting = "Welcome to the archive, Miss Friday. These walls hold the " +
+                        "secrets of every creature that haunts this coast. The Crystal " +
+                        "Caverns to the east contain a portal — but it leads somewhere dangerous.",
+                    Options = new List<DialogueOption>
+                    {
+                        new DialogueOption { Text = "What's through the portal?",
+                            Response = "The Serpent's Grotto. Only those armed to the teeth " +
+                                "should dare enter. The Sea Serpent guards a legendary artifact." },
+                        new DialogueOption { Text = "Any survival tips for a pirate?",
+                            Response = "Equip your best weapon and armor. Use potions during combat " +
+                                "from the Inventory screen. And remember — fleeing is no shame!" },
+                        new DialogueOption { Text = "Thank you, Keeper.",
+                            Response = "Sail safe, Miss Friday. The coast needs its guardian." }
+                    }
+                }
+            };
+
+            // 5. Coral Cove — contains Leather Armor
+            Rooms["riverbank"] = new Room
+            {
+                Id = "riverbank", Name = "Coral Cove",
+                Description = "Turquoise waves lap against a crescent of white sand. Colorful " +
+                    "coral formations rise from the shallows. Half-buried in the sand, a " +
+                    "leather vest has washed ashore — still serviceable.",
+                Exits = { {Direction.West,"village_square"}, {Direction.North,"troll_bridge"} },
+                Items = { new Item("Leather Armor", "Tough hide armor (+5 DEF)", ItemType.Armor, 5) }
+            };
+
+            // 6. Smuggler's Crossing — tough enemy
+            Rooms["troll_bridge"] = new Room
+            {
+                Id = "troll_bridge", Name = "Smuggler's Crossing",
+                Description = "A rope bridge sways over a misty ravine. On the far side, " +
+                    "a massive figure blocks the path — a troll with barnacles on its " +
+                    "skin, dragging a driftwood club.",
+                Exits = { {Direction.South,"riverbank"}, {Direction.North,"shrine"} },
+                Enemy = new Enemy
+                {
+                    Name = "Bridge Troll", Health = 70, MaxHealth = 70,
+                    Attack = 14, Defense = 6,
+                    Loot = { new Item("Troll's Club", "A massive cudgel of surprising quality (+8 ATK)", ItemType.Weapon, 8) }
+                }
+            };
+
+            // 7. Tidal Shrine — bonus armor item
+            Rooms["shrine"] = new Room
+            {
+                Id = "shrine", Name = "Tidal Shrine",
+                Description = "Moonlight streams through a hole in the cave roof, illuminating " +
+                    "an ancient altar carved from coral. A shimmering amulet shaped like " +
+                    "a serpent scale rests on the stone. The walls pulse with bioluminescence.",
+                Exits = { {Direction.South,"troll_bridge"} },
+                Items = { new Item("Dragon Scale Amulet", "Ancient protective charm (+8 DEF)", ItemType.Armor, 8) }
+            };
+
+            // 8. Crystal Caverns — portal
+            Rooms["crystal_hall"] = new Room
+            {
+                Id = "crystal_hall", Name = "Crystal Caverns",
+                Description = "Stalactites drip with phosphorescent water. At the cave's " +
+                    "heart, a swirling portal of deep blue energy hovers above a stone " +
+                    "dais etched with nautical runes.",
+                Exits = { {Direction.West,"library"} },
+                PortalTargetId = "dragon_lair"
+            };
+
+            // 9. Serpent's Grotto — final boss
+            Rooms["dragon_lair"] = new Room
+            {
+                Id = "dragon_lair", Name = "Serpent's Grotto",
+                Description = "An enormous underwater cavern lit by veins of molten rock. " +
+                    "Mountains of treasure and shipwrecks line the walls. The water " +
+                    "churns — a colossal shadow rises from the deep. The Sea Serpent!",
+                Exits = { },
+                Enemy = new Enemy
+                {
+                    Name = "Sea Serpent", Health = 120, MaxHealth = 120,
                     Attack = 20, Defense = 10,
                     Loot = { new Item("Dragon's Heart", "A pulsing gem of immense power.", ItemType.Key, 0) }
                 }

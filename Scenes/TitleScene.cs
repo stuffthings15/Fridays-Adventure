@@ -29,6 +29,9 @@ namespace Fridays_Adventure.Scenes
         private Rectangle _demoBtn;
         // Text RPG mini-game button — launches the standalone RPG in a modal dialog
         private Rectangle _textRpgBtn;
+        // Video Demo Mode buttons — scripted auto-play showcases
+        private Rectangle _videoDemoBtn;
+        private Rectangle _rpgDemoBtn;
         // Start Game button — prominent entry point to begin Miss Friday's Adventure II
         private Rectangle _startBtn;
         // Dev Menu button — opens a password prompt to access the developer menu
@@ -229,6 +232,8 @@ namespace Fridays_Adventure.Scenes
             if (_optionsBtn.Contains(p)) Game.Instance.Scenes.Push(new OptionsScene());
             if (_demoBtn.Contains(p))    Game.Instance.Scenes.Push(new DemoModeScene());
             if (_textRpgBtn.Contains(p)) LaunchTextRPG();
+            if (_videoDemoBtn.Contains(p)) Game.Instance.Scenes.Push(new VideoDemoScene());
+            if (_rpgDemoBtn.Contains(p))   LaunchTextRPGDemo();
             if (_exitBtn.Contains(p))    Game.RequestClose();
             if (_scoresBtn.Contains(p))  Game.Instance.Scenes.Push(new HighScoreScene(0, 0, isNewEntry: false));
             // DEV MENU button — open password prompt
@@ -321,16 +326,28 @@ namespace Fridays_Adventure.Scenes
             DrawButton(g, _scoresBtn,  "SCORES",  Color.FromArgb(120, 100, 20));
             DrawButton(g, _exitBtn,    "EXIT",    Color.FromArgb(120, 30, 30));
 
-            // ── Secondary buttons (below main row) — Demo + Text RPG side-by-side ──
+            // ── Secondary buttons (below main row) ──
+            // Row 1: WATCH DEMO + TEXT RPG (gameplay launchers)
             int secBtnW = 180;
             int secGap  = 20;
             int secTotalW = secBtnW * 2 + secGap;
             int secX = (W - secTotalW) / 2;
-            int secY = btnY + btnH + 15;
+            int secY = btnY + btnH + 12;
             _demoBtn    = new Rectangle(secX, secY, secBtnW, btnH);
             _textRpgBtn = new Rectangle(secX + secBtnW + secGap, secY, secBtnW, btnH);
             DrawButton(g, _demoBtn,    "WATCH DEMO",    Color.FromArgb(100, 150, 50));
             DrawButton(g, _textRpgBtn, "\u2694 TEXT RPG", Color.FromArgb(90, 60, 130));
+
+            // Row 2: VIDEO DEMO MODE buttons — scripted auto-play showcases
+            int vidY = secY + btnH + 8;
+            int vidBtnW = 220;
+            int vidGap  = 16;
+            int vidTotalW = vidBtnW * 2 + vidGap;
+            int vidX = (W - vidTotalW) / 2;
+            _videoDemoBtn = new Rectangle(vidX, vidY, vidBtnW, 36);
+            _rpgDemoBtn   = new Rectangle(vidX + vidBtnW + vidGap, vidY, vidBtnW, 36);
+            DrawButton(g, _videoDemoBtn, "\u25B6 VIDEO DEMO: GAME",    Color.FromArgb(140, 80, 20));
+            DrawButton(g, _rpgDemoBtn,   "\u25B6 VIDEO DEMO: RPG",     Color.FromArgb(140, 80, 20));
 
             // AFK idle countdown — shown in the last 15 seconds before auto-demo
             if (_idleTimer >= IdleAutoDemo - 15f)
@@ -341,7 +358,7 @@ namespace Fridays_Adventure.Scenes
                 {
                     SizeF sz = g.MeasureString(hint, f);
                     int hx = (int)((W - sz.Width) / 2f);
-                    int hy = secY + btnH + 6;
+                    int hy = vidY + 36 + 6;
                     using (var br = new SolidBrush(Color.FromArgb(180, 0, 0, 0)))
                         g.FillRectangle(br, hx - 6, hy - 2, (int)sz.Width + 12, (int)sz.Height + 4);
                     using (var br = new SolidBrush(Color.FromArgb(220, Color.Orange)))
@@ -519,6 +536,27 @@ namespace Fridays_Adventure.Scenes
             catch (Exception ex)
             {
                 DebugLogger.LogError("TitleScene.LaunchTextRPG", ex);
+            }
+        }
+
+        /// <summary>
+        /// Opens the Text RPG in Video Demo Mode — auto-plays through all features.
+        /// </summary>
+        private static void LaunchTextRPGDemo()
+        {
+            try
+            {
+                using (var rpgForm = new TextRPG.MainForm())
+                {
+                    rpgForm.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
+                    // Navigate directly to the DemoScreen instead of the TitleScreen
+                    rpgForm.ShowScreen(new TextRPG.Screens.DemoScreen(rpgForm));
+                    rpgForm.ShowDialog();
+                }
+            }
+            catch (Exception ex)
+            {
+                DebugLogger.LogError("TitleScene.LaunchTextRPGDemo", ex);
             }
         }
 

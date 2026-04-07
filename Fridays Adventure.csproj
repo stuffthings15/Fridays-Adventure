@@ -194,6 +194,7 @@
     <Compile Include="Scenes\ToadHouseScene.cs" />
     <Compile Include="Scenes\UnderwaterScene.cs" />
     <Compile Include="Scenes\VictoryScene.cs" />
+    <Compile Include="Scenes\VideoDemoScene.cs" />
     <Compile Include="Scenes\WarlordBossScene.cs" />
     <Compile Include="Scenes\WorldTitleScene.cs" />
     <Compile Include="Systems\AchievementSystem.cs" />
@@ -294,6 +295,9 @@
     <Compile Include="TextRPG\Program.cs" />
     <Compile Include="TextRPG\SaveSystem.cs" />
     <Compile Include="TextRPG\Screens\CombatScreen.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="TextRPG\Screens\DemoScreen.cs">
       <SubType>UserControl</SubType>
     </Compile>
     <Compile Include="TextRPG\Screens\DialogueScreen.cs">
