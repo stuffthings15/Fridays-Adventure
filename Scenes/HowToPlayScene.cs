@@ -1,4 +1,5 @@
 using System.Drawing;
+using Fridays_Adventure.Data;
 using Fridays_Adventure.Engine;
 
 namespace Fridays_Adventure.Scenes
@@ -66,6 +67,22 @@ namespace Fridays_Adventure.Scenes
             "Press  ESC  or  ENTER  to go back."
         };
 
+        /// <summary>
+        /// Maps a control line prefix to a Kenney key icon filename.
+        /// Used to draw key sprites beside control labels.
+        /// </summary>
+        private static string GetKeyIconForLine(string line)
+        {
+            if (line.Contains("Attack ....")) return "key_z.png";
+            if (line.Contains("Dodge .....")) return "key_x.png";
+            if (line.Contains("Quick Dash ")) return "key_c.png";
+            if (line.Contains("Frost Ball ")) return "key_b.png";
+            if (line.Contains("Character Ability")) return "key_e.png";
+            if (line.Contains("Inventory .")) return "key_i.png";
+            if (line.Contains("Jump ......")) return "key_space.png";
+            return null;
+        }
+
         public override void OnEnter() { }
         public override void OnExit() { }
 
@@ -112,6 +129,16 @@ namespace Fridays_Adventure.Scenes
                     : new Font("Courier New", 13);
                 Brush br = isHeader ? Brushes.Cyan : Brushes.White;
                 float tx = isHeader ? (W - g.MeasureString(line, f).Width) / 2f : 80f;
+
+                // ── Kenney CC0 key icon sprite beside control labels ────────
+                string keyIcon = isHeader ? null : GetKeyIconForLine(line);
+                if (keyIcon != null)
+                {
+                    Bitmap keySprite = SpriteManager.GetScaled(keyIcon, 14, 14);
+                    if (keySprite != null)
+                        g.DrawImage(keySprite, (int)tx - 18, (int)y + 2, 14, 14);
+                }
+
                 g.DrawString(line, f, br, tx, y);
                 y += isHeader ? 36f : 26f;
                 f.Dispose();

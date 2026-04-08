@@ -285,6 +285,14 @@ namespace Fridays_Adventure.Engine
         /// </summary>
         public static bool AutoQABot { get; set; }
 
+        // ── Self-Healing Asset Pipeline auto-mode ─────────────────────────────
+        /// <summary>
+        /// When true, the game runs the asset healing pipeline at startup and
+        /// then auto-exits. Activated by the --heal-assets command-line argument.
+        /// Used by the automated asset healing loop (Tools/AssetHealingLoop.ps1).
+        /// </summary>
+        public static bool HealAssetsMode { get; set; }
+
         // ── Phase 2: Team 9 — Accessibility Outline Mode ──────────────────────
         /// <summary>
         /// When true, a solid coloured outline is drawn around every entity and
@@ -412,14 +420,14 @@ namespace Fridays_Adventure.Engine
             DifficultyModifiers.Initialize();
             
             // Check for --qa-bot command-line flag (unattended QA test runner)
+            // Check for --heal-assets flag (automated asset healing loop)
             string[] args = Environment.GetCommandLineArgs();
             foreach (string a in args)
             {
                 if (a.Equals("--qa-bot", StringComparison.OrdinalIgnoreCase))
-                {
                     AutoQABot = true;
-                    break;
-                }
+                if (a.Equals("--heal-assets", StringComparison.OrdinalIgnoreCase))
+                    HealAssetsMode = true;
             }
 
             Scenes.Push(new LoadingScene());
@@ -436,6 +444,21 @@ namespace Fridays_Adventure.Engine
 
             SyncRuntimeToSaveData();
             Save.Save();
+
+            // ── Flush self-healing asset pipeline report on exit ──────────────
+            // Writes the final gap detection report so the orchestrator script
+            // can read it and decide whether another healing cycle is needed.
+            try
+            {
+                string report = AssetGapDetector.GenerateReport();
+                string logsDir = System.IO.Path.Combine(
+                    AppDomain.CurrentDomain.BaseDirectory, "Logs", "asset-healing");
+                System.IO.Directory.CreateDirectory(logsDir);
+                System.IO.File.WriteAllText(
+                    System.IO.Path.Combine(logsDir, "latest_healing_report.txt"),
+                    report, System.Text.Encoding.UTF8);
+            }
+            catch { /* non-critical */ }
 
             // Write QA session close log.
             VisualDebugger.WriteSessionClose();

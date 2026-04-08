@@ -104,6 +104,10 @@ namespace Fridays_Adventure.Entities
         }
 
         // ── Draw (Team 14 — golden star disc) ─────────────────────────────────
+        /// <summary>
+        /// Draws the star coin using the Kenney CC0 star sprite (item_star.png).
+        /// Falls back to GDI gold disc if the sprite file is missing.
+        /// </summary>
         public void Draw(Graphics g, float cameraX)
         {
             if (Collected) return;
@@ -114,33 +118,43 @@ namespace Fridays_Adventure.Entities
 
             // Squash/stretch spin illusion
             float scaleX = Math.Abs((float)Math.Cos(_spinAngle * Math.PI / 180f));
-            float drawW  = scaleX * W;
-            float drawX  = sx + (W - drawW) / 2f;
+            float drawW  = scaleX * _width;
+            float drawX  = sx + (_width - drawW) / 2f;
 
-            // Outer glow
+            int iw = Math.Max(1, (int)drawW);
+            int ih = (int)_height;
+
+            // Outer glow halo (kept as GDI for animated transparency)
             using (var br = new SolidBrush(Color.FromArgb(60, 255, 220, 0)))
-                g.FillEllipse(br, drawX - 4, sy - 4, drawW + 8, H + 8);
+                g.FillEllipse(br, drawX - 4, sy - 4, iw + 8, ih + 8);
 
-            // Gold disc
-            using (var br = new SolidBrush(Color.Gold))
-                g.FillEllipse(br, drawX, sy, drawW, H);
-
-            // Star symbol
-            if (drawW > 8)
+            // ── Kenney CC0 star sprite (item_star.png) ──────────────────────
+            Bitmap starSprite = Data.SpriteManager.GetScaled("item_star.png", iw, ih);
+            if (starSprite != null)
             {
-                using (var f = new Font("Courier New", 10, FontStyle.Bold))
+                g.DrawImage(starSprite, drawX, sy, iw, ih);
+            }
+            else
+            {
+                // Fallback: GDI gold disc with star symbol
+                using (var br = new SolidBrush(Color.Gold))
+                    g.FillEllipse(br, drawX, sy, iw, ih);
+                if (iw > 8)
                 {
-                    var sz = g.MeasureString("★", f);
-                    using (var br = new SolidBrush(Color.FromArgb(180, 200, 140, 0)))
-                        g.DrawString("★", f, br,
-                            drawX + (drawW  - sz.Width)  / 2f,
-                            sy    + (H      - sz.Height) / 2f);
+                    using (var f = new Font("Courier New", 10, FontStyle.Bold))
+                    {
+                        var sz = g.MeasureString("★", f);
+                        using (var br = new SolidBrush(Color.FromArgb(180, 200, 140, 0)))
+                            g.DrawString("★", f, br,
+                                drawX + (iw - sz.Width)  / 2f,
+                                sy    + (ih - sz.Height) / 2f);
+                    }
                 }
             }
 
-            // Bright highlight
-            using (var br = new SolidBrush(Color.FromArgb(120, 255, 255, 200)))
-                g.FillEllipse(br, drawX + 2, sy + 2, drawW * 0.4f, H * 0.35f);
+            // Shimmer highlight on top of sprite
+            using (var br = new SolidBrush(Color.FromArgb(80, 255, 255, 200)))
+                g.FillEllipse(br, drawX + 2, sy + 2, iw * 0.4f, ih * 0.35f);
         }
     }
 }

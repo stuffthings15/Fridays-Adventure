@@ -325,22 +325,40 @@ namespace Fridays_Adventure.Systems
         /// Draws a radial gradient that darkens the corners of the screen.
         /// Call after the scene draw, before the HUD.
         /// Idea 7 (UI/UX Artist).
+        /// Pre-renders into a cached bitmap to eliminate per-frame
+        /// PathGradientBrush cost.
         /// </summary>
+        private static Bitmap _uiVignetteBmp;
+        private static int _uiVigW, _uiVigH, _uiVigAlpha;
+
         public static void DrawVignette(Graphics g, int screenW, int screenH,
                                          int alpha = 120)
         {
-            using (var path = new GraphicsPath())
+            if (_uiVignetteBmp == null || _uiVigW != screenW ||
+                _uiVigH != screenH || _uiVigAlpha != alpha)
             {
-                path.AddEllipse(-screenW / 4, -screenH / 4,
-                                 screenW * 3 / 2, screenH * 3 / 2);
-                using (var pgb = new PathGradientBrush(path))
+                _uiVignetteBmp?.Dispose();
+                _uiVigW = screenW; _uiVigH = screenH; _uiVigAlpha = alpha;
+                _uiVignetteBmp = new Bitmap(screenW, screenH,
+                    System.Drawing.Imaging.PixelFormat.Format32bppPArgb);
+                using (var bg = Graphics.FromImage(_uiVignetteBmp))
                 {
-                    pgb.CenterColor      = Color.Transparent;
-                    pgb.SurroundColors   = new[] { Color.FromArgb(alpha, 0, 0, 0) };
-                    pgb.CenterPoint      = new PointF(screenW / 2f, screenH / 2f);
-                    g.FillRectangle(pgb, 0, 0, screenW, screenH);
+                    bg.Clear(Color.Transparent);
+                    using (var path = new GraphicsPath())
+                    {
+                        path.AddEllipse(-screenW / 4, -screenH / 4,
+                                         screenW * 3 / 2, screenH * 3 / 2);
+                        using (var pgb = new PathGradientBrush(path))
+                        {
+                            pgb.CenterColor      = Color.Transparent;
+                            pgb.SurroundColors   = new[] { Color.FromArgb(alpha, 0, 0, 0) };
+                            pgb.CenterPoint      = new PointF(screenW / 2f, screenH / 2f);
+                            bg.FillRectangle(pgb, 0, 0, screenW, screenH);
+                        }
+                    }
                 }
             }
+            g.DrawImage(_uiVignetteBmp, 0, 0);
         }
 
         // ── Idea 8: Notification badge ────────────────────────────────────────

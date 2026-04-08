@@ -75,6 +75,20 @@ namespace Fridays_Adventure.Scenes
         // ── Fonts ─────────────────────────────────────────────────────────────
         private static readonly Font _hud = new Font("Courier New", 9, FontStyle.Bold);
 
+        // Cached GDI objects -- avoids per-frame / per-loop allocations
+        private static readonly SolidBrush _torchBaseBr     = new SolidBrush(Color.SaddleBrown);
+        private static readonly SolidBrush _torchGlowBr     = new SolidBrush(Color.FromArgb(180, 255, 140, 0));
+        private static readonly SolidBrush _torchInnerBr    = new SolidBrush(Color.FromArgb(120, 255, 220, 0));
+        private static readonly SolidBrush _platBaseBr      = new SolidBrush(Color.FromArgb(80, 60, 50));
+        private static readonly Pen        _platBorderPen   = new Pen(Color.FromArgb(100, 80, 60));
+        private static readonly SolidBrush _thwompFallBr    = new SolidBrush(Color.FromArgb(100, 90, 90));
+        private static readonly Pen        _thwompBorderPen = new Pen(Color.DarkGray);
+        private static readonly Font       _thwompFont      = new Font("Courier New", 9, FontStyle.Bold);
+        private static readonly SolidBrush _lavaBgBr        = new SolidBrush(Color.FromArgb(120, 0, 0, 0));
+        private static readonly Font       _lavaHudFont     = new Font("Courier New", 8, FontStyle.Bold);
+        private static readonly SolidBrush _lavaTextRedBr   = new SolidBrush(Color.Red);
+        private static readonly SolidBrush _lavaTextWhiteBr = new SolidBrush(Color.White);
+
         public override void OnEnter()
         {
             DebugLogger.PushBreadcrumb("FortressScene.OnEnter");
@@ -88,7 +102,8 @@ namespace Fridays_Adventure.Scenes
             SMB3Hud.ShowWorldLabel($"FORTRESS  {Game.Instance.WorldLevelLabel}");
         }
 
-        public override void OnExit()  { _bg?.Dispose(); _bg = null; }
+        // _bg comes from SpriteManager cache — do NOT dispose it
+        public override void OnExit()  { _bg = null; }
         public override void OnResume() => Game.Instance.Audio.ContinueOrPlay("boss");
 
         private void BuildLevel()
@@ -519,37 +534,100 @@ namespace Fridays_Adventure.Scenes
             DrawTorch(g, 640, LevelHeight - 1100);
 
             // ── Platforms ─────────────────────────────────────────────────────
+            // Tile Kenney CC0 stone block sprites across fortress platforms
+            Bitmap stoneTile = Data.SpriteManager.GetScaled("tile_stone_top.png", 18, 18);
             foreach (var p in _platforms)
             {
-                using (var br = new SolidBrush(Color.FromArgb(80, 60, 50)))
-                    g.FillRectangle(br, p);
-                using (var pen = new Pen(Color.FromArgb(100, 80, 60)))
-                    g.DrawRectangle(pen, p);
+                // Base dark fill behind tiles
+                g.FillRectangle(_platBaseBr, p);
+
+                // Tile stone sprites across the platform surface
+                if (stoneTile != null)
+                {
+                    for (int tx = p.Left; tx < p.Right; tx += 18)
+                    {
+                        for (int ty = p.Top; ty < p.Bottom; ty += 18)
+                        {
+                            int dw = Math.Min(18, p.Right - tx);
+                            int dh = Math.Min(18, p.Bottom - ty);
+                            g.DrawImage(stoneTile, tx, ty, dw, dh);
+                        }
+                    }
+                }
+
+                // Outline border
+                g.DrawRectangle(_platBorderPen, p);
             }
 
-            // ── Thwomps (Idea 3) ──────────────────────────────────────────────
+            // ── Thwomps (Idea 3) — Kenney CC0 stone block sprite ────────────
+            Bitmap thwompTile = Data.SpriteManager.GetScaled("tile_stone_block.png", 18, 18);
             foreach (var t in _thwomps)
             {
-                using (var br = new SolidBrush(Color.FromArgb(100, 90, 90)))
-                    g.FillRectangle(br, t);
+                if (thwompTile != null)
+                {
+                    // Tile stone block across the Thwomp body
+                    for (int tx = t.Left; tx < t.Right; tx += 18)
+                    {
+                        for (int ty = t.Top; ty < t.Bottom; ty += 18)
+                        {
+                            int dw = Math.Min(18, t.Right - tx);
+                            int dh = Math.Min(18, t.Bottom - ty);
+                            g.DrawImage(thwompTile, tx, ty, dw, dh);
+                        }
+                    }
+                }
+                else
+                {
+                    // Fallback: GDI gray block
+                    using (var br = new SolidBrush(Color.FromArgb(100, 90, 90)))
+                        g.FillRectangle(br, t);
+                }
                 using (var pen = new Pen(Color.DarkGray))
                     g.DrawRectangle(pen, t);
+                // Angry face indicator
                 using (var f  = new Font("Courier New", 9, FontStyle.Bold))
                     g.DrawString("▼", f, Brushes.OrangeRed, t.X + 10, t.Y + 10);
             }
 
-            // ── Boss key gate (Idea 2) ────────────────────────────────────────
+            // ── Boss key gate (Idea 2) — Kenney CC0 wood plank sprite ──────
             if (!_gateOpen)
             {
-                using (var br = new SolidBrush(Color.FromArgb(120, 80, 30)))
-                    g.FillRectangle(br, _gateRect);
+                Bitmap gateTile = Data.SpriteManager.GetScaled("tile_wood_plank.png", 18, 18);
+                if (gateTile != null)
+                {
+                    for (int tx = _gateRect.Left; tx < _gateRect.Right; tx += 18)
+                    {
+                        for (int ty = _gateRect.Top; ty < _gateRect.Bottom; ty += 18)
+                        {
+                            int dw = Math.Min(18, _gateRect.Right - tx);
+                            int dh = Math.Min(18, _gateRect.Bottom - ty);
+                            g.DrawImage(gateTile, tx, ty, dw, dh);
+                        }
+                    }
+                }
+                else
+                {
+                    using (var br = new SolidBrush(Color.FromArgb(120, 80, 30)))
+                        g.FillRectangle(br, _gateRect);
+                }
                 using (var f = new Font("Courier New", 8, FontStyle.Bold))
                     g.DrawString("KEY\nGATE", f, Brushes.Gold, _gateRect.X + 2, _gateRect.Y + 10);
             }
 
-            // ── Exit door ─────────────────────────────────────────────────────
-            using (var br = new SolidBrush(_gateOpen ? Color.LimeGreen : Color.DimGray))
-                g.FillRectangle(br, _exitDoor);
+            // ── Exit door — Kenney CC0 flag sprite ──────────────────────────
+            Bitmap exitDoorSprite = Data.SpriteManager.GetScaled("item_flag.png", 28, 28);
+            if (exitDoorSprite != null && _gateOpen)
+            {
+                g.DrawImage(exitDoorSprite,
+                    _exitDoor.X + (_exitDoor.Width - 28) / 2,
+                    _exitDoor.Y + (_exitDoor.Height - 28) / 2, 28, 28);
+            }
+            else
+            {
+                // Fallback: GDI colored rectangle
+                using (var br = new SolidBrush(_gateOpen ? Color.LimeGreen : Color.DimGray))
+                    g.FillRectangle(br, _exitDoor);
+            }
 
             // ── Lava tide (Idea 4) ────────────────────────────────────────────
             int lavaTop = Math.Max(0, (int)_lavaY);
@@ -612,8 +690,7 @@ namespace Fridays_Adventure.Scenes
             float safety = Math.Max(0f, Math.Min(1f, gap / 400f));
 
             // Background bar
-            using (var bg = new SolidBrush(Color.FromArgb(120, 0, 0, 0)))
-                g.FillRectangle(bg, 8, hudY, 200, 18);
+            g.FillRectangle(_lavaBgBr, 8, hudY, 200, 18);
 
             // Fill color: green→yellow→red based on safety
             Color fill = safety > 0.5f
@@ -625,9 +702,7 @@ namespace Fridays_Adventure.Scenes
 
             // Label
             string label = safety < 0.25f ? "⚠ LAVA CLOSE!" : "LAVA";
-            using (var f = new Font("Courier New", 8, FontStyle.Bold))
-            using (var tb = new SolidBrush(safety < 0.25f ? Color.Red : Color.White))
-                g.DrawString(label, f, tb, 214, hudY + 2);
+            g.DrawString(label, _lavaHudFont, safety < 0.25f ? _lavaTextRedBr : _lavaTextWhiteBr, 214, hudY + 2);
         }
 
         private static void DrawBrickBackground(Graphics g, int W, int H)
@@ -647,14 +722,11 @@ namespace Fridays_Adventure.Scenes
         private static void DrawTorch(Graphics g, int x, int y)
         {
             // Torch base.
-            using (var br = new SolidBrush(Color.SaddleBrown))
-                g.FillRectangle(br, x, y, 8, 20);
+            g.FillRectangle(_torchBaseBr, x, y, 8, 20);
 
             // Flame glow.
-            using (var br = new SolidBrush(Color.FromArgb(180, 255, 140, 0)))
-                g.FillEllipse(br, x - 6, y - 16, 20, 22);
-            using (var br = new SolidBrush(Color.FromArgb(120, 255, 220, 0)))
-                g.FillEllipse(br, x - 2, y - 10, 12, 14);
+            g.FillEllipse(_torchGlowBr, x - 6, y - 16, 20, 22);
+            g.FillEllipse(_torchInnerBr, x - 2, y - 10, 12, 14);
         }
 
         private void BreakNearbyWalls()

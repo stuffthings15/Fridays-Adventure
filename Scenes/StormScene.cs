@@ -490,15 +490,48 @@ namespace Fridays_Adventure.Scenes
         private void DrawShipDeck(Graphics g, int W)
         {
             int dy = (int)CurrentDeckY;
+
+            // Base deck fill
             using (var br = new SolidBrush(Color.SaddleBrown))
                 g.FillRectangle(br, 0, dy, W, 100);
-            // Planks
-            using (var pen = new Pen(Color.FromArgb(80, Color.Black), 1))
-                for (int bx = 0; bx < W; bx += 40)
-                    g.DrawLine(pen, bx, dy, bx, dy + 100);
-            // Railing
-            using (var br = new SolidBrush(Color.FromArgb(180, Color.Sienna)))
-                g.FillRectangle(br, 0, dy, W, 8);
+
+            // ── Kenney CC0 wood tile across the ship deck ────────────────────
+            Bitmap woodTile = Data.SpriteManager.GetScaled("tile_wood_plank.png", 18, 18);
+            if (woodTile != null)
+            {
+                for (int tx = 0; tx < W; tx += 18)
+                {
+                    for (int ty = dy; ty < dy + 100; ty += 18)
+                    {
+                        int dw = Math.Min(18, W - tx);
+                        int dh = Math.Min(18, dy + 100 - ty);
+                        g.DrawImage(woodTile, tx, ty, dw, dh);
+                    }
+                }
+            }
+            else
+            {
+                // Fallback: GDI plank lines
+                using (var pen = new Pen(Color.FromArgb(80, Color.Black), 1))
+                    for (int bx = 0; bx < W; bx += 40)
+                        g.DrawLine(pen, bx, dy, bx, dy + 100);
+            }
+
+            // Railing highlight strip at top — Kenney CC0 bridge tile
+            Bitmap bridgeTile = Data.SpriteManager.GetScaled("tile_bridge.png", 18, 8);
+            if (bridgeTile != null)
+            {
+                for (int tx = 0; tx < W; tx += 18)
+                {
+                    int dw = Math.Min(18, W - tx);
+                    g.DrawImage(bridgeTile, tx, dy, dw, 8);
+                }
+            }
+            else
+            {
+                using (var br = new SolidBrush(Color.FromArgb(180, Color.Sienna)))
+                    g.FillRectangle(br, 0, dy, W, 8);
+            }
         }
 
         private void DrawHUD(Graphics g, int W, int H)
@@ -506,9 +539,20 @@ namespace Fridays_Adventure.Scenes
             // ── Storm-specific survival overlay (below GameHUD band) ─────────
             int topY = GameHUD.BandHeight + 4;
 
-            // Semi-transparent panel behind storm info for readability.
-            using (var br = new SolidBrush(Color.FromArgb(160, 0, 0, 0)))
-                g.FillRectangle(br, 6, topY, 330, 32);
+            // ── Kenney CC0 UI panel behind storm survival HUD ────────────────
+            Bitmap stormHudPanel = Data.SpriteManager.GetScaled("ui_panel_blue.png", 330, 32);
+            if (stormHudPanel != null)
+            {
+                g.DrawImage(stormHudPanel, 6, topY, 330, 32);
+                using (var overlay = new SolidBrush(Color.FromArgb(100, 0, 0, 0)))
+                    g.FillRectangle(overlay, 6, topY, 330, 32);
+            }
+            else
+            {
+                // GDI fallback: semi-transparent panel behind storm info
+                using (var br = new SolidBrush(Color.FromArgb(160, 0, 0, 0)))
+                    g.FillRectangle(br, 6, topY, 330, 32);
+            }
 
             // Primary objective line: countdown timer.
             float remaining = Math.Max(0, SurvivalGoal - _survivalTimer);

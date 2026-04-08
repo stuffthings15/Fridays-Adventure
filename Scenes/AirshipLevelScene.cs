@@ -85,7 +85,8 @@ namespace Fridays_Adventure.Scenes
             SMB3Hud.ShowWorldLabel($"AIRSHIP  {Game.Instance.WorldLevelLabel}");
         }
 
-        public override void OnExit()  { _bg?.Dispose(); _bg = null; }
+        // _bg comes from SpriteManager cache — do NOT dispose it
+        public override void OnExit()  { _bg = null; }
         public override void OnResume() => Game.Instance.Audio.ContinueOrPlay("combat");
 
         private void BuildLevel()
@@ -429,47 +430,103 @@ namespace Fridays_Adventure.Scenes
             g.TranslateTransform(-camX, 0);
 
             // ── Deck (metal plates) ───────────────────────────────────────────
+            // Tile Kenney CC0 stone sprites for a metallic deck look
+            Bitmap deckTile = Data.SpriteManager.GetScaled("tile_stone_top.png", 18, 18);
             foreach (var p in _platforms)
             {
+                // Base fill behind tiles
                 using (var br = new SolidBrush(Color.FromArgb(100, 95, 80)))
                     g.FillRectangle(br, p);
-                // Rivet marks.
+
+                if (deckTile != null)
+                {
+                    for (int tx = p.Left; tx < p.Right; tx += 18)
+                    {
+                        for (int ty = p.Top; ty < p.Bottom; ty += 18)
+                        {
+                            int dw = Math.Min(18, p.Right - tx);
+                            int dh = Math.Min(18, p.Bottom - ty);
+                            g.DrawImage(deckTile, tx, ty, dw, dh);
+                        }
+                    }
+                }
+
+                // Rivet border
                 using (var pen = new Pen(Color.FromArgb(70, 65, 55), 1))
                     g.DrawRectangle(pen, p);
             }
 
-            // ── Moving pipes (Idea 5) ─────────────────────────────────────────
+            // ── Moving pipes (Idea 5) — Kenney CC0 pipe sprites ────────────
+            Bitmap pipeTop  = Data.SpriteManager.GetScaled("tile_pipe_top.png", 40, 18);
+            Bitmap pipeBody = Data.SpriteManager.GetScaled("tile_pipe_body.png", 40, 18);
             foreach (var pipe in _pipes)
             {
                 var pRect = new Rectangle((int)pipe.X, (int)pipe.Y, 40, 80);
-                using (var br = new SolidBrush(Color.ForestGreen))
-                    g.FillRectangle(br, pRect);
-                using (var pen = new Pen(Color.DarkGreen))
-                    g.DrawRectangle(pen, pRect);
+                if (pipeTop != null && pipeBody != null)
+                {
+                    // Pipe cap at top
+                    g.DrawImage(pipeTop, pRect.X, pRect.Y, 40, 18);
+                    // Tile body below
+                    for (int py = pRect.Y + 18; py < pRect.Bottom; py += 18)
+                    {
+                        int dh = Math.Min(18, pRect.Bottom - py);
+                        g.DrawImage(pipeBody, pRect.X, py, 40, dh);
+                    }
+                }
+                else
+                {
+                    // Fallback: GDI green pipe
+                    using (var br = new SolidBrush(Color.ForestGreen))
+                        g.FillRectangle(br, pRect);
+                    using (var pen = new Pen(Color.DarkGreen))
+                        g.DrawRectangle(pen, pRect);
+                }
             }
 
-            // ── Cannons (Idea 7) ──────────────────────────────────────────────
+            // ── Cannons (Idea 7) — Kenney CC0 crate sprite for turret base ──
+            Bitmap cannonSprite = Data.SpriteManager.GetScaled("tile_crate.png", 28, 28);
             foreach (var c in _cannons)
             {
-                using (var br = new SolidBrush(Color.DarkGray))
-                    g.FillRectangle(br, (int)c.X - 14, (int)c.Y - 20, 28, 28);
-                using (var pen = new Pen(Color.Black))
-                    g.DrawRectangle(pen, (int)c.X - 14, (int)c.Y - 20, 28, 28);
+                int cx = (int)c.X - 14, cy = (int)c.Y - 20;
+                if (cannonSprite != null)
+                {
+                    g.DrawImage(cannonSprite, cx, cy, 28, 28);
+                }
+                else
+                {
+                    // Fallback: GDI dark gray box
+                    using (var br = new SolidBrush(Color.DarkGray))
+                        g.FillRectangle(br, cx, cy, 28, 28);
+                    using (var pen = new Pen(Color.Black))
+                        g.DrawRectangle(pen, cx, cy, 28, 28);
+                }
             }
 
-            // ── Cannonballs ───────────────────────────────────────────────────
+            // ── Cannonballs — Kenney CC0 stone block sprite ─────────────────
+            Bitmap cannonBallSprite = Data.SpriteManager.GetScaled("tile_stone_block.png", 12, 12);
             foreach (var b in _balls)
             {
-                using (var br = new SolidBrush(Color.DimGray))
-                    g.FillEllipse(br, (int)b.X, (int)b.Y, 12, 12);
+                if (cannonBallSprite != null)
+                    g.DrawImage(cannonBallSprite, (int)b.X, (int)b.Y, 12, 12);
+                else
+                    using (var br = new SolidBrush(Color.DimGray))
+                        g.FillEllipse(br, (int)b.X, (int)b.Y, 12, 12);
             }
 
             foreach (var wall in _iceWalls)
                 if (wall.IsAlive) wall.Draw(g);
 
-            // ── Exit flagpole ──────────────────────────────────────────────────
-            using (var br = new SolidBrush(Color.Gold))
-                g.FillRectangle(br, _exitFlag);
+            // ── Exit flagpole — Kenney CC0 flag sprite ─────────────────────
+            Bitmap exitFlagSprite = Data.SpriteManager.GetScaled("item_flag.png", 32, 32);
+            if (exitFlagSprite != null)
+            {
+                g.DrawImage(exitFlagSprite, _exitFlag.X, _exitFlag.Y, 32, 32);
+            }
+            else
+            {
+                using (var br = new SolidBrush(Color.Gold))
+                    g.FillRectangle(br, _exitFlag);
+            }
             using (var f = new Font("Courier New", 9, FontStyle.Bold))
                 g.DrawString("EXIT", f, Brushes.Black, _exitFlag.X + 2, _exitFlag.Y + 10);
 

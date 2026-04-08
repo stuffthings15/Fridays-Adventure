@@ -60,6 +60,23 @@ namespace Fridays_Adventure.Scenes
         private static readonly Font _hudFont  = new Font("Courier New", 9, FontStyle.Bold);
         private static readonly Font _bigFont  = new Font("Courier New", 18, FontStyle.Bold);
         private static readonly Font _midFont  = new Font("Courier New", 12, FontStyle.Bold);
+        private static readonly Font _hudFont8 = new Font("Courier New", 8, FontStyle.Bold);
+
+        // ── Cached GDI objects — avoids per-frame / per-loop allocations ─────
+        private static readonly SolidBrush _segEmptyBr     = new SolidBrush(Color.FromArgb(28, 38, 52));
+        private static readonly SolidBrush _segWhiteBr     = new SolidBrush(Color.FromArgb(80, 255, 255, 255));
+        private static readonly SolidBrush _segOrangeRedBr = new SolidBrush(Color.OrangeRed);
+        private static readonly SolidBrush _segGoldBr      = new SolidBrush(Color.Gold);
+        private static readonly SolidBrush _segLimeBr      = new SolidBrush(Color.LimeGreen);
+        private static readonly SolidBrush _segYellowBr    = new SolidBrush(Color.Yellow);
+        private static readonly SolidBrush _segIceBr       = new SolidBrush(Color.FromArgb(180, 220, 255));
+        private static readonly SolidBrush _hudPanelBr     = new SolidBrush(Color.FromArgb(210, 10, 10, 30));
+        private static readonly Pen        _hudBorderPen1  = new Pen(Color.FromArgb(120, 255, 69, 0), 2);   // OrangeRed
+        private static readonly Pen        _hudBorderPen2  = new Pen(Color.FromArgb(120, 255, 215, 0), 2);  // Gold
+        private static readonly SolidBrush _platBaseBr     = new SolidBrush(Color.FromArgb(160, 100, 50));
+        private static readonly SolidBrush _platTopBr      = new SolidBrush(Color.FromArgb(200, 130, 70));
+        private static readonly SolidBrush _platBotBr      = new SolidBrush(Color.FromArgb(110, 60, 28));
+        private static readonly Pen        _platMortarPen  = new Pen(Color.FromArgb(100, 70, 30), 1);
 
         // ── Enter / Exit ─────────────────────────────────────────────────────
 
@@ -523,21 +540,33 @@ namespace Fridays_Adventure.Scenes
 
         private void DrawPlatforms(Graphics g)
         {
+            // Hoist sprite lookup outside loop — avoids a dictionary hit per platform per frame
+            Bitmap stoneTile = Data.SpriteManager.GetScaled("tile_stone_block.png", 18, 18);
             foreach (var p in _platforms)
             {
-                // ── SMB3 brick tile platform ──────────────────────────────────
-                using (var br = new SolidBrush(Color.FromArgb(160, 100, 50)))
-                    g.FillRectangle(br, p);
-                // Lit top edge.
-                using (var br = new SolidBrush(Color.FromArgb(200, 130, 70)))
-                    g.FillRectangle(br, p.X, p.Y, p.Width, 5);
-                // Dark bottom shadow.
-                using (var br = new SolidBrush(Color.FromArgb(110, 60, 28)))
-                    g.FillRectangle(br, p.X, p.Y + p.Height - 3, p.Width, 3);
-                // Brick mortar lines every 32px.
-                using (var pen = new Pen(Color.FromArgb(100, 70, 30), 1))
+                // SMB3 brick tile platform base
+                g.FillRectangle(_platBaseBr, p);
+
+                if (stoneTile != null)
+                {
+                    for (int tx = p.X; tx < p.X + p.Width; tx += 18)
+                    {
+                        for (int ty = p.Y; ty < p.Y + p.Height; ty += 18)
+                        {
+                            int dw = Math.Min(18, p.X + p.Width - tx);
+                            int dh = Math.Min(18, p.Y + p.Height - ty);
+                            g.DrawImage(stoneTile, tx, ty, dw, dh);
+                        }
+                    }
+                }
+                else
+                {
+                    // Fallback: GDI brick detail
+                    g.FillRectangle(_platTopBr, p.X, p.Y, p.Width, 5);
+                    g.FillRectangle(_platBotBr, p.X, p.Y + p.Height - 3, p.Width, 3);
                     for (int bx = p.X; bx < p.X + p.Width; bx += 32)
-                        g.DrawLine(pen, bx, p.Y + 5, bx, p.Y + p.Height - 3);
+                        g.DrawLine(_platMortarPen, bx, p.Y + 5, bx, p.Y + p.Height - 3);
+                }
             }
         }
 
@@ -548,23 +577,19 @@ namespace Fridays_Adventure.Scenes
             string label = _phase == 1 ? "MARINE CAPTAIN" : "MARINE CAPTAIN ─ FINAL FORM";
 
             // Panel background.
-            using (var br = new SolidBrush(Color.FromArgb(210, 10, 10, 30)))
-                g.FillRectangle(br, W / 2 - 190, 6, 380, 46);
-            using (var pen = new Pen(Color.FromArgb(120, _phase == 1 ? Color.OrangeRed : Color.Gold), 2))
-                g.DrawRectangle(pen, W / 2 - 190, 6, 380, 46);
+            g.FillRectangle(_hudPanelBr, W / 2 - 190, 6, 380, 46);
+            g.DrawRectangle(_phase == 1 ? _hudBorderPen1 : _hudBorderPen2, W / 2 - 190, 6, 380, 46);
 
             // Label.
-            using (var f = new Font("Courier New", 8, FontStyle.Bold))
             {
-                var sz = g.MeasureString(label, f);
-                using (var br = new SolidBrush(_phase == 1 ? Color.OrangeRed : Color.Gold))
-                    g.DrawString(label, f, br, W / 2f - sz.Width / 2f, 9);
+                var sz = g.MeasureString(label, _hudFont8);
+                g.DrawString(label, _hudFont8, _phase == 1 ? _segOrangeRedBr : _segGoldBr, W / 2f - sz.Width / 2f, 9);
             }
 
             // Segmented HP bar — fills left to right.
             float pct = _boss.IsAlive ? (float)_boss.Health / _boss.MaxHealth : 0f;
             int filledSegs = Math.Min(segCount, (int)(pct * segCount));
-            Color fillColor = _phase == 1 ? Color.OrangeRed : Color.Gold;
+            SolidBrush fillBr = _phase == 1 ? _segOrangeRedBr : _segGoldBr;
             int barStartX = W / 2 - 170;
             int barY = 24;
 
@@ -572,11 +597,9 @@ namespace Fridays_Adventure.Scenes
             {
                 int sx = barStartX + i * (barW + segGap);
                 bool filled = i < filledSegs;
-                using (var br = new SolidBrush(filled ? fillColor : Color.FromArgb(28, 38, 52)))
-                    g.FillRectangle(br, sx, barY, barW, segH);
+                g.FillRectangle(filled ? fillBr : _segEmptyBr, sx, barY, barW, segH);
                 if (filled)
-                    using (var br = new SolidBrush(Color.FromArgb(80, Color.White)))
-                        g.FillRectangle(br, sx, barY, barW, 2);
+                    g.FillRectangle(_segWhiteBr, sx, barY, barW, 2);
             }
             // Phase halfway marker.
             int midSeg = barStartX + (segCount / 2) * (barW + segGap) - segGap;
@@ -594,37 +617,31 @@ namespace Fridays_Adventure.Scenes
             float hp  = (float)_player.Health / _player.MaxHealth;
             int hpFill = Math.Min(segCount, (int)(hp * segCount));
 
-            using (var f = new Font("Courier New", 8, FontStyle.Bold))
-                g.DrawString("HP", f, Brushes.White, 6, H - 78);
+            g.DrawString("HP", _hudFont8, Brushes.White, 6, H - 78);
 
             for (int i = 0; i < segCount; i++)
             {
                 int sx = 30 + i * (segW + segGap);
                 bool filled = i < hpFill;
-                Color segColor = hp > 0.5f ? Color.LimeGreen : (hp > 0.25f ? Color.Yellow : Color.OrangeRed);
-                using (var br = new SolidBrush(filled ? segColor : Color.FromArgb(28, 38, 52)))
-                    g.FillRectangle(br, sx, H - 76, segW, segH);
+                SolidBrush segBr = filled ? (hp > 0.5f ? _segLimeBr : (hp > 0.25f ? _segYellowBr : _segOrangeRedBr)) : _segEmptyBr;
+                g.FillRectangle(segBr, sx, H - 76, segW, segH);
                 if (filled)
-                    using (var br = new SolidBrush(Color.FromArgb(80, Color.White)))
-                        g.FillRectangle(br, sx, H - 76, segW, 2);
+                    g.FillRectangle(_segWhiteBr, sx, H - 76, segW, 2);
             }
 
             // ── ICE — segmented (14 segments) ────────────────────────────────
             float ice = (float)_player.IceReserve / _player.MaxIceReserve;
             int iceFill = Math.Min(14, (int)(ice * 14));
 
-            using (var f = new Font("Courier New", 8, FontStyle.Bold))
-                g.DrawString("ICE", f, Brushes.Cyan, 6, H - 60);
+            g.DrawString("ICE", _hudFont8, Brushes.Cyan, 6, H - 60);
 
             for (int i = 0; i < 14; i++)
             {
                 int sx = 30 + i * (segW + segGap);
                 bool filled = i < iceFill;
-                using (var br = new SolidBrush(filled ? Color.FromArgb(180, 220, 255) : Color.FromArgb(28, 38, 52)))
-                    g.FillRectangle(br, sx, H - 58, segW, 10);
+                g.FillRectangle(filled ? _segIceBr : _segEmptyBr, sx, H - 58, segW, 10);
                 if (filled)
-                    using (var br = new SolidBrush(Color.FromArgb(80, Color.White)))
-                        g.FillRectangle(br, sx, H - 58, segW, 2);
+                    g.FillRectangle(_segWhiteBr, sx, H - 58, segW, 2);
             }
 
             // Ability cooldowns.

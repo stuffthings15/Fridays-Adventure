@@ -229,7 +229,7 @@ namespace Fridays_Adventure.Scenes
                 new OverworldNode("sky",            "Sky Island",         new Point((int)(W*0.62f), (int)(H*0.30f)), NodeType.Island, false),
                 new OverworldNode("wano",           "Blade Nation",       new Point((int)(W*0.82f), (int)(H*0.48f)), NodeType.Island, false),
                 new OverworldNode("blockade",       "Marine Blockade",    new Point((int)(W*0.55f), (int)(H*0.68f)), NodeType.Boss,   false),
-                new OverworldNode("warlord1",       "Warlord: Sudo",      new Point((int)(W*0.92f), (int)(H*0.30f)), NodeType.Boss,   false),
+                new OverworldNode("warlord1",       "Warlord: Sudo",      new Point((int)(W*0.78f), (int)(H*0.22f)), NodeType.Boss,   false),
                 // ── Sequel expansion ───────────────────────────────────
                 new OverworldNode("harbor",         "Harbor Town",        new Point((int)(W*0.65f), (int)(H*0.72f)), NodeType.Island, false),
                 new OverworldNode("coral",          "Coral Reef",         new Point((int)(W*0.55f), (int)(H*0.82f)), NodeType.Island, false),
@@ -747,8 +747,19 @@ namespace Fridays_Adventure.Scenes
             int panelH = 16 + (itemsPerPanel * 14) + 20;
 
             // ── MAIN PANEL: ALL 17 LEVELS (ALL REQUIRED FOR VICTORY) ──
-            using (var br = new SolidBrush(Color.FromArgb(200, 20, 30, 60)))
-                g.FillRectangle(br, panelX, panelY, panelW, panelH);
+            // Kenney CC0 UI panel background
+            Bitmap campaignPanel = Data.SpriteManager.GetScaled("ui_panel_brown.png", panelW, panelH);
+            if (campaignPanel != null)
+            {
+                g.DrawImage(campaignPanel, panelX, panelY, panelW, panelH);
+                using (var br = new SolidBrush(Color.FromArgb(140, 0, 0, 0)))
+                    g.FillRectangle(br, panelX, panelY, panelW, panelH);
+            }
+            else
+            {
+                using (var br = new SolidBrush(Color.FromArgb(200, 20, 30, 60)))
+                    g.FillRectangle(br, panelX, panelY, panelW, panelH);
+            }
             using (var pen = new Pen(Color.FromArgb(160, Color.Gold), 2))
                 g.DrawRectangle(pen, panelX, panelY, panelW, panelH);
 

@@ -207,7 +207,12 @@ namespace Fridays_Adventure.Audio
             StopMusic();
 
             string path = Path.Combine(AudioPath, fileName);
-            if (!File.Exists(path)) return;
+            if (!File.Exists(path))
+            {
+                // Record the miss so the self-healing pipeline can resolve it
+                Data.AssetGapDetector.RecordMiss(fileName);
+                return;
+            }
 
             try
             {

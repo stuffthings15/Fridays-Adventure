@@ -263,16 +263,22 @@ namespace Fridays_Adventure.Scenes
         // ── Background helpers ─────────────────────────────────────────────────
 
         /// <summary>Draws a small static star field for the SMB3 clear background.</summary>
+        /// <remarks>Uses Kenney CC0 star sprite if available, GDI ellipse fallback.</remarks>
         private static void DrawStarField(Graphics g, int W, int H)
         {
+            // Kenney CC0 star sprite for higher-quality background decoration
+            Bitmap starTile = Data.SpriteManager.GetScaled("item_star.png", 10, 10);
             // Deterministic positions so they don't flicker every frame.
             for (int i = 0; i < 30; i++)
             {
                 int x = (i * 83 + 17) % (W - 10);
                 int y = (i * 47 + 29) % (H - 10);
-                int r = (i % 3 == 0) ? 4 : 2;
-                using (var br = new SolidBrush(Color.FromArgb(180, Color.Gold)))
-                    g.FillEllipse(br, x, y, r, r);
+                int r = (i % 3 == 0) ? 8 : 5;
+                if (starTile != null)
+                    g.DrawImage(starTile, x, y, r, r);
+                else
+                    using (var br = new SolidBrush(Color.FromArgb(180, Color.Gold)))
+                        g.FillEllipse(br, x, y, r, r);
             }
         }
 

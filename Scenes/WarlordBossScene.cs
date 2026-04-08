@@ -60,7 +60,26 @@ namespace Fridays_Adventure.Scenes
         private bool  _victory;
         private float _victoryTimer;
 
-        private static readonly Font _hudFont = new Font("Courier New", 9, FontStyle.Bold);
+        private static readonly Font _hudFont  = new Font("Courier New", 9, FontStyle.Bold);
+        private static readonly Font _hudFont8  = new Font("Courier New", 8, FontStyle.Bold);
+
+        // ── Cached GDI objects — avoids per-frame / per-loop allocations ─────
+        private static readonly SolidBrush _segEmptyBr     = new SolidBrush(Color.FromArgb(28, 38, 52));
+        private static readonly SolidBrush _segWhiteBr     = new SolidBrush(Color.FromArgb(80, 255, 255, 255));
+        private static readonly SolidBrush _segOrangeRedBr = new SolidBrush(Color.OrangeRed);
+        private static readonly SolidBrush _segGoldBr      = new SolidBrush(Color.Gold);
+        private static readonly SolidBrush _segLimeBr      = new SolidBrush(Color.LimeGreen);
+        private static readonly SolidBrush _segYellowBr    = new SolidBrush(Color.Yellow);
+        private static readonly SolidBrush _segIceBr       = new SolidBrush(Color.FromArgb(180, 220, 255));
+        private static readonly SolidBrush _hudPanelBr     = new SolidBrush(Color.FromArgb(210, 10, 10, 30));
+        private static readonly Pen        _hudBorderPen1  = new Pen(Color.FromArgb(120, 255, 69, 0), 2);   // OrangeRed
+        private static readonly Pen        _hudBorderPen2  = new Pen(Color.FromArgb(120, 255, 215, 0), 2);  // Gold
+        private static readonly SolidBrush _platBaseBr     = new SolidBrush(Color.FromArgb(160, 100, 50));
+        private static readonly SolidBrush _platTopBr      = new SolidBrush(Color.FromArgb(200, 130, 70));
+        private static readonly SolidBrush _platBotBr      = new SolidBrush(Color.FromArgb(110, 60, 28));
+        private static readonly Pen        _platMortarPen  = new Pen(Color.FromArgb(100, 70, 30), 1);
+        private static readonly SolidBrush _centBodyBr     = new SolidBrush(Color.FromArgb(220, 80, 170, 80));
+        private static readonly Pen        _centBodyPen    = new Pen(Color.FromArgb(230, 35, 90, 35), 2);
 
         public WarlordBossScene(WarlordConfig config) => _config = config;
 
@@ -74,10 +93,11 @@ namespace Fridays_Adventure.Scenes
             string bgFile;
             switch (_config.Type)
             {
-                case WarlordType.FireLord:     bgFile = "bg_Warlord_Sudo.png";          break;
-                case WarlordType.SeaStoneLord: bgFile = "bg_Centipede_of_the_Deep.png"; break;
-                case WarlordType.StormLord:    bgFile = "bg_Warlord_Vanta.png";         break;
-                default:                       bgFile = "bg_Marine_Blockade.png";       break;
+                case WarlordType.FireLord:      bgFile = "bg_Warlord_Sudo.png";          break;
+                case WarlordType.SeaStoneLord:  bgFile = "bg_Marine_Blockade.png";       break;
+                case WarlordType.StormLord:     bgFile = "bg_Warlord_Vanta.png";         break;
+                case WarlordType.CentipedeLord: bgFile = "bg_Centipede_of_the_Deep.png"; break;
+                default:                        bgFile = "bg_island.png";                break;
             }
             _bg = SpriteManager.Get(bgFile);
 
@@ -85,7 +105,8 @@ namespace Fridays_Adventure.Scenes
             Game.Instance.Audio.ContinueOrPlay("boss");
         }
 
-        public override void OnExit()   { _bg?.Dispose(); }
+        // _bg comes from SpriteManager cache — do NOT dispose it
+        public override void OnExit()   { _bg = null; }
         public override void OnResume() => Game.Instance.Audio.ContinueOrPlay("boss");
 
         private void Build()
@@ -545,10 +566,8 @@ namespace Fridays_Adventure.Scenes
             for (int i = 0; i < _centipedeSegments.Count; i++)
             {
                 var r = GetCentipedeSegmentRect(i);
-                using (var br = new SolidBrush(Color.FromArgb(220, 80, 170, 80)))
-                    g.FillEllipse(br, r);
-                using (var pen = new Pen(Color.FromArgb(230, 35, 90, 35), 2))
-                    g.DrawEllipse(pen, r);
+                g.FillEllipse(_centBodyBr, r);
+                g.DrawEllipse(_centBodyPen, r);
             }
         }
 
@@ -560,14 +579,15 @@ namespace Fridays_Adventure.Scenes
         private void DrawBackground(Graphics g, int W, int H)
         {
             if (_bg != null) { g.DrawImage(_bg, 0, 0, W, H); return; }
-            // Fallback gradient by warlord type.
+            // Fallback gradient by warlord type (visible, not near-black).
             Color top, bot;
             switch (_config.Type)
             {
-                case WarlordType.FireLord:     top = Color.FromArgb(40,10,5);   bot = Color.FromArgb(100,40,10); break;
-                case WarlordType.SeaStoneLord: top = Color.FromArgb(5,20,40);   bot = Color.FromArgb(10,60,80);  break;
-                case WarlordType.StormLord:    top = Color.FromArgb(15,10,40);  bot = Color.FromArgb(40,25,80);  break;
-                default:                       top = Color.FromArgb(20,5,30);   bot = Color.FromArgb(60,10,80);  break;
+                case WarlordType.FireLord:      top = Color.FromArgb(60, 20, 10);  bot = Color.FromArgb(140, 50, 15);  break;
+                case WarlordType.SeaStoneLord:  top = Color.FromArgb(10, 40, 70);  bot = Color.FromArgb(20, 80, 110);  break;
+                case WarlordType.StormLord:     top = Color.FromArgb(30, 20, 60);  bot = Color.FromArgb(70, 40, 110);  break;
+                case WarlordType.CentipedeLord: top = Color.FromArgb(15, 40, 20);  bot = Color.FromArgb(40, 90, 50);   break;
+                default:                        top = Color.FromArgb(30, 20, 50);  bot = Color.FromArgb(70, 40, 100);  break;
             }
             using (var br = new System.Drawing.Drawing2D.LinearGradientBrush(
                 new Rectangle(0, 0, W, H), top, bot, 90f))
@@ -576,18 +596,34 @@ namespace Fridays_Adventure.Scenes
 
         private void DrawPlatforms(Graphics g)
         {
+            // Hoist sprite lookup outside loop — avoids a dictionary hit per platform per frame
+            Bitmap stoneTile = Data.SpriteManager.GetScaled("tile_stone_block.png", 18, 18);
             foreach (var p in _platforms)
             {
-                // SMB3 brick tile platform
-                using (var br = new SolidBrush(Color.FromArgb(160, 100, 50)))
-                    g.FillRectangle(br, p);
-                using (var br = new SolidBrush(Color.FromArgb(200, 130, 70)))
-                    g.FillRectangle(br, p.X, p.Y, p.Width, 5);
-                using (var br = new SolidBrush(Color.FromArgb(110, 60, 28)))
-                    g.FillRectangle(br, p.X, p.Y + p.Height - 3, p.Width, 3);
-                using (var pen = new Pen(Color.FromArgb(100, 70, 30), 1))
+                // SMB3 brick tile platform base fill
+                g.FillRectangle(_platBaseBr, p);
+
+                // Tile stone sprites if available
+                if (stoneTile != null)
+                {
+                    for (int tx = p.X; tx < p.X + p.Width; tx += 18)
+                    {
+                        for (int ty = p.Y; ty < p.Y + p.Height; ty += 18)
+                        {
+                            int dw = Math.Min(18, p.X + p.Width - tx);
+                            int dh = Math.Min(18, p.Y + p.Height - ty);
+                            g.DrawImage(stoneTile, tx, ty, dw, dh);
+                        }
+                    }
+                }
+                else
+                {
+                    // Fallback: GDI highlight/shadow/mortar
+                    g.FillRectangle(_platTopBr, p.X, p.Y, p.Width, 5);
+                    g.FillRectangle(_platBotBr, p.X, p.Y + p.Height - 3, p.Width, 3);
                     for (int bx = p.X; bx < p.X + p.Width; bx += 32)
-                        g.DrawLine(pen, bx, p.Y + 5, bx, p.Y + p.Height - 3);
+                        g.DrawLine(_platMortarPen, bx, p.Y + 5, bx, p.Y + p.Height - 3);
+                }
             }
         }
 
@@ -613,7 +649,7 @@ namespace Fridays_Adventure.Scenes
 
             float pct = _boss.IsAlive ? (float)_boss.Health / _boss.MaxHealth : 0f;
             int filledSegs = Math.Min(segCount, (int)(pct * segCount));
-            Color fillColor = _phase == 1 ? Color.OrangeRed : Color.Gold;
+            SolidBrush fillBr = _phase == 1 ? _segOrangeRedBr : _segGoldBr;
             int barStartX = W / 2 - 170;
             int barY = 24;
 
@@ -621,11 +657,9 @@ namespace Fridays_Adventure.Scenes
             {
                 int sx = barStartX + i * (barW + segGap);
                 bool filled = i < filledSegs;
-                using (var br = new SolidBrush(filled ? fillColor : Color.FromArgb(28, 38, 52)))
-                    g.FillRectangle(br, sx, barY, barW, segH);
+                g.FillRectangle(filled ? fillBr : _segEmptyBr, sx, barY, barW, segH);
                 if (filled)
-                    using (var br = new SolidBrush(Color.FromArgb(80, Color.White)))
-                        g.FillRectangle(br, sx, barY, barW, 2);
+                    g.FillRectangle(_segWhiteBr, sx, barY, barW, 2);
             }
             int midSeg = barStartX + (segCount / 2) * (barW + segGap) - segGap;
             g.DrawLine(Pens.White, midSeg, barY - 2, midSeg, barY + segH + 2);
@@ -647,12 +681,10 @@ namespace Fridays_Adventure.Scenes
             {
                 int sx = 30 + i * (segW + segGap);
                 bool filled = i < hpFill;
-                Color segColor = hp > 0.5f ? Color.LimeGreen : (hp > 0.25f ? Color.Yellow : Color.OrangeRed);
-                using (var br = new SolidBrush(filled ? segColor : Color.FromArgb(28, 38, 52)))
-                    g.FillRectangle(br, sx, H - 76, segW, segH);
+                SolidBrush segBr = filled ? (hp > 0.5f ? _segLimeBr : (hp > 0.25f ? _segYellowBr : _segOrangeRedBr)) : _segEmptyBr;
+                g.FillRectangle(segBr, sx, H - 76, segW, segH);
                 if (filled)
-                    using (var br = new SolidBrush(Color.FromArgb(80, Color.White)))
-                        g.FillRectangle(br, sx, H - 76, segW, 2);
+                    g.FillRectangle(_segWhiteBr, sx, H - 76, segW, 2);
             }
 
             float ice = (float)_player.IceReserve / _player.MaxIceReserve;
@@ -663,11 +695,9 @@ namespace Fridays_Adventure.Scenes
             {
                 int sx = 30 + i * (segW + segGap);
                 bool filled = i < iceFill;
-                using (var br = new SolidBrush(filled ? Color.FromArgb(180, 220, 255) : Color.FromArgb(28, 38, 52)))
-                    g.FillRectangle(br, sx, H - 58, segW, 10);
+                g.FillRectangle(filled ? _segIceBr : _segEmptyBr, sx, H - 58, segW, 10);
                 if (filled)
-                    using (var br = new SolidBrush(Color.FromArgb(80, Color.White)))
-                        g.FillRectangle(br, sx, H - 58, segW, 2);
+                    g.FillRectangle(_segWhiteBr, sx, H - 58, segW, 2);
             }
 
             HudHelper.DrawAbilityBar(g, _player, 180, H - 82);

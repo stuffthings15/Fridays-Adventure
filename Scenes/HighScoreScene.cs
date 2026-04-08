@@ -90,13 +90,30 @@ namespace Fridays_Adventure.Scenes
             int tableY = _isNewEntry ? 130 : 80;
             var scores = Game.Instance.Save.GetTopScores(10);
 
-            using (var br = new SolidBrush(Color.FromArgb(160, 0, 0, 0)))
-                g.FillRectangle(br, W / 2 - 220, tableY, 440, 30 + Math.Max(1, scores.Count) * 32);
+            // ── Kenney CC0 UI panel for score table background ────────────
+            int tableH = 30 + Math.Max(1, scores.Count) * 32;
+            Bitmap tablePanelBg = SpriteManager.GetScaled("ui_panel_brown.png", 440, tableH);
+            if (tablePanelBg != null)
+            {
+                g.DrawImage(tablePanelBg, W / 2 - 220, tableY, 440, tableH);
+                using (var overlay = new SolidBrush(Color.FromArgb(100, 0, 0, 0)))
+                    g.FillRectangle(overlay, W / 2 - 220, tableY, 440, tableH);
+            }
+            else
+            {
+                // GDI fallback
+                using (var br = new SolidBrush(Color.FromArgb(160, 0, 0, 0)))
+                    g.FillRectangle(br, W / 2 - 220, tableY, 440, tableH);
+            }
+            using (var pen = new Pen(Color.FromArgb(160, Color.Gold), 1))
+                g.DrawRectangle(pen, W / 2 - 220, tableY, 440, tableH);
 
             g.DrawString("RANK", _smallFont, Brushes.Yellow, W / 2 - 200, tableY + 4);
             g.DrawString("NAME", _smallFont, Brushes.Yellow, W / 2 - 100, tableY + 4);
             g.DrawString("SCORE", _smallFont, Brushes.Yellow, W / 2 + 100, tableY + 4);
 
+            // ── Kenney CC0 star sprite beside rank numbers ────────────────
+            Bitmap rankStar = SpriteManager.GetScaled("item_star.png", 14, 14);
             for (int i = 0; i < scores.Count; i++)
             {
                 int rowY = tableY + 30 + i * 32;
@@ -104,6 +121,9 @@ namespace Fridays_Adventure.Scenes
                                  string.Equals(scores[i].Name, Game.Instance.PlayerName, StringComparison.OrdinalIgnoreCase);
                 Brush textBr = highlight ? Brushes.Cyan : Brushes.White;
 
+                // Star icon beside rank number
+                if (rankStar != null)
+                    g.DrawImage(rankStar, W / 2 - 214, rowY + 1, 14, 14);
                 g.DrawString($"#{i + 1}", _smallFont, Brushes.Gold, W / 2 - 200, rowY);
                 g.DrawString(scores[i].Name, _smallFont, textBr, W / 2 - 100, rowY);
                 g.DrawString($"{scores[i].Score:N0}", _smallFont, textBr, W / 2 + 100, rowY);

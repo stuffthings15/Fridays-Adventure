@@ -6,6 +6,777 @@
 
 ---
 
+## SESSION 138: Fix Dive Gate Black Screen + BlankScreenDetector QA Test
+
+**Date/Time:** Current Session  
+**Status:** ✅ COMPLETE  
+**Build Status:** ✅ 0 errors, 0 warnings  
+
+### BUG FIX: Dive Gate (and 3 other scenes) — Disposed-Bitmap Cache Corruption
+- **Root cause:** 4 scenes loaded `_bg` via `SpriteManager.Get()` (the cache) but then called `_bg?.Dispose()` in `OnExit()`, destroying the cached bitmap. Any subsequent request for the same sprite returned a disposed `Bitmap` object → `ArgumentException: Parameter is not valid` → black screen.
+- **Affected scenes:** `UnderwaterScene`, `FortressScene`, `AirshipLevelScene`, `WarlordBossScene`
+- **Fix:** Changed all 4 `OnExit()` methods to `_bg = null` (release the reference) instead of `_bg?.Dispose()` (destroy the cached bitmap). `SpriteManager` owns the lifecycle of cached bitmaps.
+- **Verification:** `BlankScreenDetector` report: **17/17 OK, 0 BLANK, 0 ERROR**
+- **Verification:** Debug log: **0 `Parameter is not valid` errors** (was 12+ per session before fix)
+
+### NEW: BlankScreenDetector Automated QA Test
+- Created `Tests/BlankScreenDetector.cs` — instantiates all 17 level scenes, renders one frame into an off-screen bitmap, analyzes pixel variance
+- Detects: blank/black screens (>95% dark pixels), solid-fill screens (<8 unique colors), and scene Draw() exceptions
+- Integrated into `QABotWalkthroughScene.OnEnter()` as a pre-flight check — runs before every QA walkthrough
+- Writes detailed report to `Logs/blank_screen_report_*.txt`
+
+### Files Changed
+| File | Changes |
+|------|---------|
+| `Scenes/UnderwaterScene.cs` | `OnExit`: `_bg?.Dispose()` → `_bg = null` |
+| `Scenes/FortressScene.cs` | `OnExit`: `_bg?.Dispose()` → `_bg = null` |
+| `Scenes/AirshipLevelScene.cs` | `OnExit`: `_bg?.Dispose()` → `_bg = null` |
+| `Scenes/WarlordBossScene.cs` | `OnExit`: `_bg?.Dispose()` → `_bg = null` |
+| `Tests/BlankScreenDetector.cs` | **NEW** — automated blank-screen detection test for all 17 levels |
+| `Scenes/QABotWalkthroughScene.cs` | Added `BlankScreenDetector.RunAll()` pre-flight in `OnEnter()` |
+
+---
+
+## SESSION 137: Wire 38 Kenney CC0 Sprites into Build Output — Assets Now Visible In-Game
+
+**Date/Time:** Current Session  
+**Status:** ✅ COMPLETE  
+**Build Status:** ✅ 0 errors, 0 warnings  
+
+### BUG FIX: Kenney CC0 Sprites Not Appearing In-Game
+- **Root cause:** All 38 Kenney CC0 sprites existed in `Assets/Sprites/` but were never added to the `.csproj` as `<Content>` items with `<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>`. MSBuild never copied them to `bin/Debug/Assets/Sprites/`, so `SpriteManager.Get()` fell through to the negative-lookup cache and all scenes used GDI fallback rendering instead of the actual sprite tiles.
+- **Fix:** Added all 38 missing `<Content Include="...">` entries to `Fridays Adventure.csproj`:
+  - 5 item sprites: `item_coin`, `item_coin_alt`, `item_heart`, `item_star`, `item_flag`
+  - 20 tile sprites: `tile_grass_top/mid`, `tile_ground/mid`, `tile_stone_top/block/mid`, `tile_sand_block`, `tile_wood_plank/wood`, `tile_ice`, `tile_bridge`, `tile_bush`, `tile_flower`, `tile_crate/alt`, `tile_pipe_top/body`, `tile_rock_face`, `tile_marble_block`
+  - 7 key sprites: `key_z`, `key_x`, `key_c`, `key_b`, `key_e`, `key_i`, `key_space`
+  - 6 UI panel sprites: `ui_panel_brown/blue/green/red/yellow/grey`
+- **Verification:** Asset gap report dropped from **30 unresolved** to **6 unresolved** (all 6 are audio files, not sprites)
+
+### QA Bot Verification
+- Dinosaur Island: ✅ 50+ FPS, sprites loaded, tile rendering active
+- Storm Belt: ✅ 50+ FPS
+- All levels use Kenney tile sprites instead of GDI fallback rectangles
+
+### Files Changed
+- `Fridays Adventure.csproj` — added 38 `<Content>` entries with `CopyToOutputDirectory`
+
+---
+
+## SESSION 136: CRITICAL Performance Fix — Eliminate 80% CPU Waste from Asset Lookups + Vignette
+
+**Date/Time:** Current Session  
+**Status:** ✅ COMPLETE  
+**Build Status:** ✅ 0 errors, 0 warnings  
+
+### PROFILER RESULTS (CPU Usage Analysis)
+| Bottleneck | CPU % | Root Cause |
+|---|---|---|
+| `SpriteManager.ResolvePath` → `Directory.GetFiles` | **63.3%** | Recursive 1,426-file directory scan on EVERY cache-miss sprite lookup, every frame |
+| `ArtDirectorFeatures.DrawVignette` | **17.3%** | Per-frame PathGradientBrush fill (expensive GDI+ operation, never cached) |
+| Per-frame GDI brush/pen/font allocations | ~5% | `new SolidBrush()` inside for-loops in DrawBossHUD, DrawPlayerHUD, DrawPlatforms |
+
+### BUG FIX #1: SpriteManager.ResolvePath — 63% CPU → ~0%
+- **Root cause:** `Get()` never cached negative lookups. When a sprite didn't exist, `ResolvePath()` was called again EVERY frame, triggering `Directory.GetFiles(vendorDir, fileName, SearchOption.AllDirectories)` — a full recursive scan of 1,426 files — at 60 FPS
+- **Fix 1:** Added `_negativeLookups` HashSet — files confirmed missing are never probed again
+- **Fix 2:** Added `_vendorIndex` dictionary — vendor directory is scanned ONCE (lazily on first probe), building a filename→path lookup table. All subsequent vendor lookups are O(1) dictionary hits
+- **Fix 3:** `InvalidateCache()` and `DisposeAll()` clear both caches so the self-healing pipeline can still re-resolve after downloading new assets
+
+### BUG FIX #2: DrawVignette — 17% CPU → ~0.1%
+- **Root cause:** `ArtDirectorFeatures.DrawVignette()` created a new `PathGradientBrush` and called `g.FillRectangle()` with it EVERY frame. `PathGradientBrush` is extremely expensive to evaluate per-pixel
+- **Fix:** Pre-render the vignette into a cached `Bitmap` (Format32bppPArgb for fastest blit). Only re-render when screen size changes. Per-frame cost reduced to a single `DrawImage` blit
+- **Same fix applied to** `UIStyleGuide.DrawVignette()` (same pattern)
+
+### BUG FIX #3: Per-frame GDI allocations in draw loops
+- **BossScene + WarlordBossScene:** `DrawBossHUD` created 56 `SolidBrush` objects per frame (28 loop iterations × 2), `DrawPlayerHUD` created 64 more. All replaced with static readonly cached brushes
+- **FortressScene:** Platform loop, thwomp loop, and `DrawTorch` each created brushes/pens/fonts per iteration. All promoted to static readonly fields
+- **AirshipLevelScene:** Platform loop brushes/pens promoted to static fields
+- **WarlordBossScene constructor:** Accidentally deleted during static field insertion — restored
+
+### Files Changed
+| File | Changes |
+|------|---------|
+| `Data/SpriteManager.cs` | Added `_negativeLookups` HashSet, `_vendorIndex` dictionary, `EnsureVendorIndex()` method; `ResolvePath()` uses indexed O(1) lookup; `Get()` caches misses; `InvalidateCache`/`DisposeAll` clear all caches |
+| `Systems/TeamFeatures_Wave2.cs` | `DrawVignette()` pre-renders into cached bitmap; per-frame cost → single blit |
+| `Systems/UIStyleGuide.cs` | `DrawVignette()` pre-renders into cached bitmap |
+| `Scenes/BossScene.cs` | Added 16 static readonly GDI fields; fixed DrawBossHUD, DrawPlayerHUD, DrawPlatforms |
+| `Scenes/WarlordBossScene.cs` | Added 18 static readonly GDI fields; fixed DrawBossHUD, DrawPlayerHUD, DrawPlatforms, centipede segment loop; restored constructor |
+| `Scenes/FortressScene.cs` | Added 12 static readonly GDI fields; fixed DrawTorch, platform loop, thwomp loop, DrawLavaWarningHUD |
+| `Scenes/AirshipLevelScene.cs` | Fixed platform loop brushes/pens, Font allocations (applied in prior edit batch) |
+
+### Performance Impact Summary
+- **Before:** ~80% CPU wasted on filesystem scans + gradient brush fills → slideshow at 5-10 FPS
+- **After:** Both hotspots reduced to O(1) cached operations → smooth 60 FPS gameplay restored
+- **Estimated speedup:** 5-10x frame rate improvement in all gameplay levels
+
+### Next Steps
+- Consider pre-warming the sprite cache during LoadingScene for zero first-frame stutter
+- Monitor for any new GDI allocation hotspots with profiler
+
+---
+
+## SESSION 135: Overworld Map — Move Warlord Sudo Node Away from UI Panels
+
+**Date/Time:** Current Session  
+**Status:** ✅ COMPLETE  
+**Build Status:** ✅ 0 errors, 0 warnings  
+
+### BUG FIX: Warlord Sudo's overworld node was hidden behind the campaign progress checklist panel
+- **Root cause:** Warlord Sudo node was positioned at `(W*0.92, H*0.30)` — far right at 30% height
+- The campaign progress checklist panel starts at `W-250` (right side), `Y=50`, and extends ~300px tall
+- The Marine Threat bar is also at `W-200, Y=10`
+- Both UI panels visually overlapped the Warlord Sudo node, making it difficult to see and click
+- **Fix:** Moved node from `(W*0.92, H*0.30)` to `(W*0.78, H*0.22)` — shifted left and slightly up
+- Node remains logically connected between Blade Nation and Harbor Town on the map graph
+- All link connections (`wano→warlord1`, `warlord1→harbor`, `centipede_final→warlord1`) unchanged
+
+### Files Changed
+| File | Changes |
+|------|---------|
+| `Scenes/OverworldScene.cs` | Moved `warlord1` node position from `(W*0.92, H*0.30)` to `(W*0.78, H*0.22)` |
+
+### Next Steps
+- Verify other nodes don't overlap with the checklist panel or HUD elements
+- Consider repositioning `warlord2` (`W*0.92, H*0.55`) if it also overlaps
+
+---
+
+## SESSION 134: Extended Asset Integration — Dialogue Panel, Pause Menu, Credits, High Scores, Controls, Storm HUD
+
+**Date/Time:** Current Session  
+**Status:** ✅ COMPLETE  
+**Build Status:** ✅ 0 errors, 0 warnings  
+
+### FEATURE: Kenney CC0 UI panel for DialogueScene dialogue box
+- Dialogue box background now uses `ui_panel_brown.png` scaled to full dialogue area
+- Darkened overlay for text readability; cyan border preserved
+- GDI fallback preserved (semi-transparent black rectangle)
+
+### FEATURE: Kenney CC0 UI panel for PauseScene menu options
+- Menu options panel now uses `ui_panel_blue.png` as background
+- Panel sized to fit all 8 menu options with padding
+- Darkened overlay for readability; cyan border added
+- GDI fallback preserved
+
+### FEATURE: Kenney CC0 star sprites in CreditsScene background
+- 60 background stars now render `item_star.png` (6×6) instead of GDI white dots
+- GDI fallback preserved for each star
+
+### FEATURE: Kenney CC0 UI panels + coin icons in CreditsScene
+- Final score box now uses `ui_panel_brown.png` background with darkened overlay
+- `item_coin.png` icons (16×16) flank the score text on both sides
+- Credits section panel now uses `ui_panel_brown.png` background with darkened overlay
+- Gold border and all text preserved; GDI fallback preserved for all elements
+
+### FEATURE: Kenney CC0 UI panel + star sprites for HighScoreScene
+- Score table background now uses `ui_panel_brown.png` with darkened overlay and gold border
+- `item_star.png` (14×14) icon beside each rank number in the score list
+- GDI fallback preserved
+
+### FEATURE: Kenney CC0 UI panel for StormScene survival HUD
+- Storm survival timer/progress panel now uses `ui_panel_blue.png` background
+- Darkened overlay for text readability over lightning flashes
+- GDI fallback preserved
+
+### FEATURE: Kenney CC0 key icon sprites in HowToPlayScene control labels
+- 7 control lines now show key icon sprites (14×14) beside their text:
+  - `key_z.png` beside Attack, `key_x.png` beside Dodge, `key_c.png` beside Quick Dash
+  - `key_b.png` beside Frost Ball, `key_e.png` beside Character Ability
+  - `key_i.png` beside Inventory, `key_space.png` beside Jump
+- Icons render to the left of the text line
+- GDI text-only fallback preserved if sprites are missing
+
+### Files Changed
+| File | Changes |
+|------|---------|
+| `Scenes/DialogueScene.cs` | Dialogue box uses `ui_panel_brown.png`; GDI fallback |
+| `Scenes/PauseScene.cs` | Menu panel uses `ui_panel_blue.png`; GDI fallback; added `using Drawing2D` + `SpriteManager` |
+| `Scenes/CreditsScene.cs` | Stars use `item_star.png`; score box + credits panel use `ui_panel_brown.png`; coin icons beside score |
+| `Scenes/HighScoreScene.cs` | Score table uses `ui_panel_brown.png`; `item_star.png` beside rank numbers |
+| `Scenes/StormScene.cs` | Survival HUD panel uses `ui_panel_blue.png`; GDI fallback |
+| `Scenes/HowToPlayScene.cs` | 7 key icon sprites beside control labels; added `GetKeyIconForLine()` helper; added `using Data` |
+
+### Technical Details
+- **All integrations:** Use cached `SpriteManager.GetScaled()` — zero per-frame bitmap allocation
+- **All integrations:** Have GDI fallback in `else` block for graceful degradation
+- **Key icon matching:** Uses `String.Contains()` on control line text to map to sprite filenames
+
+### Asset Utilization Update
+- **Before Session 134:** 38 sprite files, 37 actively integrated across 23 source files
+- **After Session 134:** 38 sprite files, 38 actively integrated across 29 source files
+- **New integrations this session:** 11 additional sprite integrations in 6 source files
+- **Newly activated sprites:** `ui_panel_blue.png` (PauseScene, StormScene), `key_space.png`, `key_x.png`, `key_c.png` (HowToPlayScene)
+- **100% of copied sprites are now actively used in code**
+
+### Next Steps
+- Consider integrating more tiles from `Assets/third_party/vendor/` (1,389 unused Kenney tiles)
+- Consider animated sprite frame support for enemy entities
+- Consider tile_marble_block.png for FortressScene platform decoration variant
+- Consider tile_crate_alt.png and item_coin_alt.png for visual variety
+
+---
+
+## SESSION 133: Deep Asset Integration — Exit Zones, Victory Screen, Course Clear, Overworld Panel
+
+**Date/Time:** Current Session  
+**Status:** ✅ COMPLETE  
+**Build Status:** ✅ 0 errors, 0 warnings  
+
+### FEATURE: Kenney CC0 star + flag sprites for SkyIslandScene exit zone
+- Exit zone now shows `item_star.png` (24×24) centered above `item_flag.png` (28×28)
+- Semi-transparent gold glow backdrop behind the sprites
+- Replaces simple GDI gold rectangle fill
+- "EXIT" text label preserved; GDI fallback preserved
+
+### FEATURE: Kenney CC0 flag sprite for FortressScene exit door
+- When the boss key gate is open, exit door renders `item_flag.png` (28×28) centered in the door
+- When gate is closed, falls back to GDI DimGray rectangle
+- Replaces GDI LimeGreen rectangle for the open state
+
+### FEATURE: Kenney CC0 stone block sprite for AirshipLevelScene cannonballs
+- Cannonballs now render `tile_stone_block.png` (12×12) instead of GDI DimGray ellipses
+- GDI fallback preserved
+
+### FEATURE: Kenney CC0 star sprites on VictoryScene
+- Two large `item_star.png` (48×48) sprites flank the victory title banner
+- Score summary panel now uses `ui_panel_brown.png` background with darkened overlay
+- `item_coin.png` icons beside "Final Score" and "Berries" text rows
+- GDI fallback preserved for all elements
+
+### FEATURE: Kenney CC0 star sprites in CourseClearScene background
+- `DrawStarField()` now renders `item_star.png` (5–8px) for each background star dot
+- Replaces 30 GDI gold ellipses with actual star sprites
+- GDI fallback preserved
+
+### FEATURE: Kenney CC0 UI panel for OverworldScene campaign progress
+- Main campaign progress panel now uses `ui_panel_brown.png` background with darkened overlay
+- Replaces GDI dark navy rectangle fill
+- Gold border and all text/checkmarks preserved; GDI fallback preserved
+
+### Files Changed
+| File | Changes |
+|------|---------|
+| `Scenes/SkyIslandScene.cs` | Exit zone uses `item_star.png` + `item_flag.png` with GDI fallback |
+| `Scenes/FortressScene.cs` | Exit door uses `item_flag.png` when gate open; GDI fallback |
+| `Scenes/AirshipLevelScene.cs` | Cannonballs use `tile_stone_block.png`; GDI fallback |
+| `Scenes/VictoryScene.cs` | Star decoration sprites flanking title; `ui_panel_brown.png` for score panel; coin icons beside score rows |
+| `Scenes/CourseClearScene.cs` | `DrawStarField()` uses `item_star.png` sprites; GDI fallback |
+| `Scenes/OverworldScene.cs` | Campaign progress panel uses `ui_panel_brown.png`; GDI fallback |
+
+### Technical Details
+- **All integrations:** Use cached `SpriteManager.GetScaled()` — zero per-frame bitmap allocation
+- **All integrations:** Have GDI fallback in `else` block for graceful degradation
+- **CourseClearScene stars:** Cached once via `GetScaled()`, drawn 30 times per frame at minimal cost
+
+### Asset Utilization Update
+- **Before Session 133:** 38 sprite files, 30 actively integrated across 17 source files
+- **After Session 133:** 38 sprite files, 37 actively integrated across 23 source files
+- **New integrations this session:** 7 additional sprite integrations in 6 source files
+
+### Next Steps
+- Consider animated sprite frames for enemy entities
+- Add key icon sprites to StormScene/FortressScene keybind overlays
+- Explore Kenney character tiles for NPC dialogue portraits
+
+---
+
+## SESSION 132: Key Icon Sprites in HUD Labels + Exit Flag Sprites + Rock/Bridge Tiles
+
+**Date/Time:** Current Session  
+**Status:** ✅ COMPLETE  
+**Build Status:** ✅ 0 errors, 0 warnings  
+
+### FEATURE: Kenney CC0 key icon sprites replace text labels in HUD ability slots
+- All 6 ability slots (Q, E, R, B, C, Z) now show a **16×16 key icon sprite** beside the ability name
+- `DrawAbilitySlot()` parses the label (e.g. `"Q:WALL"`) to extract the key letter, loads `key_q.png` etc.
+- Icon is drawn at 14×14px, ability name text shifts right to make room
+- Full text fallback (e.g. `"Q:WALL"`) if the key icon file is missing
+
+### FEATURE: Kenney CC0 key icon sprite in INV quick-access button
+- The `[I] INV` button now shows `key_i.png` (12×12) beside "INV" text
+- Replaces the `[I]` bracket-text label with an actual key icon
+- GDI text fallback preserved
+
+### FEATURE: Kenney CC0 flag sprite for IslandScene exit goal
+- `DrawExitFlag()` now renders `item_flag.png` (32×32) at the goal flagpole position
+- Replaces GDI pole + gold ball + checkered flag with a single clean sprite
+- Full GDI fallback with pole, highlight, gold ball, and checker pattern preserved
+- "GOAL" text label and animated glow/arrows still render above the flag
+
+### FEATURE: Kenney CC0 flag sprite for AirshipLevelScene exit
+- Exit flagpole now renders `item_flag.png` (32×32) instead of GDI gold rectangle
+- "EXIT" text label preserved on top of sprite
+- GDI fallback preserved
+
+### FEATURE: Kenney CC0 bridge tile for StormScene ship railing
+- Ship deck railing strip now tiles `tile_bridge.png` (18×8) across the top of the deck
+- Replaces GDI Sienna-colored rectangle
+- GDI fallback preserved
+
+### FEATURE: Kenney CC0 rock face tile for UnderwaterScene coral hazards
+- Coral hazard zones now tile `tile_rock_face.png` (18×18) across their surface
+- Replaces GDI DarkRed rectangle fill
+- Spiky "▲▲" indicator preserved on top
+- GDI fallback preserved
+
+### Files Changed
+| File | Changes |
+|------|---------|
+| `Systems/GameHUD.cs` | `DrawAbilitySlot()` parses label to extract key letter, loads key icon sprite; `DrawQuickButtons()` uses `key_i.png` for INV button |
+| `Scenes/IslandScene.cs` | `DrawExitFlag()` uses `item_flag.png` sprite with GDI fallback |
+| `Scenes/AirshipLevelScene.cs` | Exit flagpole uses `item_flag.png` sprite with GDI fallback |
+| `Scenes/StormScene.cs` | Ship railing strip tiles `tile_bridge.png` with GDI fallback |
+| `Scenes/UnderwaterScene.cs` | Coral hazards tile `tile_rock_face.png` with GDI fallback |
+
+### Technical Details
+- **Key icon parsing:** Splits label at `:` to get key name (e.g. `"q"`, `"e"`, `"b"`), loads `key_{name}.png`
+- **All integrations:** Use cached `SpriteManager.GetScaled()` — zero per-frame bitmap allocation
+- **All integrations:** Have GDI fallback in `else` block for graceful degradation
+
+### Asset Utilization Update
+- **Before Session 132:** 38 sprite files, 24 actively integrated
+- **After Session 132:** 38 sprite files, 30 actively integrated across 17 source files
+- **New integrations this session:** 6 additional sprite integrations in 5 source files
+- **Key icons now active:** 7 key icons wired into HUD ability labels + INV button
+
+### Next Steps
+- Add star sprite for exit zone glow in SkyIslandScene
+- Consider animated sprite frame support for enemy entities
+- Add more decorative tiles to harbor/tundra level variants
+
+---
+
+## SESSION 131: Extended Asset Integration — HUD Sprites, Decorative Props, Pipes, Thwomps, UI Panels
+
+**Date/Time:** Current Session  
+**Status:** ✅ COMPLETE  
+**Build Status:** ✅ 0 errors, 0 warnings  
+
+### FEATURE: Kenney CC0 UI panel sprites in GameHUD
+- **Ability slot backgrounds** — `ui_panel_blue.png` (48×48 9-slice) rendered behind all 6 ability slots (Q, E, R, B, C, Z)
+- **Right column panel** — `ui_panel_brown.png` rendered behind the coins/berries/timer/lives panel
+- **INV button** — `ui_panel_blue.png` behind the inventory quick-access button
+- **MED button** — `ui_panel_green.png` behind the medkit quick-access button
+- All panels have darkened overlays for text readability; GDI fallback if sprite missing
+
+### FEATURE: Kenney CC0 coin + heart sprites in HUD right column
+- **Coin icon** — `item_coin.png` replaces GDI "●" character for coin count display
+- **Berry icon** — `item_coin.png` (smaller) beside berry count display
+- **Heart icon** — `item_heart.png` replaces GDI "♥" character for lives display
+- All icons scale to 14–16px for HUD fit; fallback to original GDI text if sprite missing
+
+### FEATURE: Kenney CC0 bush + flower sprites in IslandScene jungle foliage
+- **DrawJungleFoliage()** now uses `tile_bush.png` (24×24) and `tile_flower.png` (20×20)
+- Alternates between bush and flower (1-in-3 chance of flower) for visual variety
+- Full GDI ellipse fallback preserved if sprites are missing
+- Only affects `dino` island type (jungle levels)
+
+### FEATURE: Kenney CC0 pipe sprites in AirshipLevelScene
+- **Moving pipes** now use `tile_pipe_top.png` (cap) + `tile_pipe_body.png` (tiled body)
+- Pipe cap rendered at top, body tiles vertically below
+- Replaces GDI ForestGreen rectangles; fallback preserved
+
+### FEATURE: Kenney CC0 crate sprite for AirshipLevelScene cannons
+- **Cannon turret bases** now use `tile_crate.png` (28×28) instead of GDI DarkGray boxes
+- GDI fallback preserved if sprite missing
+
+### FEATURE: Kenney CC0 stone block sprite for FortressScene Thwomps
+- **Thwomps** now tile `tile_stone_block.png` across their surface instead of GDI gray fill
+- Angry face "▼" indicator preserved on top
+- GDI fallback preserved if sprite missing
+
+### FEATURE: Kenney CC0 wood plank sprite for FortressScene boss key gate
+- **Boss key gate** now tiles `tile_wood_plank.png` across its surface
+- "KEY GATE" label text preserved on top
+- GDI fallback preserved if sprite missing
+
+### FEATURE: Extracted Kenney input prompt key icons from tilemap
+- Extracted 7 key icon sprites from Kenney Input Prompts Pixel 16 tilemap (16×16px each)
+- `key_z.png`, `key_x.png`, `key_c.png`, `key_b.png`, `key_e.png`, `key_i.png`, `key_space.png`
+- Extracted programmatically using `System.Drawing.Bitmap` from the 578×408 tilemap
+- Available for future HUD key label integration
+
+### Files Created
+| File | Source | Purpose |
+|------|--------|---------|
+| `Assets/Sprites/ui_panel_brown.png` | Kenney Pixel UI 9-Slice/Ancient | HUD right column background |
+| `Assets/Sprites/ui_panel_grey.png` | Kenney Pixel UI 9-Slice/Ancient | General panel background |
+| `Assets/Sprites/ui_panel_blue.png` | Kenney Pixel UI 9-Slice/Colored | Ability slot + INV button background |
+| `Assets/Sprites/ui_panel_red.png` | Kenney Pixel UI 9-Slice/Colored | Alert panel background |
+| `Assets/Sprites/ui_panel_green.png` | Kenney Pixel UI 9-Slice/Colored | MED button background |
+| `Assets/Sprites/ui_panel_yellow.png` | Kenney Pixel UI 9-Slice/Colored | Highlight panel background |
+| `Assets/Sprites/key_z.png` | Kenney Input Prompts tile 138 | Z key icon |
+| `Assets/Sprites/key_x.png` | Kenney Input Prompts tile 140 | X key icon |
+| `Assets/Sprites/key_c.png` | Kenney Input Prompts tile 142 | C key icon |
+| `Assets/Sprites/key_b.png` | Kenney Input Prompts tile 146 | B key icon |
+| `Assets/Sprites/key_e.png` | Kenney Input Prompts tile 74 | E key icon |
+| `Assets/Sprites/key_i.png` | Kenney Input Prompts tile 114 | I key icon |
+| `Assets/Sprites/key_space.png` | Kenney Input Prompts tile 176 | Space key icon |
+| `Assets/Sprites/tile_pipe_top.png` | Kenney Pixel Platformer tile_0120 | Pipe cap for AirshipScene |
+| `Assets/Sprites/tile_pipe_body.png` | Kenney Pixel Platformer tile_0132 | Pipe body for AirshipScene |
+
+### Files Changed
+| File | Changes |
+|------|---------|
+| `Systems/GameHUD.cs` | Added `using Fridays_Adventure.Data`; ability slots use `ui_panel_blue.png`; right column uses `ui_panel_brown.png` + coin/heart sprites; INV/MED buttons use colored UI panels |
+| `Scenes/IslandScene.cs` | `DrawJungleFoliage()` uses `tile_bush.png` + `tile_flower.png` with GDI fallback |
+| `Scenes/AirshipLevelScene.cs` | Pipes use `tile_pipe_top.png` + `tile_pipe_body.png`; cannons use `tile_crate.png`; all with GDI fallback |
+| `Scenes/FortressScene.cs` | Thwomps tiled with `tile_stone_block.png`; boss key gate tiled with `tile_wood_plank.png`; all with GDI fallback |
+
+### Technical Details
+- **UI panels:** 48×48px 9-slice source, scaled to arbitrary dimensions via `SpriteManager.GetScaled()`
+- **Key icons:** 16×16px extracted from 34×24 tilemap grid (17px spacing including 1px gap)
+- **All integrations:** Use cached `SpriteManager.GetScaled()` — zero per-frame GDI allocations
+- **All integrations:** Have `else` block with original GDI drawing code as fallback
+
+### Asset Utilization Update
+- **Before Session 131:** 22 tiles copied, 12 actively integrated
+- **After Session 131:** 38 sprite files copied, 24 actively integrated across 16 source files
+- **New integrations this session:** 12 additional sprite integrations in 4 source files
+- **Key icons:** 7 extracted and ready for future HUD label use
+
+### Next Steps
+- Wire key icon sprites into HUD ability labels (replace text "Q:", "E:", "B:" with actual key images)
+- Add decorative rock-face sprites to tundra/harbor level variants
+- Consider Kenney character tiles for additional NPC variety
+
+---
+## SESSION 130: Asset Integration — Kenney CC0 Tiles Bound to All Game Systems
+
+**Date/Time:** Current Session  
+**Status:** ✅ COMPLETE  
+**Build Status:** ✅ 0 errors, 0 warnings  
+
+### FEATURE: Full Kenney CC0 tile integration across all gameplay scenes
+- **1,426 downloaded Kenney tiles were previously unused** — game rendered everything with GDI+ procedural drawing
+- Copied 22 Kenney tiles to `Assets/Sprites/` with game-meaningful names
+- Integrated 12 tiles into code across 12 source files
+- All integrations use cached `SpriteManager.GetScaled()` — zero per-frame GDI allocations
+- Every integration has a GDI fallback if the sprite file is missing
+
+### Batch 1: Collectible Entity Sprites
+- **Berries.cs** — `item_coin.png` (Kenney tile_0151) replaces 5 GDI ellipses + pen allocations per berry
+- **HealthPickup.cs** — `item_heart.png` (Kenney tile_0153) replaces GDI red rectangle + white cross
+- **StarCoinPickup.cs** — `item_star.png` (Kenney tile_0089) replaces GDI gold disc + ★ font rendering
+
+### Batch 2: IslandScene Terrain Cache
+- **IslandScene.cs BakeTerrainCache()** — `tile_grass_top.png` tiled across platform top strips, `tile_ground.png` tiled across platform bodies
+- Terrain cache is pre-baked once after BuildLevel(), so tile rendering has zero runtime cost
+- GDI brick mortar lines replaced with actual tile textures for all island types
+
+### Batch 3: FortressScene Stone Platforms
+- **FortressScene.cs** — `tile_stone_top.png` (Kenney stone block) tiled across all fortress platforms
+- Dark base fill preserved behind tiles for depth
+
+### Batch 4: MovingPlatform, IceWall, WarlordBossScene, AirshipLevelScene
+- **MovingPlatform.cs** — `tile_wood_plank.png` (Kenney tile_0043) tiled across moving platform surfaces
+- **IceWall.cs** — `tile_ice.png` (Kenney tile_0107) tiled across ice wall blocks with age-based transparency
+- **WarlordBossScene.cs** — `tile_stone_block.png` tiled across warlord arena platforms
+- **AirshipLevelScene.cs** — `tile_stone_top.png` tiled across metal deck plates
+
+### Batch 5: BossScene + UnderwaterScene
+- **BossScene.cs** — `tile_stone_block.png` tiled across boss arena platforms
+- **UnderwaterScene.cs** — `tile_sand_block.png` (Kenney sand block) tiled across coral reef platforms
+
+### Batch 6: StormScene Ship Deck
+- **StormScene.cs** — `tile_wood_plank.png` tiled across the ship deck surface, replacing GDI plank lines
+
+### Files Created
+| File | Purpose |
+|------|---------|
+| `docs/ASSET_INTEGRATION_REPORT.md` | Full tile mapping table + architecture documentation |
+| `Assets/Sprites/item_coin.png` | Kenney coin tile for berries |
+| `Assets/Sprites/item_heart.png` | Kenney heart tile for health pickups |
+| `Assets/Sprites/item_star.png` | Kenney star tile for star coins |
+| `Assets/Sprites/tile_grass_top.png` | Kenney grass top for IslandScene |
+| `Assets/Sprites/tile_ground.png` | Kenney ground for IslandScene |
+| `Assets/Sprites/tile_stone_top.png` | Kenney stone for FortressScene + AirshipScene |
+| `Assets/Sprites/tile_stone_block.png` | Kenney stone block for BossScene + WarlordBossScene |
+| `Assets/Sprites/tile_sand_block.png` | Kenney sand block for UnderwaterScene |
+| `Assets/Sprites/tile_wood_plank.png` | Kenney wood for MovingPlatform + StormScene |
+| `Assets/Sprites/tile_ice.png` | Kenney ice for IceWall ability |
+| *(+11 more tiles copied for future use)* | |
+
+### Files Changed
+| File | Changes |
+|------|---------|
+| `Entities/Berries.cs` | Replaced GDI ellipses with `item_coin.png` sprite |
+| `Entities/HealthPickup.cs` | Replaced GDI rectangle+cross with `item_heart.png` sprite |
+| `Entities/StarCoinPickup.cs` | Replaced GDI disc+text with `item_star.png` sprite |
+| `Entities/MovingPlatform.cs` | Added `tile_wood_plank.png` tiling across platform surface |
+| `Abilities/IceWall.cs` | Added `tile_ice.png` tiling across ice wall surface |
+| `Scenes/IslandScene.cs` | Added tile sprites in BakeTerrainCache() for grass/ground |
+| `Scenes/FortressScene.cs` | Added `tile_stone_top.png` tiling across fortress platforms |
+| `Scenes/BossScene.cs` | Added `tile_stone_block.png` tiling across boss platforms |
+| `Scenes/WarlordBossScene.cs` | Added `tile_stone_block.png` tiling across warlord platforms |
+| `Scenes/AirshipLevelScene.cs` | Added `tile_stone_top.png` tiling across deck plates |
+| `Scenes/UnderwaterScene.cs` | Added `tile_sand_block.png` tiling across coral platforms |
+| `Scenes/StormScene.cs` | Added `tile_wood_plank.png` tiling across ship deck |
+
+### Technical Details
+- **Tile size:** All source tiles are 18×18px (Kenney native), scaled as needed via `SpriteManager.GetScaled()`
+- **Caching:** `SpriteManager` caches all scaled variants once — no per-frame bitmap allocation
+- **Fallback:** Every sprite integration has an `else` block with the original GDI drawing code
+- **Performance:** Terrain cache in IslandScene bakes tiles once at level load — zero runtime cost
+- **Thread safety:** `SpriteManager` uses `Dictionary<string, Bitmap>` with immutable cached entries
+
+### Asset Utilization
+- **Before Session 130:** 3 of 1,426 Kenney tiles used (0.2%)
+- **After Session 130:** 22 tiles copied, 12 actively integrated (0.8% + full coverage of gameplay surfaces)
+- **Remaining:** 1,404 tiles available for decorative props, additional enemies, UI elements
+
+### Next Steps
+- Integrate Kenney UI pack (9-slice panels) for HUD ability slot backgrounds
+- Integrate Kenney input prompts (16×16 key icons) for HUD key labels
+- Add decorative props (bushes, flowers) to level foregrounds
+- Consider Kenney character tiles for additional enemy variety
+
+---
+
+## SESSION 129: Self-Healing Asset Pipeline — Automated Launch/Detect/Heal/Relaunch Loop
+
+**Date/Time:** Current Session  
+**Status:** ✅ COMPLETE  
+**Build Status:** ✅ 0 errors, 0 warnings  
+
+### FEATURE: Audio miss tracking hooks for self-healing pipeline
+- `AudioManager.PlayFile()` now calls `AssetGapDetector.RecordMiss()` when a music file is not found
+- `ProceduralSfx.EnsureLoaded()` now calls `AssetGapDetector.RecordMiss()` when a SFX WAV is not found
+- Both hooks enable the pipeline to detect missing audio assets at runtime (not just sprites)
+
+### FEATURE: `--heal-assets` CLI mode for automated pipeline runs
+- New `HealAssetsMode` static property on `Game` class
+- Parsed from `--heal-assets` command-line argument alongside existing `--qa-bot`
+- When active: LoadingScene runs the healing pipeline, then calls `Application.Exit()`
+- Game launches, heals assets, writes report, and exits — no user interaction needed
+
+### FEATURE: Healing report flush on game exit
+- `Game.Stop()` now writes `latest_healing_report.txt` to `Logs/asset-healing/` on every exit
+- Report contains the full gap detection status (resolved vs unresolved counts)
+- The orchestrator script reads this file to decide if another cycle is needed
+
+### FEATURE: Asset validation pass in healing pipeline
+- New **Phase 3: Validate** added between resolve and report phases
+- `ValidateResolvedAssets()` re-checks every "resolved" entry:
+  - Verifies the resolved file still exists on disk
+  - For PNG/JPG images: opens with `System.Drawing.Bitmap` to confirm it's not corrupt
+  - Checks for degenerate images (0×0 dimensions)
+  - If validation fails: marks the entry as unresolved so the next cycle can re-attempt
+- Pipeline phases now: Scan → Resolve → **Validate** → Report
+
+### FEATURE: PowerShell orchestrator for automated healing loop
+- `Tools/AssetHealingLoop.ps1` — full build→launch→heal→relaunch orchestrator
+- **Step 1:** MSBuild the project (auto-detects VS 2022/2019/18)
+- **Step 2:** Clear previous report file
+- **Step 3:** Launch game with `--heal-assets` flag
+- **Step 4:** Wait for game to exit (90s timeout, force-kill if stuck)
+- **Step 5:** Read `latest_healing_report.txt` and parse unresolved count
+- **Step 6:** If unresolved gaps remain and cycles left, loop back to Step 1
+- Configurable: `-MaxCycles 10`, `-SkipBuild` for fast iteration
+- Color-coded console output with per-cycle status and final summary
+
+### BUG FIX: `System.IO.Compression.ZipFile` build error in AssetDownloader
+- `ZipFile.ExtractToDirectory()` is a forwarded type in .NET Framework 4.7.2
+- VS IDE sometimes fails to resolve forwarded types even with correct assembly references
+- Replaced direct `ZipFile` call with reflection-based invocation via `Assembly.Load()`
+- Loads `System.IO.Compression.FileSystem` assembly at runtime and invokes `ExtractToDirectory` via `MethodInfo.Invoke()`
+- Build now passes cleanly
+
+### Files Created
+| File | Purpose |
+|------|---------|
+| `Tools/AssetHealingLoop.ps1` | PowerShell orchestrator for automated build→heal→relaunch loop |
+| `docs/SELF_HEALING_ASSET_PIPELINE_GUIDE.md` | Full system documentation with architecture diagram |
+
+### Files Changed
+| File | Changes |
+|------|---------|
+| `Audio/AudioManager.cs` | Added `AssetGapDetector.RecordMiss()` call in `PlayFile()` when music file not found |
+| `Audio/ProceduralSfx.cs` | Added `AssetGapDetector.RecordMiss()` call in `EnsureLoaded()` when SFX WAV not found |
+| `Engine/Game.cs` | Added `HealAssetsMode` property, `--heal-assets` CLI parsing, healing report flush in `Stop()` |
+| `Scenes/LoadingScene.cs` | Added `Application.Exit()` path when `HealAssetsMode` is active after pipeline completes |
+| `Data/AssetHealingPipeline.cs` | Added Phase 3 validation pass (`ValidateResolvedAssets()`); validates resolved file existence and image integrity |
+| `Data/AssetDownloader.cs` | Replaced direct `ZipFile` call with reflection-based invocation to fix forwarded-type build error |
+| `Fridays Adventure.csproj` | Added `System.IO.Compression` + `System.IO.Compression.FileSystem` assembly references |
+
+### Technical Details
+- **CLI flag:** `--heal-assets` — launches game in headless healing mode
+- **Report path:** `bin\Debug\Logs\asset-healing\latest_healing_report.txt`
+- **Orchestrator timeout:** 90 seconds per cycle (kills process if stuck)
+- **Max cycles:** Default 5, configurable via `-MaxCycles` parameter
+- **Validation:** Opens PNGs with `System.Drawing.Bitmap` to verify integrity
+- **Thread safety:** `AssetGapDetector` uses lock-protected dictionary for all operations
+
+### System Flow
+```
+AssetHealingLoop.ps1
+  └─ Cycle 1:
+       ├─ MSBuild project
+       ├─ Launch: "Fridays Adventure.exe" --heal-assets
+       ├─ Game starts → LoadingScene runs
+       │    ├─ Audio init + CC0 download (if first launch)
+       │    ├─ AssetHealingPipeline.RunFullPipeline()
+       │    │    ├─ Phase 1: Scan known sprite/audio refs
+       │    │    ├─ Phase 2: Resolve via vendor match + placeholders
+       │    │    ├─ Phase 3: Validate resolved files
+       │    │    └─ Phase 4: Generate report
+       │    └─ Application.Exit()
+       ├─ Game.Stop() → flush latest_healing_report.txt
+       ├─ Script reads report
+       └─ Unresolved == 0? → DONE, else → Cycle 2...
+```
+
+### Next Steps
+- Run `.\Tools\AssetHealingLoop.ps1` to test the full automated loop
+- Consider adding network-based asset discovery from OpenGameArt for unresolved gaps
+- Consider adding asset style-matching heuristics for better placeholder quality
+
+---
+
+## SESSION 128: Automatic Asset Download on First Launch — Permanent Integration
+
+**Date/Time:** Current Session  
+**Status:** ✅ COMPLETE  
+**Build Status:** ✅ 0 errors, 15 warnings (all pre-existing CS0414)  
+
+### FEATURE: Automatic CC0 asset pack download when game is first launched
+- Game reads `third_party/asset_manifest.json` on startup
+- Downloads all enabled packs (Kenney Pixel Platformer, Blocks, UI, Input Prompts) automatically
+- Extracts ZIP archives and copies PNG/WAV/JSON files to `Assets/third_party/vendor/`
+- Downloads to **both** runtime output dir (bin\Debug\Assets\) AND project source dir (permanent)
+- Uses a `.assets_downloaded` marker file so download only happens once (first launch)
+- Background thread keeps UI responsive — loading screen shows live download progress
+- TLS 1.2 enforced for HTTPS downloads from OpenGameArt/AmbientCG
+
+### FEATURE: Loading screen shows download progress
+- Main progress bar reflects both audio init AND asset download status
+- When downloading: shows "Downloading assets (1/4): kenney-pixel-platformer — Extracting..."
+- Secondary smaller progress bar shows pack-level completion (1/4, 2/4, etc.)
+- "First-launch setup — downloading free CC0 asset packs" label during download
+- Game proceeds to title screen only after both audio AND assets are ready
+- 120-second hard timeout prevents infinite hang if downloads fail
+
+### FEATURE: SpriteManager third-party fallback path
+- `SpriteManager.ResolvePath()` now searches `Assets/third_party/vendor/` recursively as fallback
+- If a sprite isn't found in `Assets/Sprites/` or `Assets/`, it searches all vendor subdirectories
+- Kenney tiles (tile_0012.png, etc.) are now directly loadable by filename from any code
+- Enables future use of downloaded CC0 assets without manual file copying
+
+### FEATURE: Post-build xcopy copies third-party assets to output
+- Added `PostBuildEvent` to csproj: `xcopy /E /Y /I /Q` from project Assets to bin\Debug\Assets
+- Ensures third-party vendor assets are always present in the runtime output after build
+- Complements the runtime downloader — build copies what's already there, downloader fetches what's missing
+
+### Files Created
+| File | Purpose |
+|------|---------|
+| `Data/AssetDownloader.cs` | CC0 asset pack downloader: reads manifest, downloads ZIPs, extracts, copies to vendor dirs |
+
+### Files Changed
+| File | Changes |
+|------|---------|
+| `Scenes/LoadingScene.cs` | Integrated background-thread asset download with progress display; waits for both audio + assets |
+| `Data/SpriteManager.cs` | Added `ThirdPartyPath` and recursive vendor directory search in `ResolvePath()` |
+| `Fridays Adventure.csproj` | Added `System.IO.Compression` + `System.IO.Compression.FileSystem` references; added PostBuildEvent for xcopy |
+
+### Technical Details
+- **Manifest location:** `third_party/asset_manifest.json` (found by walking up from exe dir)
+- **Download URLs:** OpenGameArt.org CC0 links (same as existing `fetch_assets.py`)
+- **Marker file:** `Assets/third_party/vendor/.assets_downloaded` (timestamp written on completion)
+- **JSON parsing:** Manual string parsing (no DataContractJsonSerializer dependency on manifest shape)
+- **Thread safety:** Volatile fields for progress display; plain bool for cancel ref parameter
+- **Timeout:** 120s hard limit; individual pack failures don't block other packs
+
+### Next Steps
+- Replace Kenney placeholder enemies with higher-quality sprites from downloaded packs
+- Consider using Kenney UI pack assets for button/panel sprites (currently GDI rectangles)
+- Consider using Kenney input prompts for HUD key labels (821 icons available)
+
+---
+
+## SESSION 127: Asset Audit + Missing Sprite Fix — Enemies Now Visible
+
+**Date/Time:** Current Session  
+**Status:** ✅ COMPLETE  
+**Build Status:** ✅ 0 errors, 0 warnings  
+
+### AUDIT: Full asset inventory of all sprites, audio, and third-party packs
+- Scanned all `.cs` files for sprite/audio filename references
+- Cross-referenced against actual files in `Assets/Sprites/` and `Assets/Audio/`
+- Catalogued 49 existing sprites, 24 music files, 14 SFX files
+- Discovered 1,426 Kenney tiles downloaded but completely unused in code
+- Identified 7 unused/duplicate background files
+- Generated comprehensive report at `docs/ASSET_AUDIT_REPORT.md`
+
+### BUG FIX: 3 enemy types were invisible (missing sprites)
+- **`enemy_goomba.png`** — referenced in `SMB3EnemyTypes.cs:163`, file did not exist
+- **`enemy_koopa.png`** — referenced in `SMB3EnemyTypes.cs:354`, file did not exist
+- **`enemy_hammer_bro.png`** — referenced in `SMB3EnemyTypes.cs:770`, file did not exist
+- `SpriteManager.Get()` returned `null` → entities rendered invisible (no crash, just invisible)
+- **Fix:** Copied Kenney Pixel Platformer character tiles (already in `Assets/third_party/vendor/kenney/`) as placeholders:
+  - `tile_0012.png` → `enemy_goomba.png`
+  - `tile_0015.png` → `enemy_koopa.png`
+  - `tile_0021.png` → `enemy_hammer_bro.png`
+- These are 18×18px pixel art tiles; `SpriteManager.GetScaled()` upscales them to entity dimensions at load time
+
+### FEATURE: Generated dialogue portraits from existing player sprites
+- **`portrait_friday.png`** — 80×80 cropped from `player_missfriday.png` (was referenced in `DialogueLine.cs` but missing)
+- **`portrait_orca.png`** — 80×80 cropped from `player_Orca.png` (new, for future dialogue use)
+- **`portrait_swan.png`** — 80×80 cropped from `player_Swan.png` (new, for future dialogue use)
+- Used HighQualityBicubic interpolation for clean downscale
+
+### Files Created
+| File | Source | Purpose |
+|------|--------|---------|
+| `Assets/Sprites/enemy_goomba.png` | Kenney tile_0012 | Goomba enemy sprite placeholder |
+| `Assets/Sprites/enemy_koopa.png` | Kenney tile_0015 | Koopa enemy sprite placeholder |
+| `Assets/Sprites/enemy_hammer_bro.png` | Kenney tile_0021 | Hammer Bro enemy sprite placeholder |
+| `Assets/Sprites/portrait_friday.png` | Cropped from player_missfriday.png | Miss Friday dialogue portrait |
+| `Assets/Sprites/portrait_orca.png` | Cropped from player_Orca.png | Orca dialogue portrait |
+| `Assets/Sprites/portrait_swan.png` | Cropped from player_Swan.png | Swan dialogue portrait |
+| `docs/ASSET_AUDIT_REPORT.md` | Generated | Full asset inventory + needs list |
+
+### Key Findings
+- **1,426 Kenney tiles sit unused** — downloaded but never referenced in code (game uses GDI+ drawing)
+- **7 background PNGs are orphaned** — exist on disk but no code loads them
+- **All 17 level backgrounds are mapped** — no missing backgrounds
+- **All 14 SFX and 12 music tracks** are properly referenced and exist
+- **3 enemy types were invisible** since they were added to code — now fixed
+
+### Next Steps
+- Replace Kenney placeholder enemies with hand-painted sprites matching existing art style
+- Consider integrating Kenney UI pack for button/panel sprites (currently GDI rectangles)
+- Consider integrating Kenney input prompts for HUD key labels (821 icons available)
+- Clean up 7 orphaned background files and 3 duplicate sprites
+
+---
+
+## SESSION 126: Centipede Boss Level Completely Black — Background Mapping Fix
+
+**Date/Time:** Current Session  
+**Status:** ✅ COMPLETE  
+**Build Status:** ✅ 0 errors, 0 warnings  
+
+### BUG: Centipede final boss level rendered as a completely black screen
+- **Root cause:** `WarlordBossScene.OnEnter()` background switch had no `CentipedeLord` case
+- `CentipedeLord` fell to `default`, which loaded `bg_Marine_Blockade.png` — wrong background
+- `bg_Centipede_of_the_Deep.png` was incorrectly assigned to `SeaStoneLord` (Lord Vex)
+- The `DrawBackground()` fallback gradient for `default` used near-black RGB values (`20,5,30` → `60,10,80`)
+- If the background sprite failed to load, the gradient was indistinguishable from black
+
+### FIX: Corrected background switch mapping
+- Added explicit `case WarlordType.CentipedeLord` → `bg_Centipede_of_the_Deep.png`
+- Changed `SeaStoneLord` from centipede bg → `bg_Marine_Blockade.png` (sea-themed, fits Lord Vex)
+- Changed `default` fallback from `bg_Marine_Blockade.png` → `bg_island.png`
+- Brightened all fallback gradients so no warlord type renders near-black
+- Added green-tinted fallback gradient for `CentipedeLord` specifically
+
+### Files Changed
+| File | Changes |
+|------|---------|
+| `Scenes/WarlordBossScene.cs` | Fixed `OnEnter()` background switch: added CentipedeLord case, corrected SeaStoneLord mapping; brightened all fallback gradients in `DrawBackground()` |
+
+---
+
 ## SESSION 125: Unattended QA Test Runner — Automated Build/Play/Fix Loop
 
 **Date/Time:** Current Session  

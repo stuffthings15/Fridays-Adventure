@@ -1,16 +1,21 @@
 using System;
 using System.Drawing;
+using Fridays_Adventure.Data;
 
 namespace Fridays_Adventure.Entities
 {
     /// <summary>
     /// Gold berry collectible — increases the player's score (bounty) on pickup.
+    /// Uses Kenney CC0 coin sprite (item_coin.png) instead of GDI ellipses.
     /// Inherits from Item for shared collectible logic.
     /// </summary>
     public sealed class Berries : Item
     {
         private float _bob;
         private float _baseY;
+
+        /// <summary>Cached pre-scaled coin sprite, generated once at first draw.</summary>
+        private static Bitmap _coinSprite;
 
         public Berries(float x, float y) : base(x, y, 16, 16, 10)
         {
@@ -30,6 +35,8 @@ namespace Fridays_Adventure.Entities
             Y *= scale;
             Width = (int)(Width * scale);
             Height = (int)(Height * scale);
+            // Invalidate cached sprite so it regenerates at the new size
+            _coinSprite = null;
             SyncBaseY();
         }
 
@@ -46,22 +53,23 @@ namespace Fridays_Adventure.Entities
             float cx = X, cy = Y;
             int w = Width, h = Height;
 
-            // ── SMB3-style gold coin ─────────────────────────────────────────
-            // Outer bright gold body
-            using (var br = new SolidBrush(Color.FromArgb(255, 220, 0)))
-                g.FillEllipse(br, cx, cy, w, h);
-            // Inner darker ring — gives the coin a 3-D edge
-            using (var br = new SolidBrush(Color.FromArgb(200, 150, 0)))
-                g.FillEllipse(br, cx + 3, cy + 3, w - 6, h - 6);
-            // Bright coin-face center
-            using (var br = new SolidBrush(Color.FromArgb(255, 235, 80)))
-                g.FillEllipse(br, cx + 4, cy + 4, w - 8, h - 8);
-            // Crisp dark outline (SMB3 coins have a defined border)
-            using (var pen = new Pen(Color.FromArgb(160, 100, 0), 1.5f))
-                g.DrawEllipse(pen, cx, cy, w, h);
-            // Shimmer highlight (top-left catch-light)
-            using (var br = new SolidBrush(Color.FromArgb(210, 255, 255, 200)))
-                g.FillEllipse(br, cx + 2, cy + 2, 5, 4);
+            // ── Kenney CC0 coin sprite (item_coin.png) ──────────────────────
+            // Pre-scale the 18×18 source tile to the berry's current dimensions.
+            if (_coinSprite == null)
+                _coinSprite = SpriteManager.GetScaled("item_coin.png", w, h);
+
+            if (_coinSprite != null)
+            {
+                g.DrawImage(_coinSprite, cx, cy, w, h);
+            }
+            else
+            {
+                // Fallback: GDI gold coin if sprite file is missing
+                using (var br = new SolidBrush(Color.FromArgb(255, 220, 0)))
+                    g.FillEllipse(br, cx, cy, w, h);
+                using (var pen = new Pen(Color.FromArgb(160, 100, 0), 1.5f))
+                    g.DrawEllipse(pen, cx, cy, w, h);
+            }
         }
     }
 }

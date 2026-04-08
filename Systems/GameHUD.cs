@@ -10,6 +10,7 @@
 using System;
 using System.Drawing;
 using System.Drawing.Drawing2D;
+using Fridays_Adventure.Data;
 using Fridays_Adventure.Engine;
 using Fridays_Adventure.Entities;
 using Fridays_Adventure.Systems;
@@ -242,16 +243,50 @@ namespace Fridays_Adventure.Systems
             _invBtn = new Rectangle(LeftX,      70, 80, 18);
             _medBtn = new Rectangle(LeftX + 86, 70, 106, 18);
 
-            using (var br = new SolidBrush(Color.FromArgb(160, 10, 10, 24)))
+            // ── Kenney CC0 UI panel backgrounds for quick buttons ─────────
+            Bitmap invPanel = SpriteManager.GetScaled("ui_panel_blue.png", _invBtn.Width, _invBtn.Height);
+            Bitmap medPanel = SpriteManager.GetScaled("ui_panel_green.png", _medBtn.Width, _medBtn.Height);
+
+            if (invPanel != null)
             {
-                g.FillRectangle(br, _invBtn);
-                g.FillRectangle(br, _medBtn);
+                g.DrawImage(invPanel, _invBtn);
+                using (var br = new SolidBrush(Color.FromArgb(80, 0, 0, 0)))
+                    g.FillRectangle(br, _invBtn);
             }
+            else
+            {
+                using (var br = new SolidBrush(Color.FromArgb(160, 10, 10, 24)))
+                    g.FillRectangle(br, _invBtn);
+            }
+
+            if (medPanel != null)
+            {
+                g.DrawImage(medPanel, _medBtn);
+                using (var br = new SolidBrush(Color.FromArgb(80, 0, 0, 0)))
+                    g.FillRectangle(br, _medBtn);
+            }
+            else
+            {
+                using (var br = new SolidBrush(Color.FromArgb(160, 10, 10, 24)))
+                    g.FillRectangle(br, _medBtn);
+            }
+
             g.DrawRectangle(Pens.Cyan,      _invBtn);
             g.DrawRectangle(Pens.LimeGreen, _medBtn);
 
-            g.DrawString("[I] INV", _f8, Brushes.Cyan,
-                _invBtn.X + 4, _invBtn.Y + 3);
+            // ── Kenney CC0 key icon for INV button ───────────────────────
+            Bitmap keyI = SpriteManager.GetScaled("key_i.png", 12, 12);
+            if (keyI != null)
+            {
+                g.DrawImage(keyI, _invBtn.X + 3, _invBtn.Y + 3, 12, 12);
+                g.DrawString("INV", _f8, Brushes.Cyan,
+                    _invBtn.X + 17, _invBtn.Y + 3);
+            }
+            else
+            {
+                g.DrawString("[I] INV", _f8, Brushes.Cyan,
+                    _invBtn.X + 4, _invBtn.Y + 3);
+            }
             g.DrawString($"[H] MED ×{PowerUpInventory.HealthItemCount}", _f8, Brushes.LimeGreen,
                 _medBtn.X + 4, _medBtn.Y + 3);
         }
@@ -332,9 +367,21 @@ namespace Fridays_Adventure.Systems
         {
             const int w = 94, h = 44;
 
-            // Background
-            using (var br = new SolidBrush(Color.FromArgb(180, 8, 8, 18)))
-                g.FillRectangle(br, x, y, w, h);
+            // ── Kenney CC0 UI panel background (9-slice blue panel) ───────────
+            Bitmap panelBg = SpriteManager.GetScaled("ui_panel_blue.png", w, h);
+            if (panelBg != null)
+            {
+                g.DrawImage(panelBg, x, y, w, h);
+                // Darken the panel slightly for better text contrast
+                using (var br = new SolidBrush(Color.FromArgb(120, 0, 0, 0)))
+                    g.FillRectangle(br, x, y, w, h);
+            }
+            else
+            {
+                // Fallback: GDI dark background
+                using (var br = new SolidBrush(Color.FromArgb(180, 8, 8, 18)))
+                    g.FillRectangle(br, x, y, w, h);
+            }
 
             // Progress fill (bottom-up like Mega Man weapon energy)
             if (progress > 0)
@@ -349,9 +396,26 @@ namespace Fridays_Adventure.Systems
             using (var pen = new Pen(ready ? Color.LimeGreen : Color.FromArgb(100, Color.Gray), 1))
                 g.DrawRectangle(pen, x, y, w, h);
 
-            // Key label (top)
-            using (var br = new SolidBrush(ready ? Color.White : Color.FromArgb(180, Color.LightGray)))
-                g.DrawString(label, _f8, br, x + 3, y + 3);
+            // Key label (top) — use Kenney key icon sprite if available
+            int colonIdx = label.IndexOf(':');
+            string keyChar = colonIdx > 0 ? label.Substring(0, colonIdx).Trim().ToLowerInvariant() : "";
+            string abilityName = colonIdx > 0 ? label.Substring(colonIdx + 1) : label;
+            Bitmap keyIcon = !string.IsNullOrEmpty(keyChar)
+                ? SpriteManager.GetScaled("key_" + keyChar + ".png", 14, 14)
+                : null;
+            if (keyIcon != null)
+            {
+                // Draw the key icon sprite followed by ability name text
+                g.DrawImage(keyIcon, x + 3, y + 2, 14, 14);
+                using (var br = new SolidBrush(ready ? Color.White : Color.FromArgb(180, Color.LightGray)))
+                    g.DrawString(abilityName, _f8, br, x + 19, y + 3);
+            }
+            else
+            {
+                // Fallback: plain text label
+                using (var br = new SolidBrush(ready ? Color.White : Color.FromArgb(180, Color.LightGray)))
+                    g.DrawString(label, _f8, br, x + 3, y + 3);
+            }
 
             // Status text (bottom)
             string status = ready ? "READY" : (remaining > 0.05f ? $"{remaining:F1}s" : "...");
@@ -365,29 +429,52 @@ namespace Fridays_Adventure.Systems
         {
             int rx = W - RightW;
 
-            // Panel background
-            using (var br = new SolidBrush(Color.FromArgb(140, 8, 8, 18)))
-                g.FillRectangle(br, rx, 4, RightW - 4, BandHeight - 8);
+            // ── Kenney CC0 UI panel background for right column ──────────────
+            Bitmap panelBg = SpriteManager.GetScaled("ui_panel_brown.png", RightW - 4, BandHeight - 8);
+            if (panelBg != null)
+            {
+                g.DrawImage(panelBg, rx, 4, RightW - 4, BandHeight - 8);
+                // Darken for text readability
+                using (var br = new SolidBrush(Color.FromArgb(100, 0, 0, 0)))
+                    g.FillRectangle(br, rx, 4, RightW - 4, BandHeight - 8);
+            }
+            else
+            {
+                // Fallback: GDI panel
+                using (var br = new SolidBrush(Color.FromArgb(140, 8, 8, 18)))
+                    g.FillRectangle(br, rx, 4, RightW - 4, BandHeight - 8);
+            }
 
+            // ── Coin count with Kenney coin sprite ────────────────────────────
             int game_coins = Game.Instance?.CoinCount ?? 0;
-            g.DrawString("●", _f9, Brushes.Gold, rx + 6, 6);
-            g.DrawString($"×{game_coins:D2}/100", _f9, Brushes.White, rx + 22, 6);
+            Bitmap coinIcon = SpriteManager.GetScaled("item_coin.png", 16, 16);
+            if (coinIcon != null)
+                g.DrawImage(coinIcon, rx + 6, 6, 16, 16);
+            else
+                g.DrawString("●", _f9, Brushes.Gold, rx + 6, 6);
+            g.DrawString($"×{game_coins:D2}/100", _f9, Brushes.White, rx + 24, 6);
 
+            // ── Berry count with Kenney coin sprite ───────────────────────────
             int berries = Game.Instance?.TotalBerriesCollected ?? 0;
-            g.DrawString($"Berries: {berries}", _f9, Brushes.Gold, rx + 6, 26);
+            if (coinIcon != null)
+                g.DrawImage(coinIcon, rx + 6, 26, 14, 14);
+            g.DrawString($"Berries: {berries}", _f9, Brushes.Gold, rx + 22, 26);
 
             // ── Speed-run clock (Phase 2 — Team 1 Idea 3) ────────────────────
-            // Reads elapsed level time from Game singleton (set by IslandScene).
             float elapsed = Game.Instance?.LevelElapsedSeconds ?? 0f;
             int   mins    = (int)(elapsed / 60f);
             int   secs    = (int)(elapsed % 60f);
             g.DrawString("TIME",              _f8, Brushes.LightGray, rx + 6,  46);
             g.DrawString($"{mins}:{secs:D2}", _f9, Brushes.White,     rx + 50, 45);
 
-            // Lives
+            // ── Lives with Kenney heart sprite ────────────────────────────────
             int lives = Game.Instance?.CurrentLives ?? 3;
-            g.DrawString("♥", _f9, Brushes.Crimson, rx + 6, 64);
-            g.DrawString($"×{lives}", _f9, Brushes.White, rx + 20, 64);
+            Bitmap heartIcon = SpriteManager.GetScaled("item_heart.png", 16, 16);
+            if (heartIcon != null)
+                g.DrawImage(heartIcon, rx + 6, 64, 16, 16);
+            else
+                g.DrawString("♥", _f9, Brushes.Crimson, rx + 6, 64);
+            g.DrawString($"×{lives}", _f9, Brushes.White, rx + 24, 64);
         }
 
         // ── Boss HP bar (bottom of screen) ────────────────────────────────────

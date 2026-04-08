@@ -536,8 +536,29 @@ namespace Fridays_Adventure.Scenes
                 // Soft shadow on the underside
                 g.FillRectangle(_platShadowBrush, p.X + 4, p.Bottom - 5, p.Width - 8, 5);
             }
-            // Exit zone
-            using (var br = new SolidBrush(Color.FromArgb(120, Color.Gold))) g.FillRectangle(br, _exitZone);
+            // Exit zone — Kenney CC0 star sprite + flag sprite
+            Bitmap starSprite = Data.SpriteManager.GetScaled("item_star.png", 24, 24);
+            Bitmap flagSprite = Data.SpriteManager.GetScaled("item_flag.png", 28, 28);
+            if (starSprite != null || flagSprite != null)
+            {
+                // Semi-transparent gold glow behind the exit zone
+                using (var br = new SolidBrush(Color.FromArgb(80, Color.Gold)))
+                    g.FillRectangle(br, _exitZone);
+                // Draw star icon centered in exit zone
+                if (starSprite != null)
+                    g.DrawImage(starSprite, _exitZone.X + (_exitZone.Width - 24) / 2,
+                                            _exitZone.Y + 2, 24, 24);
+                // Draw flag icon beside star
+                if (flagSprite != null)
+                    g.DrawImage(flagSprite, _exitZone.X + (_exitZone.Width - 28) / 2,
+                                            _exitZone.Y + 26, 28, 28);
+            }
+            else
+            {
+                // Fallback: GDI gold rectangle
+                using (var br = new SolidBrush(Color.FromArgb(120, Color.Gold)))
+                    g.FillRectangle(br, _exitZone);
+            }
             using (var f = new Font("Arial", 8)) g.DrawString("EXIT", f, Brushes.DarkGoldenrod, _exitZone.X + 20, _exitZone.Y + 16);
 
             foreach (var hz in _hazards)   hz.Draw(g);

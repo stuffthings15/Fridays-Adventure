@@ -81,7 +81,8 @@ namespace Fridays_Adventure.Scenes
             SMB3Hud.ShowWorldLabel($"DEEP SEA  {Game.Instance.WorldLevelLabel}");
         }
 
-        public override void OnExit()  { _bg?.Dispose(); _bg = null; }
+        // _bg comes from SpriteManager cache — do NOT dispose it
+        public override void OnExit()  { _bg = null; }
         public override void OnResume() => Game.Instance.Audio.ContinueOrPlay("exploration");
 
         /// <summary>
@@ -457,19 +458,56 @@ namespace Fridays_Adventure.Scenes
             }
 
             // ── Platforms (coral) ─────────────────────────────────────────────
+            // Tile Kenney CC0 sand block sprites for coral shelf appearance
+            Bitmap coralTile = Data.SpriteManager.GetScaled("tile_sand_block.png", 18, 18);
             foreach (var p in _platforms)
             {
+                // Base coral fill
                 using (var br = new SolidBrush(Color.FromArgb(180, 80, 40)))
                     g.FillRectangle(br, p);
+
+                if (coralTile != null)
+                {
+                    for (int tx = p.Left; tx < p.Right; tx += 18)
+                    {
+                        for (int ty = p.Top; ty < p.Bottom; ty += 18)
+                        {
+                            int dw = Math.Min(18, p.Right - tx);
+                            int dh = Math.Min(18, p.Bottom - ty);
+                            g.DrawImage(coralTile, tx, ty, dw, dh);
+                        }
+                    }
+                }
+
+                // Coral border
                 using (var pen = new Pen(Color.IndianRed))
                     g.DrawRectangle(pen, p);
             }
 
-            // ── Coral hazards (spiky) ─────────────────────────────────────────
+            // ── Coral hazards (spiky) — Kenney CC0 rock face sprite ────────
+            Bitmap rockTile = Data.SpriteManager.GetScaled("tile_rock_face.png", 18, 18);
             foreach (var c in _coralHazards)
             {
-                using (var br = new SolidBrush(Color.DarkRed))
-                    g.FillRectangle(br, c);
+                if (rockTile != null)
+                {
+                    // Tile rock face across the hazard zone
+                    for (int tx = c.Left; tx < c.Right; tx += 18)
+                    {
+                        for (int ty = c.Top; ty < c.Bottom; ty += 18)
+                        {
+                            int dw = Math.Min(18, c.Right - tx);
+                            int dh = Math.Min(18, c.Bottom - ty);
+                            g.DrawImage(rockTile, tx, ty, dw, dh);
+                        }
+                    }
+                }
+                else
+                {
+                    // Fallback: GDI dark red block
+                    using (var br = new SolidBrush(Color.DarkRed))
+                        g.FillRectangle(br, c);
+                }
+                // Spiky indicator
                 using (var f = new Font("Courier New", 9))
                     g.DrawString("▲▲", f, Brushes.OrangeRed, c.X, c.Y - 12);
             }

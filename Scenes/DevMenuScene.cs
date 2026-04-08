@@ -87,6 +87,7 @@ namespace Fridays_Adventure.Scenes
                 new LevelEntry { Label = "Centipede of the Deep  (Boss)",   Create = () => new WarlordBossScene(WarlordConfig.CentipedeOfTheDeep()) },
 
                 // ── Phase 4+ tools / QA utilities ─────────────────────────
+                new LevelEntry { Label = "[TOOLS] ♻ Self-Heal Missing Assets",Action = RunAssetHealingPipeline },
                 new LevelEntry { Label = "[TOOLS] Open Logs Folder",        Action = OpenLogsFolder },
                 new LevelEntry { Label = "[TOOLS] Clear Logs + Screenshots",Action = ClearLogsAndShots },
                 new LevelEntry { Label = "[TOOLS] Capture Test Error",      Action = CaptureTestError },
@@ -262,6 +263,32 @@ namespace Fridays_Adventure.Scenes
             catch (Exception ex)
             {
                 DebugLogger.LogError("DevMenu.OpenLogsFolder", ex);
+            }
+        }
+
+        /// <summary>
+        /// Runs the self-healing asset pipeline: scans for missing sprites/audio,
+        /// resolves from CC0 vendor packs or generates placeholders, then reports.
+        /// </summary>
+        private static void RunAssetHealingPipeline()
+        {
+            try
+            {
+                bool allResolved = AssetHealingPipeline.RunFullPipeline();
+                string msg = allResolved
+                    ? $"Asset healing complete: {AssetHealingPipeline.ResolvedGaps} gaps resolved."
+                    : $"Asset healing: {AssetHealingPipeline.ResolvedGaps}/{AssetHealingPipeline.TotalGaps} resolved.";
+                SMB3Hud.ShowToast(msg);
+
+                // Open the report in Logs folder
+                string logDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Logs", "asset-healing");
+                if (Directory.Exists(logDir))
+                    Process.Start("explorer.exe", logDir);
+            }
+            catch (Exception ex)
+            {
+                DebugLogger.LogError("DevMenu.RunAssetHealingPipeline", ex);
+                SMB3Hud.ShowToast("Asset healing failed — see error log.");
             }
         }
 

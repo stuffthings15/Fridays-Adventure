@@ -1,5 +1,6 @@
 using System;
 using System.Drawing;
+using Fridays_Adventure.Data;
 using Fridays_Adventure.Engine;
 using Fridays_Adventure.Systems;
 
@@ -159,32 +160,51 @@ namespace Fridays_Adventure.Entities
 
         // ── Draw ──────────────────────────────────────────────────────────────
         /// <summary>
-        /// Draws the platform using SMB3-style brick tile rendering.
+        /// Draws the platform using Kenney CC0 wood tile (tile_wood_plank.png).
+        /// Falls back to SMB3-style GDI brick rendering if sprite is unavailable.
         /// </summary>
         public void Draw(Graphics g)
         {
             int ix = (int)X, iy = (int)Y;
 
-            // ── Platform base fill ────────────────────────────────────────────
-            // SMB3 brown brick with lighter top edge.
-            using (var br = new SolidBrush(Color.FromArgb(160, 100, 50)))
-                g.FillRectangle(br, ix, iy, Width, Height);
+            // ── Kenney CC0 wood plank tile ────────────────────────────────────
+            Bitmap woodTile = SpriteManager.GetScaled("tile_wood_plank.png", 18, 18);
+            if (woodTile != null)
+            {
+                // Base fill behind tiles
+                using (var br = new SolidBrush(Color.FromArgb(160, 100, 50)))
+                    g.FillRectangle(br, ix, iy, Width, Height);
 
-            // Top highlight strip (SMB3 lit edge).
-            using (var br = new SolidBrush(Color.FromArgb(200, 130, 70)))
-                g.FillRectangle(br, ix, iy, Width, 4);
+                // Tile the wood sprite across the platform surface
+                for (int tx = ix; tx < ix + Width; tx += 18)
+                {
+                    for (int ty = iy; ty < iy + Height; ty += 18)
+                    {
+                        int dw = Math.Min(18, ix + Width - tx);
+                        int dh = Math.Min(18, iy + Height - ty);
+                        g.DrawImage(woodTile, tx, ty, dw, dh);
+                    }
+                }
 
-            // Bottom shadow strip.
-            using (var br = new SolidBrush(Color.FromArgb(110, 60, 28)))
-                g.FillRectangle(br, ix, iy + Height - 3, Width, 3);
-
-            // Brick mortar lines (vertical dividers every 32px).
-            using (var pen = new Pen(Color.FromArgb(100, 70, 30), 1))
-                for (int bx = ix; bx < ix + Width; bx += 32)
-                    g.DrawLine(pen, bx, iy + 4, bx, iy + Height - 3);
+                // Top highlight strip
+                using (var br = new SolidBrush(Color.FromArgb(80, 255, 255, 200)))
+                    g.FillRectangle(br, ix, iy, Width, 3);
+            }
+            else
+            {
+                // Fallback: GDI SMB3 brown brick
+                using (var br = new SolidBrush(Color.FromArgb(160, 100, 50)))
+                    g.FillRectangle(br, ix, iy, Width, Height);
+                using (var br = new SolidBrush(Color.FromArgb(200, 130, 70)))
+                    g.FillRectangle(br, ix, iy, Width, 4);
+                using (var br = new SolidBrush(Color.FromArgb(110, 60, 28)))
+                    g.FillRectangle(br, ix, iy + Height - 3, Width, 3);
+                using (var pen = new Pen(Color.FromArgb(100, 70, 30), 1))
+                    for (int bx = ix; bx < ix + Width; bx += 32)
+                        g.DrawLine(pen, bx, iy + 4, bx, iy + Height - 3);
+            }
 
             // ── Movement indicator arrow ──────────────────────────────────────
-            // A small arrow on the platform face hints the movement direction.
             DrawDirectionArrow(g, ix, iy);
         }
 

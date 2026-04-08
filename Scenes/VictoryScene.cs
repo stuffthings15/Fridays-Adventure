@@ -121,7 +121,14 @@ namespace Fridays_Adventure.Scenes
                 Color.FromArgb(8, 20, 50), Color.FromArgb(20, 60, 40), 90f))
                 g.FillRectangle(br, 0, 0, W, H);
 
-            // ── Gold starburst decoration ────────────────────────────────────
+            // ── Gold starburst decoration — Kenney CC0 star sprite ─────────
+            Bitmap starDeco = Data.SpriteManager.GetScaled("item_star.png", 48, 48);
+            if (starDeco != null)
+            {
+                // Draw two large star sprites flanking the title area
+                g.DrawImage(starDeco, W / 2 - 210, 50, 48, 48);
+                g.DrawImage(starDeco, W / 2 + 162, 50, 48, 48);
+            }
             float pulse = (float)(0.5 + 0.5 * Math.Sin(_timer * 2.0));
             int glowAlpha = (int)(30 + 25 * pulse);
             using (var br = new SolidBrush(Color.FromArgb(glowAlpha, Color.Gold)))
@@ -137,22 +144,36 @@ namespace Fridays_Adventure.Scenes
             g.DrawString(_subtitle, _subFont, Brushes.White,
                 (W - ssz.Width) / 2f, H * 0.22f);
 
-            // ── Score summary panel ──────────────────────────────────────────
+            // ── Score summary panel — Kenney CC0 UI panel + icons ─────────
             int panelW = 380, panelH = 140;
             int px = (W - panelW) / 2, py = (int)(H * 0.32f);
-            using (var br = new SolidBrush(Color.FromArgb(180, 0, 0, 0)))
-                g.FillRectangle(br, px, py, panelW, panelH);
+            Bitmap panelBg = Data.SpriteManager.GetScaled("ui_panel_brown.png", panelW, panelH);
+            if (panelBg != null)
+            {
+                g.DrawImage(panelBg, px, py, panelW, panelH);
+                using (var br = new SolidBrush(Color.FromArgb(100, 0, 0, 0)))
+                    g.FillRectangle(br, px, py, panelW, panelH);
+            }
+            else
+            {
+                using (var br = new SolidBrush(Color.FromArgb(180, 0, 0, 0)))
+                    g.FillRectangle(br, px, py, panelW, panelH);
+            }
             using (var pen = new Pen(Color.Gold, 2))
                 g.DrawRectangle(pen, px, py, panelW, panelH);
 
+            // Score rows with Kenney coin/heart icons
+            Bitmap coinIcon = Data.SpriteManager.GetScaled("item_coin.png", 16, 16);
             int ty = py + 14;
-            g.DrawString($"Final Score:     {_finalScore:N0}", _bodyFont, Brushes.Gold, px + 20, ty);
+            if (coinIcon != null) g.DrawImage(coinIcon, px + 4, ty, 16, 16);
+            g.DrawString($"Final Score:     {_finalScore:N0}", _bodyFont, Brushes.Gold, px + 22, ty);
             ty += 28;
-            g.DrawString($"Berries:         {_totalBerries}", _bodyFont, Brushes.Gold, px + 20, ty);
+            if (coinIcon != null) g.DrawImage(coinIcon, px + 4, ty, 14, 14);
+            g.DrawString($"Berries:         {_totalBerries}", _bodyFont, Brushes.Gold, px + 22, ty);
             ty += 28;
-            g.DrawString($"Crew Bonds:      {Game.Instance.CrewBonds}", _bodyFont, Brushes.Cyan, px + 20, ty);
+            g.DrawString($"Crew Bonds:      {Game.Instance.CrewBonds}", _bodyFont, Brushes.Cyan, px + 22, ty);
             ty += 28;
-            g.DrawString($"Character:       {Game.Instance.SelectedCharacter}", _bodyFont, Brushes.LightGray, px + 20, ty);
+            g.DrawString($"Character:       {Game.Instance.SelectedCharacter}", _bodyFont, Brushes.LightGray, px + 22, ty);
 
             // ── Buttons ──────────────────────────────────────────────────────
             const int btnW = 160, btnH = 48;

@@ -96,6 +96,10 @@
     <Compile Include="Audio\AudioManager.cs" />
     <Compile Include="Audio\CachedSound.cs" />
     <Compile Include="Audio\ProceduralSfx.cs" />
+    <Compile Include="Data\AssetAutoResolver.cs" />
+    <Compile Include="Data\AssetDownloader.cs" />
+    <Compile Include="Data\AssetGapDetector.cs" />
+    <Compile Include="Data\AssetHealingPipeline.cs" />
     <Compile Include="Data\CaptainsLog.cs" />
     <Compile Include="Data\ContentLoader.cs" />
     <Compile Include="Data\DialogueLine.cs" />
@@ -283,6 +287,7 @@
     <Compile Include="Systems\WeatherSystem.cs" />
     <Compile Include="Tests\AdvancedSceneDetector.cs" />
     <Compile Include="Tests\AutoTestBot.cs" />
+    <Compile Include="Tests\BlankScreenDetector.cs" />
     <Compile Include="Tests\BotAIVerificationTool.cs" />
     <Compile Include="Tests\BotComprehensiveTestLogger.cs" />
     <Compile Include="Tests\BotDiagnostics.cs" />
@@ -349,6 +354,8 @@
     <None Include="docs\ACCELERATED_COMPLETION_ROADMAP.md" />
     <None Include="docs\AI_DOCS.md" />
     <None Include="docs\ART_ASSETS_NEEDED.md" />
+    <None Include="docs\ASSET_AUDIT_REPORT.md" />
+    <None Include="docs\ASSET_INTEGRATION_REPORT.md" />
     <None Include="docs\AUTOMATED_TEST_USER_GUIDE.md" />
     <None Include="docs\AUTOMATION_QUICK_START.md" />
     <None Include="docs\BOT_AI_DEBUG_LOG_GUIDE.md" />
@@ -406,6 +413,7 @@
     <None Include="docs\REAL_DIALOGUE_DETECTION_HANDLING.md" />
     <None Include="docs\REAL_SMART_BOT_AI_REWRITE.md" />
     <None Include="docs\RUNTIME_WIRING_VERIFICATION.md" />
+    <None Include="docs\SELF_HEALING_ASSET_PIPELINE_GUIDE.md" />
     <None Include="docs\SESSIONS_83_84_COMPLETE_SUMMARY.md" />
     <None Include="docs\SESSION_2_SUMMARY.md" />
     <None Include="docs\SESSION_3_COMPLETION_CERTIFICATE.md" />
@@ -450,6 +458,7 @@
     <None Include="TextRPG\TextRPG.csproj" />
     <None Include="third_party\asset_index.json" />
     <None Include="third_party\asset_manifest.json" />
+    <None Include="Tools\AssetHealingLoop.ps1" />
     <None Include="Tools\fetch_ambientcg_textures.py" />
     <None Include="Tools\fetch_assets.py" />
     <None Include="Tools\QATestRunner.ps1" />

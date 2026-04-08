@@ -85,7 +85,12 @@ namespace Fridays_Adventure.Audio
         {
             if (_cache.ContainsKey(soundName)) return;
             string path = Path.Combine(SfxDir, soundName + ".wav");
-            if (!File.Exists(path)) return;
+            if (!File.Exists(path))
+            {
+                // Record the miss so the self-healing pipeline knows about it
+                Data.AssetGapDetector.RecordMiss(soundName + ".wav");
+                return;
+            }
             try { _cache[soundName] = new CachedSound(path, MixerFormat); }
             catch (Exception ex)
             {

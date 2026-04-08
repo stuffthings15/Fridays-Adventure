@@ -151,11 +151,25 @@ namespace Fridays_Adventure.Scenes
             int W = Game.Instance.CanvasWidth;
             int H = Game.Instance.CanvasHeight;
 
-            // Semi-transparent backdrop
-            using (var br = new SolidBrush(Color.FromArgb(200, 0, 0, 0)))
-                g.FillRectangle(br, 0, H - 200, W, 200);
-            using (var pen = new Pen(Color.FromArgb(180, Color.Cyan), 2))
-                g.DrawRectangle(pen, 10, H - 198, W - 20, 196);
+            // ── Kenney CC0 UI panel for dialogue box background ──────────
+            Bitmap dialoguePanel = SpriteManager.GetScaled("ui_panel_brown.png", W - 16, 196);
+            if (dialoguePanel != null)
+            {
+                g.DrawImage(dialoguePanel, 8, H - 198, W - 16, 196);
+                // Darkened overlay for text readability
+                using (var overlay = new SolidBrush(Color.FromArgb(100, 0, 0, 0)))
+                    g.FillRectangle(overlay, 8, H - 198, W - 16, 196);
+                using (var pen = new Pen(Color.FromArgb(180, Color.Cyan), 2))
+                    g.DrawRectangle(pen, 10, H - 198, W - 20, 196);
+            }
+            else
+            {
+                // GDI fallback: semi-transparent backdrop
+                using (var br = new SolidBrush(Color.FromArgb(200, 0, 0, 0)))
+                    g.FillRectangle(br, 0, H - 200, W, 200);
+                using (var pen = new Pen(Color.FromArgb(180, Color.Cyan), 2))
+                    g.DrawRectangle(pen, 10, H - 198, W - 20, 196);
+            }
 
             if (_lineIndex >= _seq.Lines.Count) return;
             var line = _seq.Lines[_lineIndex];

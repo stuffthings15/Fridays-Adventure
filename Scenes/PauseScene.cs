@@ -1,4 +1,5 @@
 using System.Drawing;
+using System.Drawing.Drawing2D;
 using Fridays_Adventure.Data;
 using Fridays_Adventure.Engine;
 using Fridays_Adventure.Systems;
@@ -86,6 +87,28 @@ namespace Fridays_Adventure.Scenes
             int H = Game.Instance.CanvasHeight;
             using (var br = new SolidBrush(Color.FromArgb(200, 0, 0, 0)))
                 g.FillRectangle(br, 0, 0, W, H);
+
+            // ── Kenney CC0 UI panel behind menu options ─────────────────
+            int panelW = 360, panelH = _options.Length * 48 + 40;
+            int panelX = (W - panelW) / 2;
+            int panelY = (int)(H * 0.38f) - 20;
+            Bitmap menuPanel = SpriteManager.GetScaled("ui_panel_blue.png", panelW, panelH);
+            if (menuPanel != null)
+            {
+                g.DrawImage(menuPanel, panelX, panelY, panelW, panelH);
+                // Darkened overlay for text readability
+                using (var overlay = new SolidBrush(Color.FromArgb(120, 0, 0, 0)))
+                    g.FillRectangle(overlay, panelX, panelY, panelW, panelH);
+            }
+            else
+            {
+                // GDI fallback: dark rectangle
+                using (var br = new SolidBrush(Color.FromArgb(180, 10, 10, 40)))
+                    g.FillRectangle(br, panelX, panelY, panelW, panelH);
+            }
+            using (var pen = new Pen(Color.FromArgb(180, Color.Cyan), 2))
+                g.DrawRectangle(pen, panelX, panelY, panelW, panelH);
+
             using (var f = new Font("Courier New", 28, FontStyle.Bold))
             {
                 SizeF sz = g.MeasureString("PAUSED", f);

@@ -137,6 +137,22 @@ namespace Fridays_Adventure.Scenes
 
             // Enable dialogue auto-advance so the bot skips through NPC text
             DialogueScene.AutoAdvance = true;
+
+            // ── Pre-flight blank-screen test ──────────────────────────────
+            // Run before the walkthrough begins so blank/broken levels are
+            // caught immediately and logged to the report file.
+            try
+            {
+                var renderResults = Tests.BlankScreenDetector.RunAll();
+                string logDir = System.IO.Path.Combine(
+                    AppDomain.CurrentDomain.BaseDirectory, "Logs");
+                Tests.BlankScreenDetector.WriteReport(renderResults, logDir);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine(
+                    $"[QA] BlankScreenDetector pre-flight failed: {ex.Message}");
+            }
         }
 
         public override void OnExit()

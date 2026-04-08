@@ -1,11 +1,13 @@
 using System;
 using System.Drawing;
+using Fridays_Adventure.Data;
 using Fridays_Adventure.Engine;
 
 namespace Fridays_Adventure.Entities
 {
     /// <summary>
     /// Simple med-kit pickup used by IslandScene.
+    /// Uses Kenney CC0 heart sprite (item_heart.png) instead of GDI rectangles.
     /// Restores one inventory health item when collected.
     /// </summary>
     public sealed class HealthPickup
@@ -17,6 +19,9 @@ namespace Fridays_Adventure.Entities
         private const int W = 20;
         private const int H = 20;
         private float _bob;
+
+        /// <summary>Cached pre-scaled heart sprite, generated once at first draw.</summary>
+        private static Bitmap _heartSprite;
 
         public Rectangle Hitbox => new Rectangle((int)X, (int)Y, W, H);
 
@@ -46,14 +51,26 @@ namespace Fridays_Adventure.Entities
             float by = (float)Math.Sin(_bob * 3f) * 2f;
             int drawY = (int)(Y + by);
 
-            using (var back = new SolidBrush(Color.FromArgb(220, 200, 30, 30)))
-                g.FillRectangle(back, X, drawY, W, H);
-            using (var cross = new SolidBrush(Color.White))
+            // ── Kenney CC0 heart sprite (item_heart.png) ────────────────────
+            if (_heartSprite == null)
+                _heartSprite = SpriteManager.GetScaled("item_heart.png", W, H);
+
+            if (_heartSprite != null)
             {
-                g.FillRectangle(cross, X + 8, drawY + 3, 4, 14);
-                g.FillRectangle(cross, X + 3, drawY + 8, 14, 4);
+                g.DrawImage(_heartSprite, X, drawY, W, H);
             }
-            g.DrawRectangle(Pens.White, (int)X, drawY, W, H);
+            else
+            {
+                // Fallback: GDI red cross (medkit) if sprite file is missing
+                using (var back = new SolidBrush(Color.FromArgb(220, 200, 30, 30)))
+                    g.FillRectangle(back, X, drawY, W, H);
+                using (var cross = new SolidBrush(Color.White))
+                {
+                    g.FillRectangle(cross, X + 8, drawY + 3, 4, 14);
+                    g.FillRectangle(cross, X + 3, drawY + 8, 14, 4);
+                }
+                g.DrawRectangle(Pens.White, (int)X, drawY, W, H);
+            }
         }
     }
 }

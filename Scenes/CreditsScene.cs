@@ -68,13 +68,22 @@ namespace Fridays_Adventure.Scenes
                 Color.FromArgb(5, 8, 30), Color.FromArgb(20, 40, 100), 90f))
                 g.FillRectangle(br, 0, 0, W, H);
 
-            // Stars
+            // ── Kenney CC0 star sprites for background decoration ───────────
             var rng = new Random(42);
+            Bitmap starSprite = SpriteManager.GetScaled("item_star.png", 6, 6);
             for (int i = 0; i < 60; i++)
             {
                 int sx = rng.Next(W), sy = rng.Next(H);
-                int sz = rng.Next(1, 3);
-                g.FillRectangle(Brushes.White, sx, sy, sz, sz);
+                if (starSprite != null)
+                {
+                    g.DrawImage(starSprite, sx, sy, 6, 6);
+                }
+                else
+                {
+                    // GDI fallback: small white dots
+                    int sz = rng.Next(1, 3);
+                    g.FillRectangle(Brushes.White, sx, sy, sz, sz);
+                }
             }
 
             float y = H * 0.08f;
@@ -91,10 +100,29 @@ namespace Fridays_Adventure.Scenes
             g.DrawString(sub, _smallFont, Brushes.LightCyan, (W - ssz.Width) / 2f, y);
             y += ssz.Height + 30;
 
-            // Final score box
-            using (var br = new SolidBrush(Color.FromArgb(180, 0, 0, 0)))
-                g.FillRectangle(br, W / 2 - 200, (int)y, 400, 80);
+            // ── Kenney CC0 UI panel for final score box ──────────────────
+            Bitmap scorePanelBg = SpriteManager.GetScaled("ui_panel_brown.png", 400, 80);
+            if (scorePanelBg != null)
+            {
+                g.DrawImage(scorePanelBg, W / 2 - 200, (int)y, 400, 80);
+                using (var overlay = new SolidBrush(Color.FromArgb(100, 0, 0, 0)))
+                    g.FillRectangle(overlay, W / 2 - 200, (int)y, 400, 80);
+            }
+            else
+            {
+                // GDI fallback
+                using (var br = new SolidBrush(Color.FromArgb(180, 0, 0, 0)))
+                    g.FillRectangle(br, W / 2 - 200, (int)y, 400, 80);
+            }
             g.DrawRectangle(Pens.Gold, W / 2 - 200, (int)y, 400, 80);
+
+            // Coin icons beside score text
+            Bitmap coinIcon = SpriteManager.GetScaled("item_coin.png", 16, 16);
+            if (coinIcon != null)
+            {
+                g.DrawImage(coinIcon, W / 2 - 190, (int)y + 14, 16, 16);
+                g.DrawImage(coinIcon, W / 2 + 174, (int)y + 14, 16, 16);
+            }
 
             string scoreLine = $"FINAL SCORE: {_finalScore:N0}";
             SizeF scsz = g.MeasureString(scoreLine, _scoreFont);
@@ -115,8 +143,20 @@ namespace Fridays_Adventure.Scenes
 
             // Credits
             y += 10;
-            using (var br = new SolidBrush(Color.FromArgb(140, 0, 0, 0)))
-                g.FillRectangle(br, W / 2 - 180, (int)y, 360, 110);
+            // ── Kenney CC0 UI panel for credits section ──────────────────
+            Bitmap creditsPanelBg = SpriteManager.GetScaled("ui_panel_brown.png", 360, 110);
+            if (creditsPanelBg != null)
+            {
+                g.DrawImage(creditsPanelBg, W / 2 - 180, (int)y, 360, 110);
+                using (var overlay = new SolidBrush(Color.FromArgb(100, 0, 0, 0)))
+                    g.FillRectangle(overlay, W / 2 - 180, (int)y, 360, 110);
+            }
+            else
+            {
+                // GDI fallback
+                using (var br = new SolidBrush(Color.FromArgb(140, 0, 0, 0)))
+                    g.FillRectangle(br, W / 2 - 180, (int)y, 360, 110);
+            }
 
             const string creditsTitle = "CREDITS";
             SizeF ctsz = g.MeasureString(creditsTitle, _creditFont);

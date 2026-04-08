@@ -1106,21 +1106,44 @@ namespace Fridays_Adventure.Systems
 
         // ── Idea 8: Vignette overlay ───────────────────────────────────────────
         /// <summary>Draws a subtle screen-edge vignette for depth/focus.</summary>
+        /// <remarks>
+        /// The gradient is pre-rendered into a cached bitmap on first call
+        /// (or when the screen size changes) so subsequent frames are a
+        /// single DrawImage blit instead of a per-frame PathGradientBrush
+        /// fill that was consuming 17% of all CPU.
+        /// </remarks>
+        private static Bitmap _vignetteBmp;
+        private static int _vignetteW, _vignetteH;
+
         public static void DrawVignette(Graphics g, int W, int H)
         {
             try
             {
-                var pts = new[] {
-                    new PointF(0, 0), new PointF(W, 0),
-                    new PointF(W, H), new PointF(0, H)
-                };
-                using (var pg = new PathGradientBrush(pts))
+                // Re-render the cached vignette bitmap only when size changes
+                if (_vignetteBmp == null || _vignetteW != W || _vignetteH != H)
                 {
-                    pg.CenterPoint    = new PointF(W / 2f, H / 2f);
-                    pg.CenterColor    = Color.Transparent;
-                    pg.SurroundColors = new[] { Color.FromArgb(60, 0, 0, 0) };
-                    g.FillRectangle(pg, 0, 0, W, H);
+                    _vignetteBmp?.Dispose();
+                    _vignetteW = W;
+                    _vignetteH = H;
+                    _vignetteBmp = new Bitmap(W, H,
+                        System.Drawing.Imaging.PixelFormat.Format32bppPArgb);
+                    using (var bg = Graphics.FromImage(_vignetteBmp))
+                    {
+                        bg.Clear(Color.Transparent);
+                        var pts = new[] {
+                            new PointF(0, 0), new PointF(W, 0),
+                            new PointF(W, H), new PointF(0, H)
+                        };
+                        using (var pg = new PathGradientBrush(pts))
+                        {
+                            pg.CenterPoint    = new PointF(W / 2f, H / 2f);
+                            pg.CenterColor    = Color.Transparent;
+                            pg.SurroundColors = new[] { Color.FromArgb(60, 0, 0, 0) };
+                            bg.FillRectangle(pg, 0, 0, W, H);
+                        }
+                    }
                 }
+                g.DrawImage(_vignetteBmp, 0, 0);
             }
             catch { /* vignette is cosmetic only — swallow GDI errors */ }
         }

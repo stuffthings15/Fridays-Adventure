@@ -2237,20 +2237,62 @@ namespace Fridays_Adventure.Scenes
                 using (var highlBr  = new SolidBrush(Color.FromArgb(90, 255, 255, 255)))
                 using (var brickPen = new Pen(Color.FromArgb(55, brickCol), 1))
                 {
+                    // ── Kenney CC0 tile sprites for texture overlay ─────────
+                    // Pre-scale tiles to 18×18 (native size) once; tile them across platforms.
+                    // Falls back to plain GDI if sprites unavailable.
+                    Bitmap grassTile = Data.SpriteManager.Get("tile_grass_top.png");
+                    Bitmap groundTile = Data.SpriteManager.Get("tile_ground.png");
+                    // Scale tiles to match brick grid size (32×16) for clean tiling
+                    int tileW = 32, tileH = 16;
+                    Bitmap grassScaled = grassTile != null
+                        ? Data.SpriteManager.GetScaled("tile_grass_top.png", tileW, tileH)
+                        : null;
+                    Bitmap groundScaled = groundTile != null
+                        ? Data.SpriteManager.GetScaled("tile_ground.png", tileW, tileH)
+                        : null;
+
                     foreach (var p in _platforms)
                     {
+                        // Base fill (always draw as background)
                         tg.FillRectangle(baseBr, p);
 
-                        if (p.Height > 16)
+                        // Tile Kenney ground sprites across thick platform bodies
+                        if (groundScaled != null && p.Height > 16)
                         {
+                            for (int tx = p.Left; tx < p.Right; tx += tileW)
+                            {
+                                for (int ty = p.Top + tileH; ty < p.Bottom; ty += tileH)
+                                {
+                                    int drawW = Math.Min(tileW, p.Right - tx);
+                                    int drawH = Math.Min(tileH, p.Bottom - ty);
+                                    tg.DrawImage(groundScaled, tx, ty, drawW, drawH);
+                                }
+                            }
+                        }
+                        else if (p.Height > 16)
+                        {
+                            // Fallback: GDI brick grid lines
                             for (int tx = p.Left + 32; tx < p.Right; tx += 32)
                                 tg.DrawLine(brickPen, tx, p.Top, tx, p.Bottom);
                             for (int ty = p.Top + 16; ty < p.Bottom; ty += 16)
                                 tg.DrawLine(brickPen, p.Left, ty, p.Right, ty);
                         }
 
-                        tg.FillRectangle(topBr,   p.X, p.Y, p.Width, 6);
-                        tg.FillRectangle(highlBr, p.X, p.Y, p.Width, 2);
+                        // Tile Kenney grass sprite across the top strip
+                        if (grassScaled != null)
+                        {
+                            for (int tx = p.Left; tx < p.Right; tx += tileW)
+                            {
+                                int drawW = Math.Min(tileW, p.Right - tx);
+                                tg.DrawImage(grassScaled, tx, p.Y, drawW, tileH);
+                            }
+                        }
+                        else
+                        {
+                            // Fallback: GDI colored top strip
+                            tg.FillRectangle(topBr,   p.X, p.Y, p.Width, 6);
+                            tg.FillRectangle(highlBr, p.X, p.Y, p.Width, 2);
+                        }
                     }
                 }
             }
@@ -2380,18 +2422,28 @@ namespace Fridays_Adventure.Scenes
                 }
             }
 
-            // ── SMB3-style goal flagpole ──────────────────────────────────────
-            // Pole (silver/gray vertical bar) - made more visible
-            using (var br = new SolidBrush(Color.FromArgb(220, 220, 230)))
-                g.FillRectangle(br, px, top, 4, _exitFlag.Height);
-            // Pole highlight
-            using (var br = new SolidBrush(Color.FromArgb(150, 255, 255, 255)))
-                g.FillRectangle(br, px, top, 2, _exitFlag.Height);
-            // Gold ball on top - MUCH bigger and more prominent
-            using (var br = new SolidBrush(Color.Gold))
-                g.FillEllipse(br, px - 8, top - 13, 20, 20);
-            using (var pen = new Pen(Color.DarkGoldenrod, 2))
-                g.DrawEllipse(pen, px - 8, top - 13, 20, 20);
+            // ── SMB3-style goal flagpole — Kenney CC0 flag sprite ──────────
+            Bitmap flagSprite = Data.SpriteManager.GetScaled("item_flag.png", 32, 32);
+            if (flagSprite != null)
+            {
+                // Draw the sprite at the flag position
+                g.DrawImage(flagSprite, px - 8, top - 10, 32, 32);
+            }
+            else
+            {
+                // Fallback: GDI pole + flag
+                // Pole (silver/gray vertical bar) - made more visible
+                using (var br = new SolidBrush(Color.FromArgb(220, 220, 230)))
+                    g.FillRectangle(br, px, top, 4, _exitFlag.Height);
+                // Pole highlight
+                using (var br = new SolidBrush(Color.FromArgb(150, 255, 255, 255)))
+                    g.FillRectangle(br, px, top, 2, _exitFlag.Height);
+                // Gold ball on top
+                using (var br = new SolidBrush(Color.Gold))
+                    g.FillEllipse(br, px - 8, top - 13, 20, 20);
+                using (var pen = new Pen(Color.DarkGoldenrod, 2))
+                    g.DrawEllipse(pen, px - 8, top - 13, 20, 20);
+            }
 
             // ── Checkered goal flag (SMB3 two-tone green) - ENLARGED ────────────────────
             int fw = 32, fh = 22;
@@ -2876,23 +2928,46 @@ namespace Fridays_Adventure.Scenes
 
         /// <summary>
         /// Draws jungle leaf clusters along the tops of dino-island platforms,
-        /// giving the sense of a living, overgrown environment.
+        /// using Kenney CC0 bush/flower sprites with GDI ellipse fallback.
         /// </summary>
         private void DrawJungleFoliage(Graphics g)
         {
+            // ── Kenney CC0 bush and flower sprites ───────────────────────────
+            Bitmap bushSprite  = Data.SpriteManager.GetScaled("tile_bush.png", 24, 24);
+            Bitmap flowerSprite = Data.SpriteManager.GetScaled("tile_flower.png", 20, 20);
+
             var rng = new Random(99887);
-            using (var dark  = new SolidBrush(Color.FromArgb(130, 18, 105,  0)))
-            using (var light = new SolidBrush(Color.FromArgb(165, 38, 185, 28)))
+            if (bushSprite != null)
             {
                 foreach (var p in _platforms)
                 {
                     if (p.Height <= 20) continue;
                     for (int fx = p.Left + 22; fx < p.Right - 10; fx += 58 + rng.Next(18))
                     {
-                        int lh = 14 + rng.Next(14);
-                        int lw = 18 + rng.Next(14);
-                        g.FillEllipse(dark,  fx - lw / 2,     p.Top - lh,     lw,     lh);
-                        g.FillEllipse(light, fx - lw / 2 + 3, p.Top - lh + 4, lw - 5, lh - 5);
+                        // Alternate between bush and flower props
+                        if (rng.Next(3) == 0 && flowerSprite != null)
+                            g.DrawImage(flowerSprite, fx - 10, p.Top - 18, 20, 20);
+                        else
+                            g.DrawImage(bushSprite, fx - 12, p.Top - 20, 24, 24);
+                    }
+                }
+            }
+            else
+            {
+                // Fallback: GDI ellipse foliage
+                using (var dark  = new SolidBrush(Color.FromArgb(130, 18, 105,  0)))
+                using (var light = new SolidBrush(Color.FromArgb(165, 38, 185, 28)))
+                {
+                    foreach (var p in _platforms)
+                    {
+                        if (p.Height <= 20) continue;
+                        for (int fx = p.Left + 22; fx < p.Right - 10; fx += 58 + rng.Next(18))
+                        {
+                            int lh = 14 + rng.Next(14);
+                            int lw = 18 + rng.Next(14);
+                            g.FillEllipse(dark,  fx - lw / 2,     p.Top - lh,     lw,     lh);
+                            g.FillEllipse(light, fx - lw / 2 + 3, p.Top - lh + 4, lw - 5, lh - 5);
+                        }
                     }
                 }
             }

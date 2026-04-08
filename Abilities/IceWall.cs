@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Drawing;
+using Fridays_Adventure.Data;
 
 namespace Fridays_Adventure.Abilities
 {
@@ -55,18 +56,40 @@ namespace Fridays_Adventure.Abilities
 
             float alpha = Math.Max(60, 200 - (Age / MaxAge) * 140);
 
-            // Ice body fill
-            using (var br = new SolidBrush(Color.FromArgb((int)alpha, 160, 220, 255)))
-                g.FillRectangle(br, X, Y, Width, Height);
+            // ── Kenney CC0 ice tile (tile_ice.png) ──────────────────────────
+            Bitmap iceTile = SpriteManager.GetScaled("tile_ice.png", 18, 18);
+            if (iceTile != null)
+            {
+                // Semi-transparent ice body fill (tinted blue)
+                using (var br = new SolidBrush(Color.FromArgb((int)(alpha * 0.3f), 160, 220, 255)))
+                    g.FillRectangle(br, X, Y, Width, Height);
 
-            // Ice panel border
-            using (var pen = new Pen(Color.FromArgb((int)alpha, 220, 240, 255), 2))
-                g.DrawRectangle(pen, X, Y, Width, Height);
+                // Tile the ice sprite across the wall surface
+                for (int tx = (int)X; tx < (int)X + Width; tx += 18)
+                {
+                    for (int ty = (int)Y; ty < (int)Y + Height; ty += 18)
+                    {
+                        int dw = Math.Min(18, (int)X + Width - tx);
+                        int dh = Math.Min(18, (int)Y + Height - ty);
+                        g.DrawImage(iceTile, tx, ty, dw, dh);
+                    }
+                }
 
-            // Vertical crack lines for SMB3 brick-wall feel
-            using (var pen = new Pen(Color.FromArgb((int)(alpha * 0.4f), 200, 230, 255), 1))
-                for (int bx = (int)X + 8; bx < X + Width; bx += 8)
-                    g.DrawLine(pen, bx, (int)Y + 4, bx, (int)Y + Height - 4);
+                // Ice panel border with transparency based on age
+                using (var pen = new Pen(Color.FromArgb((int)alpha, 220, 240, 255), 2))
+                    g.DrawRectangle(pen, X, Y, Width, Height);
+            }
+            else
+            {
+                // Fallback: GDI ice block
+                using (var br = new SolidBrush(Color.FromArgb((int)alpha, 160, 220, 255)))
+                    g.FillRectangle(br, X, Y, Width, Height);
+                using (var pen = new Pen(Color.FromArgb((int)alpha, 220, 240, 255), 2))
+                    g.DrawRectangle(pen, X, Y, Width, Height);
+                using (var pen = new Pen(Color.FromArgb((int)(alpha * 0.4f), 200, 230, 255), 1))
+                    for (int bx = (int)X + 8; bx < X + Width; bx += 8)
+                        g.DrawLine(pen, bx, (int)Y + 4, bx, (int)Y + Height - 4);
+            }
         }
     }
 }
