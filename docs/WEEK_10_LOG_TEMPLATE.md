@@ -6,6 +6,26 @@
 
 ---
 
+## SESSION 139: Add Save Game Option to Options Menu
+
+**Date/Time:** Current Session  
+**Status:** ✅ COMPLETE  
+**Build Status:** ✅ 0 errors, 0 warnings  
+
+### Feature: Save Game Button in Options Menu
+- Added "✔ Save Game" row to `OptionsScene` between Inventory and Audio sections
+- Calls `Game.Instance.SyncRuntimeToSaveData()` + `Save.Save()` to persist all progress
+- Shows toast confirmation ("Game saved!" / "Save failed!") via `SMB3Hud`
+- Follows existing `ToolAction` row pattern — no new enums or plumbing needed
+
+### Files Changed
+| File | Changes |
+|------|---------|
+| `Scenes/OptionsScene.cs` | Added Save Game row + `SaveGameManually()` method |
+| `Scenes/OverworldScene.cs` | Removed stray text appended to end of file |
+
+---
+
 ## SESSION 138: Fix Dive Gate Black Screen + BlankScreenDetector QA Test
 
 **Date/Time:** Current Session  

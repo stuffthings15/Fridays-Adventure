@@ -72,6 +72,9 @@ namespace Fridays_Adventure.Scenes
             // Quick inventory access from the options/pause menu.
             _rows.Add(new Row { Type = RowType.ToolAction, Label = "Inventory (I)", ToolAction = OpenInventory });
 
+            // Manual save — syncs all runtime state to disk immediately.
+            _rows.Add(new Row { Type = RowType.ToolAction, Label = "\u2714  Save Game", ToolAction = SaveGameManually });
+
             _rows.Add(new Row { Type = RowType.Header,   Label = "AUDIO" });
             _rows.Add(new Row { Type = RowType.MusicVol, Label = "Music Volume" });
             _rows.Add(new Row { Type = RowType.SfxVol,   Label = "SFX Volume"   });
@@ -608,6 +611,28 @@ namespace Fridays_Adventure.Scenes
                 }
             }
             return name;
+        }
+
+        /// <summary>
+        /// Manually saves all runtime progress to disk.
+        /// Syncs bounty, threat, crew bonds, visited nodes, volume settings,
+        /// and current level counter, then writes the save file.
+        /// </summary>
+        /// <remarks>PHASE 2 - Team 9: UI Programmer — Save Game option</remarks>
+        private static void SaveGameManually()
+        {
+            try
+            {
+                Game.Instance.SyncRuntimeToSaveData();
+                Game.Instance.Save.Save();
+                SMB3Hud.ShowToast("Game saved!");
+                System.Diagnostics.Debug.WriteLine("[OptionsScene] Manual save completed.");
+            }
+            catch (Exception ex)
+            {
+                SMB3Hud.ShowToast("Save failed!");
+                System.Diagnostics.Debug.WriteLine($"[OptionsScene] Save failed: {ex.Message}");
+            }
         }
 
         /// <summary>
