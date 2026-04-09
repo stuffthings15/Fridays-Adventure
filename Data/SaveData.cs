@@ -129,11 +129,26 @@ namespace Fridays_Adventure.Data
             return LoadFromPath(SavePathForSlot(slot));
         }
 
+        /// <summary>
+        /// Writes this save data to the default save path (slot 0).
+        /// For slot-specific saves use <see cref="SaveToPath"/>.
+        /// </summary>
         public void Save()
+        {
+            SaveToPath(SavePath);
+        }
+
+        /// <summary>
+        /// Writes this save data to the specified file path.
+        /// Enables saving to any of the 3 save slots by passing
+        /// <see cref="SavePathForSlot"/> as the target path.
+        /// </summary>
+        /// <remarks>PHASE 2 - Team 9: UI Programmer — Save slot support</remarks>
+        public void SaveToPath(string path)
         {
             try
             {
-                Directory.CreateDirectory(Path.GetDirectoryName(SavePath));
+                Directory.CreateDirectory(Path.GetDirectoryName(path));
                 var lines = new StringBuilder();
                 lines.AppendLine("PlayerBounty=" + PlayerBounty);
                 lines.AppendLine("ThreatLevel="  + ThreatLevel.ToString(CultureInfo.InvariantCulture));
@@ -156,7 +171,7 @@ namespace Fridays_Adventure.Data
                     lines.AppendLine("Int." + kv.Key + "=" + kv.Value);
                 for (int i = 0; i < HighScores.Count; i++)
                     lines.AppendLine("HighScore." + i + "=" + HighScores[i].Name + "|" + HighScores[i].Score);
-                File.WriteAllText(SavePath, lines.ToString());
+                File.WriteAllText(path, lines.ToString());
             }
             catch { /* non-fatal */ }
         }

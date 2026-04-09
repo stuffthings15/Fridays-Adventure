@@ -614,25 +614,13 @@ namespace Fridays_Adventure.Scenes
         }
 
         /// <summary>
-        /// Manually saves all runtime progress to disk.
-        /// Syncs bounty, threat, crew bonds, visited nodes, volume settings,
-        /// and current level counter, then writes the save file.
+        /// Opens the 3-slot save picker so the player can choose which
+        /// slot to write their current progress into.
         /// </summary>
-        /// <remarks>PHASE 2 - Team 9: UI Programmer — Save Game option</remarks>
+        /// <remarks>PHASE 2 - Team 9: UI Programmer — Save Game slot picker</remarks>
         private static void SaveGameManually()
         {
-            try
-            {
-                Game.Instance.SyncRuntimeToSaveData();
-                Game.Instance.Save.Save();
-                SMB3Hud.ShowToast("Game saved!");
-                System.Diagnostics.Debug.WriteLine("[OptionsScene] Manual save completed.");
-            }
-            catch (Exception ex)
-            {
-                SMB3Hud.ShowToast("Save failed!");
-                System.Diagnostics.Debug.WriteLine($"[OptionsScene] Save failed: {ex.Message}");
-            }
+            Game.Instance.Scenes.Push(new SaveGameSlotScene());
         }
 
         /// <summary>

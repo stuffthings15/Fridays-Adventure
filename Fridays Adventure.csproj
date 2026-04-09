@@ -204,6 +204,7 @@
     <Compile Include="Scenes\Phase3TechLeadOpsScene.cs" />
     <Compile Include="Scenes\QABotWalkthroughScene.cs" />
     <Compile Include="Scenes\QAReportScene.cs" />
+    <Compile Include="Scenes\SaveGameSlotScene.cs" />
     <Compile Include="Scenes\SaveSlotScene.cs" />
     <Compile Include="Scenes\Scene.cs" />
     <Compile Include="Scenes\SettingsScene.cs" />
