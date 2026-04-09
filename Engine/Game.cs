@@ -305,6 +305,18 @@ namespace Fridays_Adventure.Engine
         private readonly GameCanvas _canvas;
         private readonly Timer      _timer;
 
+        /// <summary>
+        /// The main rendering canvas. Used by TextRPGScene to overlay
+        /// the embedded Text RPG controls on top of the game window.
+        /// </summary>
+        public GameCanvas Canvas => _canvas;
+
+        /// <summary>
+        /// True while the Text RPG is hosted inside the main window.
+        /// Form1 checks this flag to let WinForms controls handle keyboard input.
+        /// </summary>
+        public bool TextRPGActive { get; set; }
+
         // Global quick-access buttons (always visible): Inventory + Options.
         private Rectangle _globalInventoryBtn;
         private Rectangle _globalOptionsBtn;

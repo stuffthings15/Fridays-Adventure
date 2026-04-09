@@ -63,8 +63,9 @@ namespace TextRPG
         public Player(string name)
         {
             Name = name;
-            Health = 100; MaxHealth = 100;
-            BaseAttack = 10; BaseDefense = 3;
+            // Boosted starting stats for a more forgiving adventure
+            Health = 130; MaxHealth = 130;
+            BaseAttack = 14; BaseDefense = 5;
             Inventory = new List<Item>();
             CurrentRoomId = "village_square";
         }
@@ -153,5 +154,12 @@ namespace TextRPG
         public string EquippedArmorName { get; set; }
         public List<string> InventoryNames { get; set; } = new List<string>();
         public List<string> ClearedRoomIds { get; set; } = new List<string>();
+
+        /// <summary>
+        /// Which game mode was active ("RPG" or "MissFriday").
+        /// Stored so the correct world is rebuilt on load and the
+        /// save slot screen can display the game name.
+        /// </summary>
+        public string GameModeName { get; set; } = "RPG";
     }
 }

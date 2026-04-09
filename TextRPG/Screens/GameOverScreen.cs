@@ -15,10 +15,10 @@ namespace TextRPG.Screens
     /// </summary>
     public class GameOverScreen : UserControl
     {
-        private readonly MainForm _main;
+        private readonly ITextRPGHost _main;
         private readonly bool _victory;
 
-        public GameOverScreen(MainForm main, bool victory)
+        public GameOverScreen(ITextRPGHost main, bool victory)
         {
             _main = main;
             _victory = victory;
@@ -41,19 +41,28 @@ namespace TextRPG.Screens
                 title.TextAlign = ContentAlignment.MiddleCenter;
                 Controls.Add(title);
 
+                // Show mode-appropriate victory message
+                string bossName = _main.Game.Mode == GameMode.MissFriday ? "Sea Serpent" : "Shadow Dragon";
                 var msg = Theme.MakeLabel(
-                    "You have slain the Shadow Dragon and saved the realm!\n" +
+                    $"You have slain the {bossName} and saved the realm!\n" +
                     "Your name will be remembered for generations.",
                     0, 220, 880, 60, 13f, FontStyle.Regular, Theme.TextLight);
                 msg.TextAlign = ContentAlignment.MiddleCenter;
                 Controls.Add(msg);
+
+                // Bonus reward message for fun
+                var bonusMsg = Theme.MakeLabel(
+                    "\u2726 BONUS: You unlocked the Legendary Hero title! \u2726",
+                    0, 275, 880, 30, 11f, FontStyle.Bold, Theme.Gold);
+                bonusMsg.TextAlign = ContentAlignment.MiddleCenter;
+                Controls.Add(bonusMsg);
 
                 var statsLabel = Theme.MakeLabel(
                     $"Final Stats  \u2014  HP: {_main.Game.Player.Health}/{_main.Game.Player.MaxHealth}" +
                     $"  |  ATK: {_main.Game.Player.TotalAttack}" +
                     $"  |  DEF: {_main.Game.Player.TotalDefense}" +
                     $"  |  Items: {_main.Game.Player.Inventory.Count}",
-                    0, 300, 880, 30, 10f, FontStyle.Regular, Theme.ItemBlue);
+                    0, 310, 880, 30, 10f, FontStyle.Regular, Theme.ItemBlue);
                 statsLabel.TextAlign = ContentAlignment.MiddleCenter;
                 Controls.Add(statsLabel);
             }
@@ -85,7 +94,7 @@ namespace TextRPG.Screens
             Controls.Add(playAgainBtn);
 
             var quitBtn = Theme.MakeButton("Quit", bx, 470, 250, 50,
-                (s, e) => Application.Exit());
+                (s, e) => _main.Close());
             Controls.Add(quitBtn);
         }
     }

@@ -51,7 +51,8 @@ namespace TextRPG
                 "EquippedArmor=" + (state.EquippedArmorName ?? ""),
                 "Inventory=" + string.Join("|", state.InventoryNames),
                 "ClearedRooms=" + string.Join("|", state.ClearedRoomIds),
-                "SaveTime=" + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")
+                "SaveTime=" + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
+                "GameMode=" + (state.GameModeName ?? "RPG")
             };
             File.WriteAllLines(GetSlotPath(slot), lines);
         }
@@ -106,7 +107,8 @@ namespace TextRPG
                     SaveTime    = dict.ContainsKey("SaveTime") ? dict["SaveTime"] : "Unknown",
                     ItemCount   = dict.ContainsKey("Inventory")
                         ? dict["Inventory"].Split(new[] { '|' }, StringSplitOptions.RemoveEmptyEntries).Length
-                        : 0
+                        : 0,
+                    GameModeName = dict.ContainsKey("GameMode") ? dict["GameMode"] : "RPG"
                 };
             }
             catch { return null; }
@@ -154,7 +156,8 @@ namespace TextRPG
                     InventoryNames = new List<string>(
                         dict["Inventory"].Split(new[] { '|' }, StringSplitOptions.RemoveEmptyEntries)),
                     ClearedRoomIds = new List<string>(
-                        dict["ClearedRooms"].Split(new[] { '|' }, StringSplitOptions.RemoveEmptyEntries))
+                        dict["ClearedRooms"].Split(new[] { '|' }, StringSplitOptions.RemoveEmptyEntries)),
+                    GameModeName = dict.ContainsKey("GameMode") ? dict["GameMode"] : "RPG"
                 };
             }
             catch { return null; }
@@ -173,6 +176,20 @@ namespace TextRPG
         public string RoomId    { get; set; }
         public string SaveTime  { get; set; }
         public int    ItemCount { get; set; }
+
+        /// <summary>Raw game mode key stored in the save file ("RPG" or "MissFriday").</summary>
+        public string GameModeName { get; set; } = "RPG";
+
+        /// <summary>Human-readable game mode title for the slot card display.</summary>
+        public string GameModeDisplayName
+        {
+            get
+            {
+                if (string.Equals(GameModeName, "MissFriday", StringComparison.OrdinalIgnoreCase))
+                    return "Miss Friday's Adventure 2";
+                return "Realm of Shadows";
+            }
+        }
 
         /// <summary>Friendly room name from the room ID.</summary>
         public string RoomDisplayName

@@ -20,7 +20,7 @@ namespace TextRPG.Screens
     /// </summary>
     public class TitleScreen : UserControl
     {
-        private readonly MainForm _main;
+        private readonly ITextRPGHost _main;
 
         // Which mode the slot picker is in
         private enum SlotMode { Load, NewGame }
@@ -29,7 +29,7 @@ namespace TextRPG.Screens
         // The slot the player chose for new game (used by name entry)
         private int _selectedSlot = 1;
 
-        public TitleScreen(MainForm main)
+        public TitleScreen(ITextRPGHost main)
         {
             _main = main;
             BackColor = Theme.BgDark;
@@ -127,12 +127,18 @@ namespace TextRPG.Screens
                 BackColor = Color.FromArgb(35, 55, 75), BorderStyle = BorderStyle.FixedSingle,
                 Cursor = Cursors.Hand
             };
-            rpgCard.Controls.Add(Theme.MakeLabel("\u2694 Realm of Shadows", 14, 6, 370, 28,
-                14f, FontStyle.Bold, Theme.Gold));
-            rpgCard.Controls.Add(Theme.MakeLabel("Classic text RPG — you choose your name and explore " +
+            var rpgTitle = Theme.MakeLabel("\u2694 Realm of Shadows", 14, 6, 370, 28,
+                14f, FontStyle.Bold, Theme.Gold);
+            var rpgDesc = Theme.MakeLabel("Classic text RPG — you choose your name and explore " +
                 "a dark fantasy world of goblins, trolls, and dragons.",
-                14, 38, 370, 55, 9f, FontStyle.Regular, Theme.TextLight));
-            rpgCard.Click += (s, e) => { _main.Game.Mode = GameMode.RPG; ShowSlotSelection(SlotMode.NewGame); };
+                14, 38, 370, 55, 9f, FontStyle.Regular, Theme.TextLight);
+            rpgCard.Controls.Add(rpgTitle);
+            rpgCard.Controls.Add(rpgDesc);
+            // Wire click on the card AND its child labels so clicking anywhere works.
+            EventHandler rpgClick = (s, e) => { _main.Game.Mode = GameMode.RPG; ShowSlotSelection(SlotMode.NewGame); };
+            rpgCard.Click += rpgClick;
+            rpgTitle.Click += rpgClick;
+            rpgDesc.Click += rpgClick;
             Controls.Add(rpgCard);
 
             // Miss Friday Mode card
@@ -142,12 +148,18 @@ namespace TextRPG.Screens
                 BackColor = Color.FromArgb(55, 35, 60), BorderStyle = BorderStyle.FixedSingle,
                 Cursor = Cursors.Hand
             };
-            fridayCard.Controls.Add(Theme.MakeLabel("\u2693 Miss Friday's Adventure 2", 14, 6, 370, 28,
-                14f, FontStyle.Bold, Color.FromArgb(255, 180, 100)));
-            fridayCard.Controls.Add(Theme.MakeLabel("Play as Miss Friday — a pirate captain with narrative-rich " +
+            var fridayTitle = Theme.MakeLabel("\u2693 Miss Friday's Adventure 2", 14, 6, 370, 28,
+                14f, FontStyle.Bold, Color.FromArgb(255, 180, 100));
+            var fridayDesc = Theme.MakeLabel("Play as Miss Friday — a pirate captain with narrative-rich " +
                 "descriptions, unique NPCs, and a coastal setting.",
-                14, 38, 370, 55, 9f, FontStyle.Regular, Theme.TextLight));
-            fridayCard.Click += (s, e) => { _main.Game.Mode = GameMode.MissFriday; ShowSlotSelection(SlotMode.NewGame); };
+                14, 38, 370, 55, 9f, FontStyle.Regular, Theme.TextLight);
+            fridayCard.Controls.Add(fridayTitle);
+            fridayCard.Controls.Add(fridayDesc);
+            // Wire click on the card AND its child labels so clicking anywhere works.
+            EventHandler fridayClick = (s, e) => { _main.Game.Mode = GameMode.MissFriday; ShowSlotSelection(SlotMode.NewGame); };
+            fridayCard.Click += fridayClick;
+            fridayTitle.Click += fridayClick;
+            fridayDesc.Click += fridayClick;
             Controls.Add(fridayCard);
 
             var backBtn = Theme.MakeButton("\u2190 Back", (880 - 200) / 2, 420, 200, 40,
@@ -219,27 +231,33 @@ namespace TextRPG.Screens
                         14f, FontStyle.Bold, Theme.TextLight);
                     card.Controls.Add(nameLabel);
 
+                    // Game mode title (e.g. "Realm of Shadows" or "Miss Friday's Adventure 2")
+                    var modeLabel = Theme.MakeLabel(
+                        summary.GameModeDisplayName, 120, 34, 250, 18,
+                        9f, FontStyle.Italic, Theme.Gold);
+                    card.Controls.Add(modeLabel);
+
                     // HP bar
                     var hpText = Theme.MakeLabel(
-                        $"HP: {summary.Health}/{summary.MaxHealth}", 120, 36, 180, 20,
+                        $"HP: {summary.Health}/{summary.MaxHealth}", 120, 54, 180, 20,
                         10f, FontStyle.Regular, Theme.HPGreen);
                     card.Controls.Add(hpText);
 
                     // Location
                     var locText = Theme.MakeLabel(
-                        $"\u2302 {summary.RoomDisplayName}", 120, 56, 250, 20,
+                        $"\u2302 {summary.RoomDisplayName}", 120, 74, 250, 20,
                         10f, FontStyle.Regular, Theme.ItemBlue);
                     card.Controls.Add(locText);
 
                     // Items count
                     var itemsText = Theme.MakeLabel(
-                        $"\u2726 {summary.ItemCount} items", 380, 36, 120, 20,
+                        $"\u2726 {summary.ItemCount} items", 380, 54, 120, 20,
                         10f, FontStyle.Regular, Color.LightGray);
                     card.Controls.Add(itemsText);
 
                     // Save date/time
                     var timeText = Theme.MakeLabel(
-                        $"\U0001F4C5 {summary.SaveTime}", 380, 56, 220, 20,
+                        $"\U0001F4C5 {summary.SaveTime}", 380, 74, 220, 20,
                         9f, FontStyle.Regular, Color.DarkGray);
                     card.Controls.Add(timeText);
 

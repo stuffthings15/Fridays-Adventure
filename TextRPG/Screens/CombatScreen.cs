@@ -16,7 +16,7 @@ namespace TextRPG.Screens
     /// </summary>
     public class CombatScreen : UserControl
     {
-        private readonly MainForm _main;
+        private readonly ITextRPGHost _main;
         private readonly GameManager _gm;
 
         // Player side
@@ -33,7 +33,7 @@ namespace TextRPG.Screens
         // Action buttons
         private Button _attackBtn, _potionBtn, _fleeBtn;
 
-        public CombatScreen(MainForm main)
+        public CombatScreen(ITextRPGHost main)
         {
             _main = main;
             _gm = main.Game;

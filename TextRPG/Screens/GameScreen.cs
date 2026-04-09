@@ -16,7 +16,7 @@ namespace TextRPG.Screens
     /// </summary>
     public class GameScreen : UserControl
     {
-        private readonly MainForm _main;
+        private readonly ITextRPGHost _main;
         private readonly GameManager _gm;
 
         // HUD labels
@@ -36,7 +36,7 @@ namespace TextRPG.Screens
         // Status message
         private Label _statusLabel;
 
-        public GameScreen(MainForm main)
+        public GameScreen(ITextRPGHost main)
         {
             _main = main;
             _gm = main.Game;
@@ -107,6 +107,11 @@ namespace TextRPG.Screens
             _saveBtn   = Theme.MakeButton($"\U0001F4BE Save (Slot {_gm.ActiveSlot})", 520, ay, 150, 38, (s, e) => SaveGame());
             Controls.Add(_talkBtn); Controls.Add(_portalBtn);
             Controls.Add(_invBtn);  Controls.Add(_saveBtn);
+
+            // Main Menu return button — lets the player go back to the title screen
+            var menuBtn = Theme.MakeButton("\u2190 Main Menu", 700, ay, 150, 38, (s, e) => _main.ShowScreen(new TitleScreen(_main)));
+            menuBtn.BackColor = Color.FromArgb(80, 40, 40);
+            Controls.Add(menuBtn);
 
             // ── Status Label (y=495) ──────────────────────────────
             _statusLabel = Theme.MakeLabel("", 10, 500, 860, 30, 10f, FontStyle.Italic, Color.LimeGreen);

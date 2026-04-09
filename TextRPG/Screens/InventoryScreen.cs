@@ -15,7 +15,7 @@ namespace TextRPG.Screens
     /// </summary>
     public class InventoryScreen : UserControl
     {
-        private readonly MainForm _main;
+        private readonly ITextRPGHost _main;
         private readonly GameManager _gm;
 
         private ListBox _itemList;
@@ -23,7 +23,7 @@ namespace TextRPG.Screens
         private Button _equipBtn, _useBtn, _backBtn;
         private Label _statusLabel;
 
-        public InventoryScreen(MainForm main)
+        public InventoryScreen(ITextRPGHost main)
         {
             _main = main;
             _gm = main.Game;

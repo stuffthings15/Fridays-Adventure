@@ -6,6 +6,50 @@
 
 ---
 
+## SESSION 142: TextRPG Integration — Easier Gameplay + Bonus Content
+
+**Date/Time:** Current Session  
+**Status:** ✅ COMPLETE  
+**Build Status:** ✅ 0 errors, 0 warnings  
+
+### Feature: TextRPG Built Into Main App + Easier + More Fun
+- **TextRPG integration confirmed** — already launchable from TitleScene via ⚔ TEXT RPG button and VIDEO DEMO: RPG button
+- **Both RPG modes made easier:**
+  - Player starting stats buffed: HP 100→130, ATK 10→14, DEF 3→5
+  - All enemies weakened: Goblin HP 40→28/ATK 8→6, Troll HP 70→55/ATK 14→11, Dragon/Serpent HP 120→90/ATK 20→16
+  - Flee chance increased from 50% to 70%
+- **More healing items throughout both worlds:**
+  - Starter potion in Village Square / Harbor Docks
+  - Healing herbs in Dark Forest, Riverbank, Goblin Cave rooms
+  - Double potions in Library and Crystal Hall rooms
+  - Pre-boss healing supplies at Crystal Hall / Crystal Caverns
+- **Bonus fun content added:**
+  - NEW room: Merchant's Alley / Pirate Bazaar — free potions, Strength Elixir (permanent ATK buff), Lucky Clover
+  - NEW room: Treasure Vault / Sunken Vault — legendary Hero's Blade (+12 ATK), Phoenix Feather (full HP restore), Golden Crown (+10 DEF)
+  - NEW loot from enemies: Goblin drops Lucky Ring (+3 DEF), Troll drops Troll Skin Shield (+6 DEF) + extra potion
+  - Dragon/Serpent now drops bonus legendary weapon (+15 ATK) on victory
+  - Strength Elixir / Pirate's Grog: special potion that permanently boosts ATK
+  - NPC dialogue expanded with treasure hints
+  - Victory screen now shows boss name by mode + bonus "Legendary Hero" title
+  - Main Menu return button added to GameScreen for easier navigation
+- **All menus verified working:** Title → Mode Select → Slot Select → Name Entry → Game → Combat → Inventory → Dialogue → Victory/Defeat → back to Title
+- **TextRPG.csproj updated:** Added DemoScreen.cs for standalone compilation
+
+### Files Changed
+| File | Changes |
+|------|---------|
+| `TextRPG/Models.cs` | Player starting stats buffed (HP 130, ATK 14, DEF 5) |
+| `TextRPG/GameManager.cs` | Both BuildWorld() and BuildFridayWorld() rewritten with more items, easier enemies, 2 new rooms, expanded NPC dialogue, buff potions, 70% flee rate, expanded MakeItem() for save/load |
+| `TextRPG/Screens/GameOverScreen.cs` | Mode-aware victory text + bonus reward message |
+| `TextRPG/Screens/GameScreen.cs` | Added Main Menu return button |
+| `TextRPG/TextRPG.csproj` | Added DemoScreen.cs compile entry |
+
+### Next Steps
+- Continue Phase 2 implementation per PHASE_2_START_HERE.md
+- Consider adding more TextRPG rooms and side quests in future sessions
+
+---
+
 ## SESSION 141: Final Polish — Slot-Aware Auto-Save Bug Fix
 
 **Date/Time:** Current Session  

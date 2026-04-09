@@ -29,7 +29,7 @@ namespace Fridays_Adventure.Scenes
         private Rectangle _demoBtn;
         // QA Bot Walkthrough button — launches the full automated QA test
         private Rectangle _qaWalkthroughBtn;
-        // Text RPG mini-game button — launches the standalone RPG in a modal dialog
+        // Text RPG mini-game button — opens the RPG embedded in the main window
         private Rectangle _textRpgBtn;
         // Video Demo Mode buttons — scripted auto-play showcases
         private Rectangle _videoDemoBtn;
@@ -537,45 +537,21 @@ namespace Fridays_Adventure.Scenes
         }
 
         /// <summary>
-        /// Opens the Text RPG mini-game in a separate modal dialog window.
-        /// The main game pauses while the RPG is open and resumes when it closes.
+        /// Opens the Text RPG mini-game embedded inside the main game window.
+        /// The TextRPGScene overlays WinForms controls on top of the canvas.
         /// </summary>
         private static void LaunchTextRPG()
         {
-            try
-            {
-                // Show the TextRPG as a modal dialog — main game pauses until closed
-                using (var rpgForm = new TextRPG.MainForm())
-                {
-                    rpgForm.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
-                    rpgForm.ShowDialog();
-                }
-            }
-            catch (Exception ex)
-            {
-                DebugLogger.LogError("TitleScene.LaunchTextRPG", ex);
-            }
+            Game.Instance.Scenes.Push(new TextRPGScene(demoMode: false));
         }
 
         /// <summary>
         /// Opens the Text RPG in Video Demo Mode — auto-plays through all features.
+        /// Embedded inside the main game window via TextRPGScene.
         /// </summary>
         private static void LaunchTextRPGDemo()
         {
-            try
-            {
-                using (var rpgForm = new TextRPG.MainForm())
-                {
-                    rpgForm.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
-                    // Navigate directly to the DemoScreen instead of the TitleScreen
-                    rpgForm.ShowScreen(new TextRPG.Screens.DemoScreen(rpgForm));
-                    rpgForm.ShowDialog();
-                }
-            }
-            catch (Exception ex)
-            {
-                DebugLogger.LogError("TitleScene.LaunchTextRPGDemo", ex);
-            }
+            Game.Instance.Scenes.Push(new TextRPGScene(demoMode: true));
         }
 
         /// <summary>

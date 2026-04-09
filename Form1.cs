@@ -50,6 +50,10 @@ namespace Fridays_Adventure
             {
                 if (e.Alt && e.KeyCode == Keys.F4) { Close(); return; }
 
+                // While the Text RPG is overlaying the game, let its WinForms
+                // controls handle keyboard input instead of the game engine.
+                if (_game.TextRPGActive) return;
+
                 // F10 toggles the in-game Visual Debugger overlay.
                 // Team 3 (Technical Lead) / Team 19 (QA Tester) — overlay toggle.
                 if (e.KeyCode == Keys.F10)
@@ -62,8 +66,8 @@ namespace Fridays_Adventure
                 _game.Input.OnKeyDown(e.KeyCode);
                 e.Handled = true;
             };
-            KeyUp    += (s, e) => _game.Input.OnKeyUp(e.KeyCode);
-            KeyPress += (s, e) => _game.Input.OnKeyChar(e.KeyChar);
+            KeyUp    += (s, e) => { if (!_game.TextRPGActive) _game.Input.OnKeyUp(e.KeyCode); };
+            KeyPress += (s, e) => { if (!_game.TextRPGActive) _game.Input.OnKeyChar(e.KeyChar); };
 
             _canvas.MouseClick += (s, e) =>
             {

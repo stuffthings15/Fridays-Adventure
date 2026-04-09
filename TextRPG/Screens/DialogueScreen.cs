@@ -16,14 +16,14 @@ namespace TextRPG.Screens
     /// </summary>
     public class DialogueScreen : UserControl
     {
-        private readonly MainForm _main;
+        private readonly ITextRPGHost _main;
         private readonly NPC _npc;
 
         private Label _npcName;
         private RichTextBox _dialogueBox;
         private Panel _optionsPanel;
 
-        public DialogueScreen(MainForm main, NPC npc)
+        public DialogueScreen(ITextRPGHost main, NPC npc)
         {
             _main = main;
             _npc = npc;

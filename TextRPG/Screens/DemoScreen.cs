@@ -24,7 +24,7 @@ namespace TextRPG.Screens
     /// </summary>
     public class DemoScreen : UserControl
     {
-        private readonly MainForm _main;
+        private readonly ITextRPGHost _main;
 
         // ── Game logic (real GameManager drives all data) ─────────────
         private GameManager _game;
@@ -99,7 +99,7 @@ namespace TextRPG.Screens
             5f, 6f, 5f, 7f, 7f, 8f, 14f, 10f, 6f, 8f, 8f
         };
 
-        public DemoScreen(MainForm main)
+        public DemoScreen(ITextRPGHost main)
         {
             _main = main;
             BackColor = Theme.BgDark;

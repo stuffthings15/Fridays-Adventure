@@ -23,6 +23,12 @@ Assets/Notes/
 Assets/The Forge/Storyboard CSWK10.pdf
 # ambientcg source JPGs — only processed sprites are needed
 Assets/third_party/vendor/ambientcg/source-textures/
+# Root-level audio duplicates — canonical copies live in Assets/Audio/
+Assets/music_*.mp3
+Assets/sfx_*.mp3
+# TextRPG save files generated at runtime
+savegame_slot*.txt
+savegame.txt
 
 # User-specific files
 *.rsuser
