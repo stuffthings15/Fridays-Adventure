@@ -3,6 +3,20 @@
 ##
 ## Get latest from https://github.com/github/gitignore/blob/master/VisualStudio.gitignore
 
+# ── Project-specific: prevent bloat from build artifacts & duplicates ──
+# Release/ is a manual copy of bin/Release — never commit it
+Release/
+# third_party archives are large zips; only extracted content is needed
+third_party/archives/
+# Assets/Backrounds/ is an exact duplicate of Assets/Art/Backrounds/
+Assets/Backrounds/
+# Art/Backrounds/ is an exact duplicate of Sprites/bg_* (all 23 verified identical)
+Assets/Art/Backrounds/
+# nuget.exe is a downloadable tool — no need to track 8 MB binary
+nuget.exe
+# Class photos are not game content
+Assets/IN Class Notes/Pictures/
+
 # User-specific files
 *.rsuser
 *.suo
