@@ -163,8 +163,9 @@ namespace Fridays_Adventure.Scenes
             }
 
             // ── Name entry box ────────────────────────────────────────────────
-            // PHASE 2 - Team 9: UI Programmer - Allow dev menu access during name entry
-            if (_nameActive && !Game.Instance.GodMode)  // Only show name entry if dev mode NOT activated
+            // Always block gameplay hotkeys (I, L, Esc, etc.) while typing a name,
+            // otherwise letters like "I" in "Curtis" trigger InventoryPressed.
+            if (_nameActive)
             {
                 _nameCursor += dt;
 
