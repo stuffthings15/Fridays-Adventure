@@ -179,6 +179,7 @@
     <Compile Include="Scenes\LevelIntroScene.cs" />
     <Compile Include="Scenes\LevelSceneFactory.cs" />
     <Compile Include="Scenes\LoadingScene.cs" />
+    <Compile Include="Scenes\NeonSurvivorScene.cs" />
     <Compile Include="Scenes\OverworldScene.cs" />
     <Compile Include="Scenes\OptionsScene.cs" />
     <Compile Include="Scenes\PauseScene.cs" />

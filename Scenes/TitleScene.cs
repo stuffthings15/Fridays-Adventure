@@ -38,6 +38,8 @@ namespace Fridays_Adventure.Scenes
         private Rectangle _startBtn;
         // Dev Menu button — opens a password prompt to access the developer menu
         private Rectangle _devMenuBtn;
+        // Neon Survivor mini-game button — launches the ported arcade game
+        private Rectangle _neonSurvivorBtn;
 
         // Name entry — shown when player has not entered a name yet
         private bool   _nameActive;
@@ -237,6 +239,7 @@ namespace Fridays_Adventure.Scenes
             if (_videoDemoBtn.Contains(p)) Game.Instance.Scenes.Push(new VideoDemoScene());
             if (_rpgDemoBtn.Contains(p))   LaunchTextRPGDemo();
             if (_qaWalkthroughBtn.Contains(p)) Game.Instance.Scenes.Push(new QABotWalkthroughScene());
+            if (_neonSurvivorBtn.Contains(p)) Game.Instance.Scenes.Push(new NeonSurvivorScene());
             if (_exitBtn.Contains(p))    Game.RequestClose();
             if (_scoresBtn.Contains(p))  Game.Instance.Scenes.Push(new HighScoreScene(0, 0, isNewEntry: false));
             // DEV MENU button — open password prompt
@@ -352,11 +355,15 @@ namespace Fridays_Adventure.Scenes
             DrawButton(g, _videoDemoBtn, "\u25B6 VIDEO DEMO: GAME",    Color.FromArgb(140, 80, 20));
             DrawButton(g, _rpgDemoBtn,   "\u25B6 VIDEO DEMO: RPG",     Color.FromArgb(140, 80, 20));
 
-            // Row 3: QA Bot Walkthrough — full game automated test
-            int qaY = vidY + 36 + 8;
-            int qaW = 260;
-            int qaX = (W - qaW) / 2;
-            _qaWalkthroughBtn = new Rectangle(qaX, qaY, qaW, 36);
+            // Row 3: Neon Survivor + QA Bot Walkthrough
+            int row3Y = vidY + 36 + 8;
+            int row3BtnW = 220;
+            int row3Gap = 16;
+            int row3TotalW = row3BtnW * 2 + row3Gap;
+            int row3X = (W - row3TotalW) / 2;
+            _neonSurvivorBtn  = new Rectangle(row3X, row3Y, row3BtnW, 36);
+            _qaWalkthroughBtn = new Rectangle(row3X + row3BtnW + row3Gap, row3Y, row3BtnW, 36);
+            DrawButton(g, _neonSurvivorBtn,  "\u26A1 NEON SURVIVOR", Color.FromArgb(0, 80, 60));
             DrawButton(g, _qaWalkthroughBtn, "\u2699 QA BOT WALKTHROUGH", Color.FromArgb(20, 100, 120));
 
             // AFK idle countdown — shown in the last 15 seconds before auto-demo
@@ -368,7 +375,7 @@ namespace Fridays_Adventure.Scenes
                 {
                     SizeF sz = g.MeasureString(hint, f);
                     int hx = (int)((W - sz.Width) / 2f);
-                    int hy = qaY + 36 + 6;
+                    int hy = row3Y + 36 + 6;
                     using (var br = new SolidBrush(Color.FromArgb(180, 0, 0, 0)))
                         g.FillRectangle(br, hx - 6, hy - 2, (int)sz.Width + 12, (int)sz.Height + 4);
                     using (var br = new SolidBrush(Color.FromArgb(220, Color.Orange)))
