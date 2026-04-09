@@ -141,6 +141,11 @@ namespace Fridays_Adventure.Scenes
 
         public override void OnExit() { }
 
+        public override void HandleClick(Point p)
+        {
+            if (HandleMainMenuClick(p)) return;
+        }
+
         // ═══════════════════════════════════════════════════════════════
         //  Update (runs every frame ≈ 60 Hz)
         // ═══════════════════════════════════════════════════════════════
@@ -374,8 +379,8 @@ namespace Fridays_Adventure.Scenes
 
             g.SmoothingMode = SmoothingMode.AntiAlias;
 
-            if (!_gameStarted)  { DrawTitleCard(g, W, H); return; }
-            if (_gameOver)      { DrawGameOver(g, W, H);  return; }
+            if (!_gameStarted)  { DrawTitleCard(g, W, H); DrawMainMenuReturnButton(g); return; }
+            if (_gameOver)      { DrawGameOver(g, W, H);  DrawMainMenuReturnButton(g); return; }
 
             // ── Apply screen shake ──
             float shakeOX = 0, shakeOY = 0;
@@ -461,6 +466,7 @@ namespace Fridays_Adventure.Scenes
 
             // ── HUD ──
             DrawHud(g, W, H, lvl);
+            DrawMainMenuReturnButton(g);
         }
 
         // ═══════════════════════════════════════════════════════════════

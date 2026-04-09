@@ -286,6 +286,7 @@ namespace Fridays_Adventure.Scenes
         public override void HandleClick(Point p)
         {
             if (HandleDevMenuClick(p)) return;
+            if (HandleMainMenuClick(p)) return;
 
             // Large return buttons at top and bottom — pop all the way to gameplay
             if (_returnBtnTop.Contains(p) || _returnBtnBottom.Contains(p))
@@ -340,6 +341,7 @@ namespace Fridays_Adventure.Scenes
 
             g.DrawString("Up/Down Navigate   Left/Right Volume   Enter Select   Esc Return to Game",
                          SmFont, Brushes.DimGray, 12, H - 20);
+            DrawMainMenuReturnButton(g);
             DrawDevMenuButton(g);
         }
 

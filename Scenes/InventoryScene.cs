@@ -90,6 +90,7 @@ namespace Fridays_Adventure.Scenes
         public override void HandleClick(Point p)
         {
             if (HandleDevMenuClick(p)) return;
+            if (HandleMainMenuClick(p)) return;
 
             if (_useHealthBtn.Contains(p) && _player != null)
             {
@@ -272,6 +273,7 @@ namespace Fridays_Adventure.Scenes
             g.DrawString("[Esc] Return to Game   [H] Medkit   [R] Reserve Item",
                 _hintFont, Brushes.DimGray, W / 2 - 220, H - 20);
 
+            DrawMainMenuReturnButton(g);
             DrawDevMenuButton(g);
         }
 

@@ -108,6 +108,7 @@ namespace Fridays_Adventure.Scenes
         public override void HandleClick(Point p)
         {
             if (HandleDevMenuClick(p)) return;
+            if (HandleMainMenuClick(p)) return;
             Game.Instance.Scenes.Pop();
         }
 
@@ -146,6 +147,7 @@ namespace Fridays_Adventure.Scenes
 
             using (var f = new Font("Courier New", 10, FontStyle.Bold))
                 g.DrawString("Up/Down to scroll", f, Brushes.DimGray, 12, H - 22);
+            DrawMainMenuReturnButton(g);
             DrawDevMenuButton(g);
         }
     }

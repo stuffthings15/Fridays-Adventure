@@ -53,6 +53,7 @@ namespace Fridays_Adventure.Scenes
         public override void HandleClick(Point p)
         {
             if (HandleDevMenuClick(p)) return;
+            if (HandleMainMenuClick(p)) return;
             if (_timer > 0.5f)
                 Game.Instance.Scenes.ReplaceAll(new TitleScene());
         }

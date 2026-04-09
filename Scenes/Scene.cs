@@ -54,5 +54,46 @@ namespace Fridays_Adventure.Scenes
             Game.Instance.Scenes.Push(new DevMenuScene());
             return true;
         }
+
+        // ── Main Menu button — small button that returns to TitleScene ──────
+        // Available to all scenes via DrawMainMenuReturnButton / HandleMainMenuClick.
+        private Rectangle _mainMenuReturnBtn;
+
+        /// <summary>
+        /// Draws a small "← MAIN MENU" button in the top-left corner.
+        /// Call at the end of Draw() in any scene that should offer a direct
+        /// route back to the title screen (for switching to Neon Survivor, Text RPG, etc.).
+        /// Skips rendering on the TitleScene itself to avoid redundancy.
+        /// </summary>
+        protected void DrawMainMenuReturnButton(Graphics g)
+        {
+            // Don't show the button if we're already on the title screen
+            if (this is TitleScene) return;
+            _mainMenuReturnBtn = new Rectangle(10, 10, 148, 30);
+            using (var br = new SolidBrush(Color.FromArgb(190, 80, 20, 20)))
+                g.FillRectangle(br, _mainMenuReturnBtn);
+            using (var pen = new Pen(Color.FromArgb(200, Color.Crimson), 1))
+                g.DrawRectangle(pen, _mainMenuReturnBtn);
+            using (var f = new Font("Courier New", 10, FontStyle.Bold))
+            {
+                const string label = "\u2190  MAIN MENU";
+                SizeF sz = g.MeasureString(label, f);
+                g.DrawString(label, f, Brushes.White,
+                    _mainMenuReturnBtn.X + (_mainMenuReturnBtn.Width  - sz.Width)  / 2f,
+                    _mainMenuReturnBtn.Y + (_mainMenuReturnBtn.Height - sz.Height) / 2f);
+            }
+        }
+
+        /// <summary>
+        /// Call at the start of HandleClick(). Returns true if the click was
+        /// consumed and the scene has navigated to the title screen.
+        /// </summary>
+        protected bool HandleMainMenuClick(Point p)
+        {
+            if (this is TitleScene) return false;
+            if (!_mainMenuReturnBtn.Contains(p)) return false;
+            Game.Instance.Scenes.ReplaceAll(new TitleScene());
+            return true;
+        }
     }
 }

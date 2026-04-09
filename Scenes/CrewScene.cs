@@ -98,6 +98,7 @@ namespace Fridays_Adventure.Scenes
         public override void HandleClick(Point p)
         {
             if (HandleDevMenuClick(p)) return;
+            if (HandleMainMenuClick(p)) return;
 
             // Select character from panel click.
             if (_fridayPanel.Contains(p)) { Game.Instance.SelectedCharacter = PlayableCharacter.MissFriday; return; }
@@ -167,6 +168,7 @@ namespace Fridays_Adventure.Scenes
 
             using (var f = new Font("Courier New", 10, FontStyle.Bold))
                 g.DrawString("Selected: " + Game.Instance.SelectedCharacter, f, Brushes.Gold, W - 220, H - 24);
+            DrawMainMenuReturnButton(g);
             DrawDevMenuButton(g);
         }
 

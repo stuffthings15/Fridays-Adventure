@@ -16,6 +16,13 @@ Assets/Art/Backrounds/
 nuget.exe
 # Class photos are not game content
 Assets/IN Class Notes/Pictures/
+Assets/In class photos/
+# Assets/Notes/ is an exact duplicate of Assets/IN Class Notes/Written/
+Assets/Notes/
+# Large PDF storyboard — not game content
+Assets/The Forge/Storyboard CSWK10.pdf
+# ambientcg source JPGs — only processed sprites are needed
+Assets/third_party/vendor/ambientcg/source-textures/
 
 # User-specific files
 *.rsuser
