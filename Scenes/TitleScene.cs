@@ -220,8 +220,8 @@ namespace Fridays_Adventure.Scenes
             if (input.IsPressed(System.Windows.Forms.Keys.L))
                 Engine.Game.RequestOpenLogbook();
 
-            if (input.InventoryPressed)
-                Game.Instance.Scenes.Push(new InventoryScene());
+            // Inventory is only accessible from gameplay map scenes,
+            // not the title screen — handled globally in Game.cs.
 
             if (input.PausePressed)
                 Game.Instance.Scenes.Push(new OptionsScene());

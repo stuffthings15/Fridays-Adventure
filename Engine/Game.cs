@@ -877,8 +877,10 @@ namespace Fridays_Adventure.Engine
             var scene = Scenes.Current;
             if (scene == null || scene is LoadingScene) return false;
 
-            // Inventory hotkey (I): toggle inventory scene.
-            if (Input.InventoryPressed)
+            // Inventory hotkey (I): only valid on gameplay map scenes.
+            // This prevents letters like 'I' from triggering the inventory
+            // while typing a name on the title screen (e.g. spelling "Curtis").
+            if (Input.InventoryPressed && IsGameplayScene(scene))
             {
                 ToggleInventoryOverlay();
                 return true;
