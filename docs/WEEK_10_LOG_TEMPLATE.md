@@ -6,6 +6,46 @@
 
 ---
 
+## SESSION 141: Final Polish — Slot-Aware Auto-Save Bug Fix
+
+**Date/Time:** Current Session  
+**Status:** ✅ COMPLETE  
+**Build Status:** ✅ 0 errors, 0 warnings  
+
+### BUG FIX: Auto-saves always wrote to slot 0 regardless of active slot
+- **Root cause:** `SaveData.Save()` was hardcoded to use the static `SavePath` property which always resolved to `save.dat` (slot 0). After a player saved to slot 2 via `SaveGameSlotScene`, subsequent auto-saves from `OverworldScene.OnResume()` still wrote to slot 0.
+- **Fix:** `Save()` now reads `Game.Instance.SaveSlot` to determine which slot file to write to, defaulting to slot 0 if the game singleton is unavailable.
+- **Impact:** All auto-saves (level completion, progression) now correctly target whichever slot the player last chose.
+
+### Files Changed
+| File | Changes |
+|------|---------|
+| `Data/SaveData.cs` | `Save()` now routes to `SavePathForSlot(Game.Instance.SaveSlot)` instead of hardcoded `SavePath` |
+
+---
+
+## SESSION 140: Save Game Slot Picker Scene + SaveToPath
+
+**Date/Time:** Previous Session  
+**Status:** ✅ COMPLETE  
+**Build Status:** ✅ 0 errors, 0 warnings  
+
+### Feature: Save Game Slot Picker (SaveGameSlotScene)
+- Created `Scenes/SaveGameSlotScene.cs` — full 3-slot save picker with slot previews, animated selection, overwrite confirmation dialog
+- Added `SaveData.SaveToPath(string path)` — enables writing to any slot file path
+- Updated `OptionsScene.SaveGameManually()` to push `SaveGameSlotScene` instead of saving silently
+- Registered new file in `Fridays Adventure.csproj` (`<Compile>` entry)
+
+### Files Changed
+| File | Changes |
+|------|---------|
+| `Scenes/SaveGameSlotScene.cs` | **NEW** — 3-slot save picker scene |
+| `Data/SaveData.cs` | Added `SaveToPath(string)`, refactored `Save()` to delegate |
+| `Scenes/OptionsScene.cs` | `SaveGameManually()` now pushes `SaveGameSlotScene` |
+| `Fridays Adventure.csproj` | Added `<Compile Include="Scenes\SaveGameSlotScene.cs" />` |
+
+---
+
 ## SESSION 139: Add Save Game Option to Options Menu
 
 **Date/Time:** Current Session  

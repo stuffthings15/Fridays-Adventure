@@ -130,12 +130,17 @@ namespace Fridays_Adventure.Data
         }
 
         /// <summary>
-        /// Writes this save data to the default save path (slot 0).
-        /// For slot-specific saves use <see cref="SaveToPath"/>.
+        /// Writes this save data to the active save slot's file.
+        /// Reads the current slot index from <see cref="Engine.Game.Instance"/>
+        /// so that auto-saves always target the slot the player last chose.
+        /// Falls back to slot 0 if the game singleton is unavailable.
         /// </summary>
+        /// <remarks>PHASE 2 - Team 9: UI Programmer — slot-aware auto-save</remarks>
         public void Save()
         {
-            SaveToPath(SavePath);
+            int slot = 0;
+            try { slot = Engine.Game.Instance?.SaveSlot ?? 0; } catch { }
+            SaveToPath(SavePathForSlot(slot));
         }
 
         /// <summary>
