@@ -674,9 +674,7 @@
     <Content Include="Assets\Sprites\bg_Marine_Blockade.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="Assets\Sprites\bg_overworld.png">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
+    
     <Content Include="Assets\Sprites\bg_Sea_Serpent.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>

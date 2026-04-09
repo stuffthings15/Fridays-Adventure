@@ -25,6 +25,9 @@ namespace Fridays_Adventure.Scenes
         private List<Hazard>       _hazards   = new List<Hazard>();
         private List<IceWallInstance> _iceWalls = new List<IceWallInstance>();
         private readonly List<PointF> _centipedeSegments = new List<PointF>();
+        // Enemy sprites cycled across body segments — one per enemy type so the
+        // centipede body is a visible composite of all enemy models.
+        private Bitmap[] _segmentSprites;
         private ComboAssist        _combo     = new ComboAssist();
 
         private const int   CentipedeSegmentCount   = 10;
@@ -147,6 +150,23 @@ namespace Fridays_Adventure.Scenes
 
             if (_config.Type == WarlordType.CentipedeLord)
             {
+                // Load every named enemy sprite so each segment of the centipede
+                // body displays a different enemy model — a chimera of all foes.
+                string[] enemyNames =
+                {
+                    "enemy_Garp.png",
+                    "enemy_Raptor_Marauder.png",
+                    "enemy_Ronin_Enforcer.png",
+                    "enemy_Thunder_Mask_Priest.png",
+                    "enemy_hammer_bro.png",
+                    "enemy_Oni_Ashigaru.png",
+                    "enemy_boss.png",
+                };
+                int segPx = 30; // matches GetCentipedeSegmentRect size
+                _segmentSprites = new Bitmap[enemyNames.Length];
+                for (int si = 0; si < enemyNames.Length; si++)
+                    _segmentSprites[si] = SpriteManager.GetScaled(enemyNames[si], segPx, segPx);
+
                 _centipedeSegments.Clear();
                 for (int i = 0; i < CentipedeSegmentCount; i++)
                     _centipedeSegments.Add(new PointF(_boss.CenterX - i * CentipedeSegmentSpacing, _boss.CenterY));
@@ -547,11 +567,14 @@ namespace Fridays_Adventure.Scenes
             return new Rectangle((int)(p.X - size / 2f), (int)(p.Y - size / 2f), size, size);
         }
 
-        /// <summary>Draws the centipede body chain for the centipede boss fight.</summary>
+        /// <summary>Draws the centipede body chain for the centipede boss fight.
+        /// Each segment renders a different enemy sprite so the body is a
+        /// composite of all enemy models in the game.</summary>
         private void DrawCentipedeSegments(Graphics g)
         {
             if (_config.Type != WarlordType.CentipedeLord || _centipedeSegments.Count == 0 || !_boss.IsAlive) return;
 
+            // Draw connecting chain lines between segments.
             using (var linkPen = new Pen(Color.FromArgb(180, 90, 200, 90), 6))
             {
                 PointF prev = new PointF(_boss.CenterX, _boss.CenterY);
@@ -563,11 +586,27 @@ namespace Fridays_Adventure.Scenes
                 }
             }
 
+            // Draw each segment: cycle through all enemy sprites so the body
+            // is a visible combination of every enemy model in the game.
+            bool hasSprites = _segmentSprites != null && _segmentSprites.Length > 0;
             for (int i = 0; i < _centipedeSegments.Count; i++)
             {
                 var r = GetCentipedeSegmentRect(i);
-                g.FillEllipse(_centBodyBr, r);
-                g.DrawEllipse(_centBodyPen, r);
+
+                Bitmap sprite = hasSprites ? _segmentSprites[i % _segmentSprites.Length] : null;
+                if (sprite != null)
+                {
+                    // Draw enemy model sprite fitted to the segment rect.
+                    g.DrawImage(sprite, r);
+                    // Thin green outline keeps the centipede chain readable.
+                    g.DrawEllipse(_centBodyPen, r);
+                }
+                else
+                {
+                    // Fallback coloured circle when a sprite file is missing.
+                    g.FillEllipse(_centBodyBr, r);
+                    g.DrawEllipse(_centBodyPen, r);
+                }
             }
         }
 

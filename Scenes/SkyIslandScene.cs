@@ -66,24 +66,60 @@ namespace Fridays_Adventure.Scenes
 
         private void LoadBackground()
         {
-            // Background is in Assets\Sprites\ — use the proper named file
-            string path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory,
-                                       "Assets", "Sprites", "bg_Ancient_ruins_island.png");
-            if (!File.Exists(path))
-                path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory,
-                                    "Assets", "Sprites", "bg_Volcano_island.png");
-
-            if (File.Exists(path))
+            // Try sky-specific backgrounds first so the scene clearly looks like a
+            // vertical climbing sky level rather than a side-scrolling island.
+            // Falls through to SpriteManager (catches vendor-indexed files) and
+            // finally to the built-in sky gradient if no asset is found.
+            string[] candidates =
             {
-                int W = Game.Instance.CanvasWidth;
-                int H = Game.Instance.CanvasHeight;
-                using (var raw = new Bitmap(path))
+                "bg_sky_island.png",
+                "bg_Sky_Island.png",
+                "bg_cloud_kingdom.png",
+                "bg_Cloud_Kingdom.png",
+                "bg_sky.png",
+            };
+
+            // First pass: direct file check in Assets\Sprites\
+            string spritesDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "Sprites");
+            string found = null;
+            foreach (string name in candidates)
+            {
+                string p = Path.Combine(spritesDir, name);
+                if (File.Exists(p)) { found = p; break; }
+            }
+
+            // Second pass: SpriteManager vendor index (catches third-party packs)
+            if (found == null)
+            {
+                foreach (string name in candidates)
                 {
-                    _bg = new Bitmap(W, H);
-                    using (var gr = Graphics.FromImage(_bg))
-                        gr.DrawImage(raw, 0, 0, W, H);
+                    var bmp = SpriteManager.Get(name);
+                    if (bmp != null)
+                    {
+                        // Scale to canvas and cache
+                        int W2 = Game.Instance.CanvasWidth;
+                        int H2 = Game.Instance.CanvasHeight;
+                        _bg = new Bitmap(W2, H2);
+                        using (var gr = Graphics.FromImage(_bg))
+                            gr.DrawImage(bmp, 0, 0, W2, H2);
+                        return;
+                    }
                 }
             }
+
+            // Third pass: load from the resolved path
+            if (found != null)
+            {
+                int W3 = Game.Instance.CanvasWidth;
+                int H3 = Game.Instance.CanvasHeight;
+                using (var raw = new Bitmap(found))
+                {
+                    _bg = new Bitmap(W3, H3);
+                    using (var gr = Graphics.FromImage(_bg))
+                        gr.DrawImage(raw, 0, 0, W3, H3);
+                }
+            }
+            // If nothing loaded, _bg stays null and the sky gradient in Draw() is used.
         }
 
         public override void OnExit()  { _bg?.Dispose(); _bg = null; }
@@ -152,6 +188,10 @@ namespace Fridays_Adventure.Scenes
             _player.Health = _player.MaxHealth;
             _player.GrantInvincibility(0.5f);
             _firstFrameDone = false;
+
+            // Initialize camera at the player's starting position so the first
+            // draw frame shows the ground, not the top of the 3200px level.
+            UpdateCamera();
         }
 
         // ── Update ────────────────────────────────────────────────────────────
@@ -496,8 +536,17 @@ namespace Fridays_Adventure.Scenes
 
         private void UpdateCamera()
         {
+            // Target: keep the player at ~55 % down from the top of the viewport.
             float targetY = _player.Y - Game.Instance.CanvasHeight * 0.55f;
-            _cameraY = Math.Max(0, Math.Min(LevelHeight - Game.Instance.CanvasHeight, targetY));
+            targetY = Math.Max(0, Math.Min(LevelHeight - Game.Instance.CanvasHeight, targetY));
+
+            // Smooth lerp toward the target so vertical climbing motion is clearly
+            // visible as the screen glides upward — not an invisible instant snap.
+            // First call (from BuildLevel) initialises _cameraY directly.
+            if (_cameraY == 0 && targetY > 0)
+                _cameraY = targetY;   // instant snap on first frame to avoid wrong starting view
+            else
+                _cameraY += (targetY - _cameraY) * 0.12f;  // 12 % lerp each frame ≈ smooth follow
         }
 
         // ── Draw ──────────────────────────────────────────────────────────────

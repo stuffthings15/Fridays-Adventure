@@ -355,6 +355,7 @@ namespace Fridays_Adventure.Entities
                     break;
 
                 default:
+                    // Miss Friday — player_Miss_Friday.png is the canonical sprite.
                     candidates = new[]
                     {
                         "player_Miss_Friday.png",

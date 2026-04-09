@@ -86,7 +86,7 @@ namespace Fridays_Adventure.Scenes
         {
             string assetsDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets");
 
-            // Miss Friday uses the canonical player sprite (with legacy fallback name).
+            // Miss Friday — player_Miss_Friday.png is the canonical sprite.
             _fridaySprite = TryLoadBitmap(out _fridaySpriteSource,
                 Path.Combine(assetsDir, "Sprites", "player_Miss_Friday.png"),
                 Path.Combine(assetsDir, "Sprites", "player_missfriday.png"));

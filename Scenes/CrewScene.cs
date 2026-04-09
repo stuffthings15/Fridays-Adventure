@@ -47,7 +47,7 @@ namespace Fridays_Adventure.Scenes
             if (File.Exists(conceptPath))
                 _conceptArt = new Bitmap(conceptPath);
 
-            // Miss Friday sprite
+            // Miss Friday sprite — player_Miss_Friday.png is the canonical model.
             string fridayPath = Path.Combine(spritesDir, "player_Miss_Friday.png");
             if (!File.Exists(fridayPath))
                 fridayPath = Path.Combine(spritesDir, "player_missfriday.png");
